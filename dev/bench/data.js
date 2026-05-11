@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778510601556,
+  "lastUpdate": 1778510835288,
   "repoUrl": "https://github.com/Hualinge123/relay-claw",
   "entries": {
     "Benchmark": [
@@ -115,6 +115,121 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.000001079322519477691",
             "extra": "mean: 6.396173093495783 usec\nrounds: 34802"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "whl_zju@163.com",
+            "name": "hualinge",
+            "username": "Hualinge123"
+          },
+          "committer": {
+            "email": "whl_zju@163.com",
+            "name": "hualinge",
+            "username": "Hualinge123"
+          },
+          "distinct": true,
+          "id": "ef211c50593418435a8b7c2029abb0b1f7704d43",
+          "message": "fix: disable Git LFS to avoid large file download errors\n\n- Add lfs: false to checkout step\n- Configure global Git LFS to skip smudge filter\n- Prevents benchmark-action checkout failure on LFS files",
+          "timestamp": "2026-05-11T22:46:26+08:00",
+          "tree_id": "c362059020da7381f2f79c7e28de30451132e28c",
+          "url": "https://github.com/Hualinge123/relay-claw/commit/ef211c50593418435a8b7c2029abb0b1f7704d43"
+        },
+        "date": 1778510833869,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmark/test_config_benchmark.py::TestConfigBenchmark::test_resolve_env_vars_simple",
+            "value": 409534.8325187985,
+            "unit": "iter/sec",
+            "range": "stddev: 5.320941395552398e-7",
+            "extra": "mean: 2.4417947402657085 usec\nrounds: 3118"
+          },
+          {
+            "name": "tests/benchmark/test_config_benchmark.py::TestConfigBenchmark::test_resolve_env_vars_nested",
+            "value": 141403.04121784263,
+            "unit": "iter/sec",
+            "range": "stddev: 7.5420829976107e-7",
+            "extra": "mean: 7.071983681450107 usec\nrounds: 20345"
+          },
+          {
+            "name": "tests/benchmark/test_config_benchmark.py::TestConfigBenchmark::test_resolve_env_vars_deep_nesting",
+            "value": 337391.5304639143,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000002486845088030586",
+            "extra": "mean: 2.9639155393883097 usec\nrounds: 55813"
+          },
+          {
+            "name": "tests/benchmark/test_config_benchmark.py::TestConfigBenchmark::test_resolve_env_vars_with_defaults",
+            "value": 159105.67096266279,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0000011502785797353624",
+            "extra": "mean: 6.285131095262275 usec\nrounds: 29162"
+          },
+          {
+            "name": "tests/benchmark/test_config_benchmark.py::TestConfigBenchmark::test_resolve_env_vars_large_config",
+            "value": 11460.006152702184,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0000034561954304106053",
+            "extra": "mean: 87.25998805543465 usec\nrounds: 8372"
+          },
+          {
+            "name": "tests/benchmark/test_evolution_benchmark.py::TestEvolutionBenchmark::test_evolution_signal_creation",
+            "value": 2722160.5510899425,
+            "unit": "iter/sec",
+            "range": "stddev: 3.862718153866246e-8",
+            "extra": "mean: 367.35526109935137 nsec\nrounds: 112448"
+          },
+          {
+            "name": "tests/benchmark/test_evolution_benchmark.py::TestEvolutionBenchmark::test_detect_single_signal",
+            "value": 411852.24880704074,
+            "unit": "iter/sec",
+            "range": "stddev: 4.788826036854993e-7",
+            "extra": "mean: 2.428055213724269 usec\nrounds: 44536"
+          },
+          {
+            "name": "tests/benchmark/test_evolution_benchmark.py::TestEvolutionBenchmark::test_detect_multiple_signals",
+            "value": 76409.69724723646,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0000010905944160436341",
+            "extra": "mean: 13.087344094092291 usec\nrounds: 42779"
+          },
+          {
+            "name": "tests/benchmark/test_evolution_benchmark.py::TestEvolutionBenchmark::test_signal_serialization_batch",
+            "value": 153306.77921020324,
+            "unit": "iter/sec",
+            "range": "stddev: 6.820425552306284e-7",
+            "extra": "mean: 6.522868754739618 usec\nrounds: 57023"
+          },
+          {
+            "name": "tests/benchmark/test_signal_detector_benchmark.py::TestSignalDetectorBenchmark::test_detect_no_signals",
+            "value": 210646.89670158166,
+            "unit": "iter/sec",
+            "range": "stddev: 6.206645949504537e-7",
+            "extra": "mean: 4.747280950531523 usec\nrounds: 48731"
+          },
+          {
+            "name": "tests/benchmark/test_signal_detector_benchmark.py::TestSignalDetectorBenchmark::test_detect_execution_failure",
+            "value": 359983.1986789043,
+            "unit": "iter/sec",
+            "range": "stddev: 4.708535364946538e-7",
+            "extra": "mean: 2.777907423651664 usec\nrounds: 42311"
+          },
+          {
+            "name": "tests/benchmark/test_signal_detector_benchmark.py::TestSignalDetectorBenchmark::test_detect_in_large_conversation",
+            "value": 15395.88646045623,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000005152506267200593",
+            "extra": "mean: 64.95241456660929 usec\nrounds: 13373"
+          },
+          {
+            "name": "tests/benchmark/test_signal_detector_benchmark.py::TestSignalDetectorBenchmark::test_detect_with_tool_calls",
+            "value": 208950.62690462338,
+            "unit": "iter/sec",
+            "range": "stddev: 7.505113918456673e-7",
+            "extra": "mean: 4.785819572852755 usec\nrounds: 36009"
           }
         ]
       }
