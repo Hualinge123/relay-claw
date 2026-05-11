@@ -78,10 +78,10 @@ jobs:
           external-data-json-path: ./cache/benchmark-data.json
           alert-threshold: '10%'
           comment-on-alert: true
-          fail-on-alert: false
+          fail-on-alert: true  # 启用门禁：性能退化超过 10% 将阻止合并
           alert-comment-cc-users: '@Hualinge123'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: false  # Don't auto-push to avoid workflow loops
+          auto-push: true  # 自动推送到 gh-pages 分支，启用趋势图表
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
@@ -95,8 +95,27 @@ jobs:
         run: |
           echo "## 📊 Benchmark Results Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Performance tests completed successfully." >> $GITHUB_STEP_SUMMARY
+          echo "Performance tests completed." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Mean (μs) | Stddev | Rounds |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          python3 -c "
+          import json
+          with open('benchmark-results/benchmark-results.json') as f:
+              data = json.load(f)
+          for b in data['benchmarks']:
+              name = b['name']
+              mean = b['stats']['mean'] * 1000000  # convert to μs
+              stddev = b['stats']['stddev'] * 1000000
+              rounds = b['stats']['rounds']
+              print(f'| {name} | {mean:.2f} | {stddev:.2f} | {rounds} |')
+          " >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- Download benchmark results from the workflow artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- JSON data: `benchmark-results/benchmark-results.json`" >> $GITHUB_STEP_SUMMARY
+          echo "- JSON data: \`benchmark-results/benchmark-results.json\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### View Historical Trends" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Visit [GitHub Pages Benchmark Dashboard](https://hualinge123.github.io/relay-claw/benchmarks/) for trend charts" >> $GITHUB_STEP_SUMMARY
