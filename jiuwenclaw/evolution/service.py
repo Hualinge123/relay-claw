@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 """EvolutionService - Unified facade for the skill evolution system."""
+
 from __future__ import annotations
 
 import asyncio
@@ -20,7 +21,9 @@ from jiuwenclaw.evolution.store import EvolutionStore
 from jiuwenclaw.utils import logger
 
 _APPROVAL_TIMEOUT = 300  # seconds
-_MAX_PROCESSED_SIGNAL_KEYS = 500  # safety cap to prevent unbounded growth across sessions
+_MAX_PROCESSED_SIGNAL_KEYS = (
+    500  # safety cap to prevent unbounded growth across sessions
+)
 
 
 class EvolutionService:
@@ -134,7 +137,9 @@ class EvolutionService:
                 "result_type": "answer",
             }
         attributed = [s for s in signals if s.skill_name == skill_name]
-        entries = await self._generate_experience_for_skill(skill_name, attributed, parsed)
+        entries = await self._generate_experience_for_skill(
+            skill_name, attributed, parsed
+        )
         if not entries:
             return {
                 "output": "当前对话未发现明确的演进信号（无工具执行失败、无用户纠正）。\n",
@@ -233,18 +238,20 @@ class EvolutionService:
         questions = []
         for skill_name, entry in entries:
             content_preview = entry.change.content[:1000]
-            questions.append({
-                "question": (
-                    f"**Skill '{skill_name}' 演进生成了新内容：**\n\n"
-                    f"{content_preview}"
-                ),
-                "header": "演进审批",
-                "options": [
-                    {"label": "接收", "description": "保留此演进经验"},
-                    {"label": "拒绝", "description": "丢弃此演进经验"},
-                ],
-                "multi_select": False,
-            })
+            questions.append(
+                {
+                    "question": (
+                        f"**Skill '{skill_name}' 演进生成了新内容：**\n\n"
+                        f"{content_preview}"
+                    ),
+                    "header": "演进审批",
+                    "options": [
+                        {"label": "接收", "description": "保留此演进经验"},
+                        {"label": "拒绝", "description": "丢弃此演进经验"},
+                    ],
+                    "multi_select": False,
+                }
+            )
         return questions
 
     @staticmethod
@@ -336,13 +343,12 @@ class EvolutionService:
             for skill_name, entry in entries:
                 self._store.append_entry(skill_name, entry)
             logger.info(
-                "[EvolutionService] send failed, auto-keeping %d entries", len(entries),
+                "[EvolutionService] send failed, auto-keeping %d entries",
+                len(entries),
             )
             return
 
-        asyncio.create_task(
-            self._wait_and_persist_batch(future, request_id, entries)
-        )
+        asyncio.create_task(self._wait_and_persist_batch(future, request_id, entries))
 
     async def _wait_and_persist_batch(
         self,
@@ -356,7 +362,9 @@ class EvolutionService:
             kept = self._parse_approval_answers(answers, entries)
             for skill_name, entry in kept:
                 self._store.append_entry(skill_name, entry)
-                logger.info("[EvolutionService] kept: skill=%s id=%s", skill_name, entry.id)
+                logger.info(
+                    "[EvolutionService] kept: skill=%s id=%s", skill_name, entry.id
+                )
             discarded = len(entries) - len(kept)
             if discarded:
                 logger.info("[EvolutionService] discarded %d entries", discarded)
@@ -421,7 +429,8 @@ class EvolutionService:
         signals = detector.detect(parsed_messages)
 
         new_signals = [
-            sig for sig in signals
+            sig
+            for sig in signals
             if (sig.type, sig.excerpt[:100]) not in self._processed_signal_keys
         ]
         for sig in new_signals:
@@ -474,7 +483,8 @@ class EvolutionService:
                 await self._request_batch_approval_async(session, all_entries)
             except Exception as exc:
                 logger.warning(
-                    "[EvolutionService] batch approval error: %s", exc,
+                    "[EvolutionService] batch approval error: %s",
+                    exc,
                 )
 
     async def _generate_experience_for_skill(
@@ -512,7 +522,7 @@ class EvolutionService:
         prefix = "你收到一条消息：\n"
         if not raw.startswith(prefix):
             return raw
-        json_part = raw[len(prefix):]
+        json_part = raw[len(prefix) :]
         try:
             payload = json.loads(json_part)
             if isinstance(payload, dict) and "content" in payload:

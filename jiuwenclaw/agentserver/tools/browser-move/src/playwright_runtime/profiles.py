@@ -34,13 +34,16 @@ class BrowserProfile:
             debug_port = 0
         return cls(
             name=str(raw.get("name") or "").strip(),
-            driver_type=str(raw.get("driver_type") or "remote").strip().lower() or "remote",
+            driver_type=str(raw.get("driver_type") or "remote").strip().lower()
+            or "remote",
             cdp_url=str(raw.get("cdp_url") or "").strip(),
             browser_binary=str(raw.get("browser_binary") or "").strip(),
             user_data_dir=str(raw.get("user_data_dir") or "").strip(),
             debug_port=debug_port,
             host=str(raw.get("host") or "127.0.0.1").strip() or "127.0.0.1",
-            extra_args=[str(x) for x in (raw.get("extra_args") or []) if str(x).strip()],
+            extra_args=[
+                str(x) for x in (raw.get("extra_args") or []) if str(x).strip()
+            ],
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -82,9 +85,14 @@ class BrowserProfileStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "selected_profile": self._selected,
-            "profiles": [profile.to_dict() for profile in sorted(self._profiles.values(), key=lambda p: p.name)],
+            "profiles": [
+                profile.to_dict()
+                for profile in sorted(self._profiles.values(), key=lambda p: p.name)
+            ],
         }
-        self.path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        self.path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
     def list_profiles(self) -> List[BrowserProfile]:
         return sorted(self._profiles.values(), key=lambda p: p.name)
@@ -95,12 +103,16 @@ class BrowserProfileStore:
             return None
         return self._profiles.get(key)
 
-    def upsert_profile(self, profile: BrowserProfile, *, select: bool = False) -> BrowserProfile:
+    def upsert_profile(
+        self, profile: BrowserProfile, *, select: bool = False
+    ) -> BrowserProfile:
         name = (profile.name or "").strip()
         if not name:
             raise ValueError("profile.name is required")
         profile.name = name
-        profile.driver_type = (profile.driver_type or "remote").strip().lower() or "remote"
+        profile.driver_type = (
+            profile.driver_type or "remote"
+        ).strip().lower() or "remote"
         self._profiles[name] = profile
         if select:
             self._selected = name

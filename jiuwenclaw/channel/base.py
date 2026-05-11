@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 class ChannelType(str, Enum):
     """Channel 类型枚举."""
+
     WEB = "web"
     FEISHU = "feishu"
     XIAOYI = "xiaoyi"
@@ -38,10 +39,13 @@ class ChannelMetadata:
 
 class RobotMessageRouter:
     """管理整个系统的入站（从通道到机器人）和出站（从机器人到通道）消息队列，并提供出站消息的订阅/分发机制。"""
+
     def __init__(self):
         self._user_messages: asyncio.Queue[Message] = asyncio.Queue()
         self._robot_messages: asyncio.Queue[Message] = asyncio.Queue()
-        self._channel_subscriptions: dict[str, list[Callable[[Message], Awaitable[None]]]] = {}
+        self._channel_subscriptions: dict[
+            str, list[Callable[[Message], Awaitable[None]]]
+        ] = {}
         self._is_active = False
 
     async def route_user_message(self, msg: Message) -> None:
@@ -61,9 +65,7 @@ class RobotMessageRouter:
         return await self._robot_messages.get()
 
     def register_channel_subscription(
-        self,
-        channel: str,
-        callback: Callable[[Message], Awaitable[None]]
+        self, channel: str, callback: Callable[[Message], Awaitable[None]]
     ) -> None:
         """允许通道（或其他组件）注册一个异步回调函数，专门接收目标为特定通道ID的出站消息。"""
         if channel not in self._channel_subscriptions:
@@ -164,10 +166,7 @@ class BaseChannel(ABC):
         return False
 
     async def _handle_message(
-            self,
-            chat_id: str,
-            content: str,
-            metadata: dict[str, Any] | None = None
+        self, chat_id: str, content: str, metadata: dict[str, Any] | None = None
     ) -> None:
 
         msg = Message(
@@ -175,10 +174,10 @@ class BaseChannel(ABC):
             type="req",
             channel_id=self.name,
             session_id=str(chat_id),
-            params={'content': content},
+            params={"content": content},
             timestamp=time.time(),
             ok=True,
-            metadata=metadata
+            metadata=metadata,
         )
 
         await self.bus.route_user_message(msg)
@@ -187,4 +186,3 @@ class BaseChannel(ABC):
     def is_running(self) -> bool:
         """Check if the channel_id is running."""
         return self._running
-

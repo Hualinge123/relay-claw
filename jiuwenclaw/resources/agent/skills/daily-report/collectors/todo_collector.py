@@ -122,7 +122,9 @@ class TodoCollector:
             return "", status
 
         # 带状态标记格式
-        status_match = re.match(r"\s*(\d+)\.\s*\[status:(\w+)\]\s*(.+)", line, re.IGNORECASE)
+        status_match = re.match(
+            r"\s*(\d+)\.\s*\[status:(\w+)\]\s*(.+)", line, re.IGNORECASE
+        )
         if status_match:
             task_id = status_match.group(1)
             status = status_match.group(2).lower()

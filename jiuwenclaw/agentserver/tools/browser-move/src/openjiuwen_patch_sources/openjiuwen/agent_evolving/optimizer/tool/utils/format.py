@@ -13,13 +13,13 @@ def parse_json(output, header=None):
             if json_idx == -1:
                 json_idx = output.find(f'{{\n"{header}":')
         if json_idx == -1:
-            json_idx = output.find('{\n')
+            json_idx = output.find("{\n")
         if json_idx == -1:
-            json_idx = output.find('{')
-        json_end_idx = output.rfind('}')
+            json_idx = output.find("{")
+        json_end_idx = output.rfind("}")
         json_end_idx = json_end_idx + 1 if json_end_idx != -1 else -1
         output = output[json_idx:json_end_idx].strip()
-        output_json = json.loads(output)     
+        output_json = json.loads(output)
     except json.JSONDecodeError:
         output_json = ast.literal_eval(output)
     return output_json

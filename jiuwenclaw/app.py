@@ -21,6 +21,7 @@ import psutil
 
 
 from jiuwenclaw.utils import USER_WORKSPACE_DIR, prepare_workspace
+
 _config_file = USER_WORKSPACE_DIR / "config" / "config.yaml"
 if not _config_file.exists():
     prepare_workspace(overwrite=False)
@@ -40,10 +41,14 @@ for logger in LogManager.get_all_loggers().values():
 
 import openjiuwen.core.foundation.llm.schema.config as as_config_module
 import openjiuwen.core.foundation.llm as as_llm_module
-from openjiuwen.core.foundation.llm.model_clients.openai_model_client import OpenAIModelClient
+from openjiuwen.core.foundation.llm.model_clients.openai_model_client import (
+    OpenAIModelClient,
+)
 from jiuwenclaw.jiuwen_core_patch import PatchOpenAIModelClient
 
-OpenAIModelClient._create_async_openai_client = PatchOpenAIModelClient._create_async_openai_client
+OpenAIModelClient._create_async_openai_client = (
+    PatchOpenAIModelClient._create_async_openai_client
+)
 OpenAIModelClient._parse_stream_chunk = PatchOpenAIModelClient._parse_stream_chunk
 
 from openjiuwen.core.foundation.llm import ProviderType
@@ -100,42 +105,46 @@ class _DummyBus:
 
 
 # 仅转发到 Agent 的 Web method
-_FORWARD_REQ_METHODS = frozenset({
-    "chat.send",
-    "chat.interrupt",
-    "chat.resume",
-    "chat.user_answer",
-    # "tts.synthesize",
-    "skills.marketplace.list",
-    "skills.list",
-    "skills.installed",
-    "skills.get",
-    "skills.install",
-    "skills.import_local",
-    "skills.marketplace.add",
-    "skills.marketplace.remove",
-    "skills.marketplace.toggle",
-    "skills.uninstall",
-    "skills.skillnet.search",
-    "skills.skillnet.install",
-    "skills.skillnet.install_status",
-})
+_FORWARD_REQ_METHODS = frozenset(
+    {
+        "chat.send",
+        "chat.interrupt",
+        "chat.resume",
+        "chat.user_answer",
+        # "tts.synthesize",
+        "skills.marketplace.list",
+        "skills.list",
+        "skills.installed",
+        "skills.get",
+        "skills.install",
+        "skills.import_local",
+        "skills.marketplace.add",
+        "skills.marketplace.remove",
+        "skills.marketplace.toggle",
+        "skills.uninstall",
+        "skills.skillnet.search",
+        "skills.skillnet.install",
+        "skills.skillnet.install_status",
+    }
+)
 
-_FORWARD_NO_LOCAL_HANDLER_METHODS = frozenset({
-    "skills.marketplace.list",
-    "skills.list",
-    "skills.installed",
-    "skills.get",
-    "skills.install",
-    "skills.import_local",
-    "skills.marketplace.add",
-    "skills.marketplace.remove",
-    "skills.marketplace.toggle",
-    "skills.uninstall",
-    "skills.skillnet.search",
-    "skills.skillnet.install",
-    "skills.skillnet.install_status",
-})
+_FORWARD_NO_LOCAL_HANDLER_METHODS = frozenset(
+    {
+        "skills.marketplace.list",
+        "skills.list",
+        "skills.installed",
+        "skills.get",
+        "skills.install",
+        "skills.import_local",
+        "skills.marketplace.add",
+        "skills.marketplace.remove",
+        "skills.marketplace.toggle",
+        "skills.uninstall",
+        "skills.skillnet.search",
+        "skills.skillnet.install",
+        "skills.skillnet.install_status",
+    }
+)
 
 # 配置信息：config.get 返回、config.set 可修改的键（前端 param 名 -> 环境变量名）
 # default 模型 + video/audio/vision 多模型
@@ -183,6 +192,7 @@ def _clear_agent_config_cache() -> None:
     """写回 config.yaml 后清除 agent 侧配置缓存，使下次读取时得到最新文件内容。"""
     try:
         from jiuwenclaw.agentserver.memory.config import clear_config_cache
+
         clear_config_cache()
     except Exception:  # noqa: BLE001
         pass
@@ -196,14 +206,14 @@ def _make_session_id() -> str:
 
 
 def _register_web_handlers(
-        channel,
-        agent_client=None,
-        message_handler=None,
-        channel_manager=None,
-        on_config_saved=None,
-        heartbeat_service=None,
-        cron_controller=None,
-        updater_service: WindowsUpdaterService | None = None,
+    channel,
+    agent_client=None,
+    message_handler=None,
+    channel_manager=None,
+    on_config_saved=None,
+    heartbeat_service=None,
+    cron_controller=None,
+    updater_service: WindowsUpdaterService | None = None,
 ):
     """注册 Web 前端需要的 method 与 on_connect。
     on_config_saved: 可选，config.set 写回 .env 后调用的回调；返回 True 表示已热更新未重启，False 表示已安排进程重启。
@@ -220,7 +230,7 @@ def _register_web_handlers(
     def _resolve_env_vars(value: Any) -> Any:
         """Recursively resolve environment variables in config values."""
         if isinstance(value, str):
-            pattern = r'\$\{([^:}]+)(?::-([^}]*))?\}'
+            pattern = r"\$\{([^:}]+)(?::-([^}]*))?\}"
 
             def replace_env(match):
                 var_name = match.group(1)
@@ -276,9 +286,13 @@ def _register_web_handlers(
         try:
             raw = get_config_raw()
             ctx_cfg = (raw.get("react") or {}).get("context_engine_config") or {}
-            payload["context_engine_enabled"] = "true" if ctx_cfg.get("enabled", False) else "false"
+            payload["context_engine_enabled"] = (
+                "true" if ctx_cfg.get("enabled", False) else "false"
+            )
             perm_cfg = raw.get("permissions") or {}
-            payload["permissions_enabled"] = "true" if perm_cfg.get("enabled", False) else "false"
+            payload["permissions_enabled"] = (
+                "true" if perm_cfg.get("enabled", False) else "false"
+            )
         except Exception:  # noqa: BLE001
             payload.setdefault("context_engine_enabled", "false")
             payload.setdefault("permissions_enabled", "false")
@@ -301,14 +315,18 @@ def _register_web_handlers(
                 found = False
                 for env_key, value in updates.items():
                     if stripped.startswith(env_key + "="):
-                        new_lines.append(f'{env_key}="{value}"\n' if value else f"{env_key}=\n")
+                        new_lines.append(
+                            f'{env_key}="{value}"\n' if value else f"{env_key}=\n"
+                        )
                         found = True
                         break
                 if not found:
                     new_lines.append(line)
             for env_key, value in updates.items():
                 if not any(s.strip().startswith(env_key + "=") for s in new_lines):
-                    new_lines.append(f'{env_key}="{value}"\n' if value else f"{env_key}=\n")
+                    new_lines.append(
+                        f'{env_key}="{value}"\n' if value else f"{env_key}=\n"
+                    )
             env_path.parent.mkdir(parents=True, exist_ok=True)
             with open(env_path, "w", encoding="utf-8") as f:
                 f.writelines(new_lines)
@@ -318,7 +336,9 @@ def _register_web_handlers(
     async def _config_set(ws, req_id, params, session_id):
         """根据前端消息内容更新配置（支持 .env 与 config.yaml 中的键），并写回对应文件。"""
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
         env_updates: dict[str, str] = {}
         yaml_updated: list[str] = []
@@ -328,11 +348,17 @@ def _register_web_handlers(
             if param_key not in params:
                 continue
             val = params[param_key]
-            if param_key.endswith("_provider") and val and val not in available_model_providers:
+            if (
+                param_key.endswith("_provider")
+                and val
+                and val not in available_model_providers
+            ):
                 await channel.send_response(
-                    ws, req_id, ok=False,
+                    ws,
+                    req_id,
+                    ok=False,
                     error=f"Model provider must in: {available_model_providers} ",
-                    code="BAD_REQUEST"
+                    code="BAD_REQUEST",
                 )
                 return
             if val is None:
@@ -352,7 +378,9 @@ def _register_web_handlers(
                     update_permissions_enabled_in_config(parsed)
                 yaml_updated.append(param_key)
             except Exception as e:  # noqa: BLE001
-                logger.warning("[config.set] 写回 config.yaml 失败 %s: %s", param_key, e)
+                logger.warning(
+                    "[config.set] 写回 config.yaml 失败 %s: %s", param_key, e
+                )
 
         for env_key, value in env_updates.items():
             os.environ[env_key] = value
@@ -367,15 +395,24 @@ def _register_web_handlers(
 
         if env_updates or yaml_updated:
             if on_config_saved:
-                callback_result = on_config_saved(set(env_updates.keys()) | set(yaml_updated))
+                callback_result = on_config_saved(
+                    set(env_updates.keys()) | set(yaml_updated)
+                )
                 if inspect.isawaitable(callback_result):
                     callback_result = await callback_result
                 applied_without_restart = bool(callback_result)
 
-        updated_param_keys = [k for k, e in _CONFIG_SET_ENV_MAP.items() if e in env_updates] + yaml_updated
+        updated_param_keys = [
+            k for k, e in _CONFIG_SET_ENV_MAP.items() if e in env_updates
+        ] + yaml_updated
         await channel.send_response(
-            ws, req_id, ok=True,
-            payload={"updated": updated_param_keys, "applied_without_restart": applied_without_restart},
+            ws,
+            req_id,
+            ok=True,
+            payload={
+                "updated": updated_param_keys,
+                "applied_without_restart": applied_without_restart,
+            },
         )
 
     async def _channel_get(ws, req_id, params, session_id):
@@ -393,7 +430,11 @@ def _register_web_handlers(
 
     async def _updater_check(ws, req_id, params, session_id):
         service = updater_service or WindowsUpdaterService()
-        manual = bool((params or {}).get("manual", False)) if isinstance(params, dict) else False
+        manual = (
+            bool((params or {}).get("manual", False))
+            if isinstance(params, dict)
+            else False
+        )
         payload = await asyncio.to_thread(service.check, manual)
         await channel.send_response(ws, req_id, ok=True, payload=payload)
 
@@ -404,35 +445,55 @@ def _register_web_handlers(
 
     async def _updater_get_conf(ws, req_id, params, session_id):
         service = updater_service or WindowsUpdaterService()
-        await channel.send_response(ws, req_id, ok=True, payload=service.get_runtime_config())
+        await channel.send_response(
+            ws, req_id, ok=True, payload=service.get_runtime_config()
+        )
 
     async def _updater_set_conf(ws, req_id, params, session_id):
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
 
         updates: dict[str, Any] = {}
         if "enabled" in params:
             updates["enabled"] = bool(params.get("enabled"))
-        for key in ("repo_owner", "repo_name", "release_api_url", "asset_name_pattern", "sha256_name_pattern"):
+        for key in (
+            "repo_owner",
+            "repo_name",
+            "release_api_url",
+            "asset_name_pattern",
+            "sha256_name_pattern",
+        ):
             if key in params:
                 updates[key] = str(params.get(key) or "").strip()
         if "timeout_seconds" in params:
             try:
                 updates["timeout_seconds"] = max(5, int(params.get("timeout_seconds")))
             except (TypeError, ValueError):
-                await channel.send_response(ws, req_id, ok=False, error="timeout_seconds must be integer", code="BAD_REQUEST")
+                await channel.send_response(
+                    ws,
+                    req_id,
+                    ok=False,
+                    error="timeout_seconds must be integer",
+                    code="BAD_REQUEST",
+                )
                 return
 
         try:
             update_updater_in_config(updates)
         except Exception as exc:  # noqa: BLE001
             logger.warning("[updater.set_conf] 写回 config.yaml 失败: %s", exc)
-            await channel.send_response(ws, req_id, ok=False, error=str(exc), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(exc), code="INTERNAL_ERROR"
+            )
             return
 
         service = updater_service or WindowsUpdaterService()
-        await channel.send_response(ws, req_id, ok=True, payload=service.get_runtime_config())
+        await channel.send_response(
+            ws, req_id, ok=True, payload=service.get_runtime_config()
+        )
 
     async def _session_list(ws, req_id, params, session_id):
         """返回 agent/sessions 下的 session_id 列表（子目录名）。"""
@@ -460,13 +521,24 @@ def _register_web_handlers(
         """创建一个新 session（在 agent/sessions 下创建一个新目录）。"""
         if not isinstance(params, dict):
             await channel.send_response(
-                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST",
+                ws,
+                req_id,
+                ok=False,
+                error="params must be object",
+                code="BAD_REQUEST",
             )
             return
         session_id_to_create = params.get("session_id")
-        if not isinstance(session_id_to_create, str) or not session_id_to_create.strip():
+        if (
+            not isinstance(session_id_to_create, str)
+            or not session_id_to_create.strip()
+        ):
             await channel.send_response(
-                ws, req_id, ok=False, error="session_id is required", code="BAD_REQUEST",
+                ws,
+                req_id,
+                ok=False,
+                error="session_id is required",
+                code="BAD_REQUEST",
             )
             return
         session_id_to_create = session_id_to_create.strip()
@@ -477,23 +549,40 @@ def _register_web_handlers(
         session_dir = workspace_session_dir / session_id_to_create
         if session_dir.exists():
             await channel.send_response(
-                ws, req_id, ok=False, error="session already exists", code="ALREADY_EXISTS",
+                ws,
+                req_id,
+                ok=False,
+                error="session already exists",
+                code="ALREADY_EXISTS",
             )
             return
         session_dir.mkdir()
-        await channel.send_response(ws, req_id, ok=True, payload={"session_id": session_id_to_create})
+        await channel.send_response(
+            ws, req_id, ok=True, payload={"session_id": session_id_to_create}
+        )
 
     async def _session_delete(ws, req_id, params, session_id):
         """删除一个 session（在 agent/sessions 下删除一个目录）。"""
         if not isinstance(params, dict):
             await channel.send_response(
-                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST",
+                ws,
+                req_id,
+                ok=False,
+                error="params must be object",
+                code="BAD_REQUEST",
             )
             return
         session_id_to_delete = params.get("session_id")
-        if not isinstance(session_id_to_delete, str) or not session_id_to_delete.strip():
+        if (
+            not isinstance(session_id_to_delete, str)
+            or not session_id_to_delete.strip()
+        ):
             await channel.send_response(
-                ws, req_id, ok=False, error="session_id is required", code="BAD_REQUEST",
+                ws,
+                req_id,
+                ok=False,
+                error="session_id is required",
+                code="BAD_REQUEST",
             )
             return
         session_id_to_delete = session_id_to_delete.strip()
@@ -502,16 +591,26 @@ def _register_web_handlers(
         session_dir = workspace_session_dir / session_id_to_delete
         if not session_dir.exists():
             await channel.send_response(
-                ws, req_id, ok=False, error="session not found", code="NOT_FOUND",
+                ws,
+                req_id,
+                ok=False,
+                error="session not found",
+                code="NOT_FOUND",
             )
             return
         if not session_dir.is_dir():
             await channel.send_response(
-                ws, req_id, ok=False, error="session is not a directory", code="BAD_REQUEST",
+                ws,
+                req_id,
+                ok=False,
+                error="session is not a directory",
+                code="BAD_REQUEST",
             )
             return
         shutil.rmtree(session_dir)
-        await channel.send_response(ws, req_id, ok=True, payload={"session_id": session_id_to_delete})
+        await channel.send_response(
+            ws, req_id, ok=True, payload={"session_id": session_id_to_delete}
+        )
 
     async def _path_get(ws, req_id, params, session_id):
         """读 browser.chrome_path 并返回给前端（会解析环境变量）。"""
@@ -537,17 +636,27 @@ def _register_web_handlers(
             if isinstance(value, str):
                 chrome_path = value
 
-        await channel.send_response(ws, req_id, ok=True, payload={"chrome_path": chrome_path})
+        await channel.send_response(
+            ws, req_id, ok=True, payload={"chrome_path": chrome_path}
+        )
 
     async def _path_set(ws, req_id, params, session_id):
         """更新 browser.chrome_path 并写回 config。"""
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
 
         chrome_path = params.get("chrome_path")
         if not isinstance(chrome_path, str):
-            await channel.send_response(ws, req_id, ok=False, error="chrome_path must be string", code="BAD_REQUEST")
+            await channel.send_response(
+                ws,
+                req_id,
+                ok=False,
+                error="chrome_path must be string",
+                code="BAD_REQUEST",
+            )
             return
         chrome_path = chrome_path.strip()
 
@@ -556,10 +665,14 @@ def _register_web_handlers(
             _clear_agent_config_cache()
         except Exception as e:  # noqa: BLE001
             logger.warning("[path.set] 写回 config.yaml 失败: %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
             return
 
-        await channel.send_response(ws, req_id, ok=True, payload={"chrome_path": chrome_path})
+        await channel.send_response(
+            ws, req_id, ok=True, payload={"chrome_path": chrome_path}
+        )
 
     async def _browser_start(ws, req_id, params, session_id):
         """收到 browser.start 请求时，通过 import 调用 start_browser 启动浏览器。"""
@@ -588,19 +701,24 @@ def _register_web_handlers(
     async def _memory_compute(ws, req_id, params, session_id):
 
         process = psutil.Process()
-        rss_bytes = process.memory_info().rss   # 物理内存
-        rss_mb = rss_bytes / (1024 * 1024)     
-        
+        rss_bytes = process.memory_info().rss  # 物理内存
+        rss_mb = rss_bytes / (1024 * 1024)
+
         mem = psutil.virtual_memory()
         total_mb = mem.total / (1024 * 1024)
         available_mb = mem.available / (1024 * 1024)
         used_percent = mem.percent
 
-        await channel.send_response(ws, req_id, ok=True, 
-        payload={"rss_mb": rss_mb, "total_mb": total_mb, 
-        "available_mb": available_mb})
-    
-    
+        await channel.send_response(
+            ws,
+            req_id,
+            ok=True,
+            payload={
+                "rss_mb": rss_mb,
+                "total_mb": total_mb,
+                "available_mb": available_mb,
+            },
+        )
 
     async def _chat_send(ws, req_id, params, session_id):
         await channel.send_response(
@@ -640,24 +758,29 @@ def _register_web_handlers(
             if lang not in ("zh", "en"):
                 lang = "zh"
             await channel.send_response(
-                ws,
-                req_id,
-                ok=True,
-                payload={"preferred_language": lang}
+                ws, req_id, ok=True, payload={"preferred_language": lang}
             )
         except Exception as e:
             logger.exception("[locale.get_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _locale_set_conf(ws, req_id, params, session_id):
         """更新 preferred_language 并写回 config.yaml。"""
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
         lang_raw = params.get("preferred_language")
         if not isinstance(lang_raw, str):
             await channel.send_response(
-                ws, req_id, ok=False, error="preferred_language must be string", code="BAD_REQUEST"
+                ws,
+                req_id,
+                ok=False,
+                error="preferred_language must be string",
+                code="BAD_REQUEST",
             )
             return
         lang = lang_raw.strip().lower()
@@ -667,39 +790,57 @@ def _register_web_handlers(
                 req_id,
                 ok=False,
                 error="preferred_language must be zh or en",
-                code="BAD_REQUEST"
+                code="BAD_REQUEST",
             )
             return
         try:
             update_preferred_language_in_config(lang)
-            await channel.send_response(ws, req_id, ok=True, payload={"preferred_language": lang})
+            await channel.send_response(
+                ws, req_id, ok=True, payload={"preferred_language": lang}
+            )
         except Exception as e:
             logger.warning("[locale.set_conf] 写回 config.yaml 失败: %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _heartbeat_get_conf(ws, req_id, params, session_id):
         """返回当前心跳配置（every / target / active_hours）。"""
         hb = _resolve(heartbeat_service)
         if hb is None:
-            await channel.send_response(ws, req_id, ok=False, error="heartbeat service not available",
-                                        code="SERVICE_UNAVAILABLE")
+            await channel.send_response(
+                ws,
+                req_id,
+                ok=False,
+                error="heartbeat service not available",
+                code="SERVICE_UNAVAILABLE",
+            )
             return
         try:
             payload = dict(hb.get_heartbeat_conf())
             await channel.send_response(ws, req_id, ok=True, payload=payload)
         except Exception as e:
             logger.exception("[heartbeat.get_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _heartbeat_set_conf(ws, req_id, params, session_id):
         """更新心跳配置并重启心跳服务；params 可含 every、target、active_hours。"""
         hb = _resolve(heartbeat_service)
         if hb is None:
-            await channel.send_response(ws, req_id, ok=False, error="heartbeat service not available",
-                                        code="SERVICE_UNAVAILABLE")
+            await channel.send_response(
+                ws,
+                req_id,
+                ok=False,
+                error="heartbeat service not available",
+                code="SERVICE_UNAVAILABLE",
+            )
             return
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
         try:
             every = params.get("every")
@@ -712,10 +853,14 @@ def _register_web_handlers(
             if active_hours is not None:
                 if not isinstance(active_hours, dict):
                     active_hours = None
-                elif active_hours and ("start" not in active_hours or "end" not in active_hours):
+                elif active_hours and (
+                    "start" not in active_hours or "end" not in active_hours
+                ):
                     # 必须同时包含 start/end，否则视为清除时间段（始终生效）
                     active_hours = None
-            await hb.set_heartbeat_conf(every=every, target=target, active_hours=active_hours)
+            await hb.set_heartbeat_conf(
+                every=every, target=target, active_hours=active_hours
+            )
             payload = dict(hb.get_heartbeat_conf())
             try:
                 update_heartbeat_in_config(payload)
@@ -724,10 +869,14 @@ def _register_web_handlers(
                 logger.warning("[heartbeat.set_conf] 写回 config.yaml 失败: %s", e)
             await channel.send_response(ws, req_id, ok=True, payload=payload)
         except ValueError as e:
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="BAD_REQUEST"
+            )
         except Exception as e:
             logger.exception("[heartbeat.set_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_feishu_get_conf(ws, req_id, params, session_id):
         """返回 FeishuChannel 的当前配置（由 ChannelManager 管理）。"""
@@ -746,7 +895,9 @@ def _register_web_handlers(
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.feishu.get_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_feishu_set_conf(ws, req_id, params, session_id):
         """更新 FeishuChannel 的配置，并按新配置重新实例化通道。"""
@@ -780,7 +931,9 @@ def _register_web_handlers(
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.feishu.set_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_xiaoyi_get_conf(ws, req_id, params, session_id):
         """返回 XiaoyiChannel 的当前配置（由 ChannelManager 管理）。"""
@@ -799,7 +952,9 @@ def _register_web_handlers(
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.xiaoyi.get_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_xiaoyi_set_conf(ws, req_id, params, session_id):
         """更新 XiaoyiChannel 的配置，并按新配置重新实例化通道。"""
@@ -833,7 +988,9 @@ def _register_web_handlers(
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.xiaoyi.set_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_telegram_get_conf(ws, req_id, params, session_id):
         """返回 TelegramChannel 的当前配置（由 ChannelManager 管理）。"""
@@ -852,7 +1009,9 @@ def _register_web_handlers(
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.telegram.get_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_telegram_set_conf(ws, req_id, params, session_id):
         """更新 TelegramChannel 的配置，并按新配置重新实例化通道。"""
@@ -882,11 +1041,15 @@ def _register_web_handlers(
                 update_channel_in_config("telegram", conf)
                 _clear_agent_config_cache()
             except Exception as e:  # noqa: BLE001
-                logger.warning("[channel.telegram.set_conf] 写回 config.yaml 失败: %s", e)
+                logger.warning(
+                    "[channel.telegram.set_conf] 写回 config.yaml 失败: %s", e
+                )
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.telegram.set_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_dingtalk_get_conf(ws, req_id, params, session_id):
         cm = _resolve(channel_manager)
@@ -904,7 +1067,9 @@ def _register_web_handlers(
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.dingtalk.get_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_dingtalk_set_conf(ws, req_id, params, session_id):
         cm = _resolve(channel_manager)
@@ -933,11 +1098,16 @@ def _register_web_handlers(
                 update_channel_in_config("dingtalk", conf)
                 _clear_agent_config_cache()
             except Exception as e:  # noqa: BLE001
-                logger.warning("[channel.dingtalk.set_conf] 写回 config.yaml 失败: %s", e)
+                logger.warning(
+                    "[channel.dingtalk.set_conf] 写回 config.yaml 失败: %s", e
+                )
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.dingtalk.set_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
+
     async def _channel_whatsapp_get_conf(ws, req_id, params, session_id):
         cm = _resolve(channel_manager)
         if cm is None:
@@ -954,7 +1124,9 @@ def _register_web_handlers(
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.whatsapp.get_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_whatsapp_set_conf(ws, req_id, params, session_id):
         cm = _resolve(channel_manager)
@@ -983,11 +1155,15 @@ def _register_web_handlers(
                 update_channel_in_config("whatsapp", conf)
                 _clear_agent_config_cache()
             except Exception as e:  # noqa: BLE001
-                logger.warning("[channel.whatsapp.set_conf] 写回 config.yaml 失败: %s", e)
+                logger.warning(
+                    "[channel.whatsapp.set_conf] 写回 config.yaml 失败: %s", e
+                )
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.whatsapp.set_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_discord_get_conf(ws, req_id, params, session_id):
         cm = _resolve(channel_manager)
@@ -1005,7 +1181,9 @@ def _register_web_handlers(
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.discord.get_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_discord_set_conf(ws, req_id, params, session_id):
         cm = _resolve(channel_manager)
@@ -1034,11 +1212,15 @@ def _register_web_handlers(
                 update_channel_in_config("discord", conf)
                 _clear_agent_config_cache()
             except Exception as e:  # noqa: BLE001
-                logger.warning("[channel.discord.set_conf] 写回 config.yaml 失败: %s", e)
+                logger.warning(
+                    "[channel.discord.set_conf] 写回 config.yaml 失败: %s", e
+                )
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.discord.set_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_wecom_get_conf(ws, req_id, params, session_id):
         cm = _resolve(channel_manager)
@@ -1056,7 +1238,9 @@ def _register_web_handlers(
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.wecom.get_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     async def _channel_wecom_set_conf(ws, req_id, params, session_id):
         cm = _resolve(channel_manager)
@@ -1089,7 +1273,10 @@ def _register_web_handlers(
             await channel.send_response(ws, req_id, ok=True, payload={"config": conf})
         except Exception as e:  # noqa: BLE001
             logger.exception("[channel.wecom.set_conf] %s", e)
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
+
     # ----- cron jobs -----
 
     def _get_cron():
@@ -1098,7 +1285,9 @@ def _register_web_handlers(
     async def _cron_job_list(ws, req_id, params, session_id):
         cc = _get_cron()
         if cc is None:
-            await channel.send_response(ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR"
+            )
             return
         jobs = await cc.list_jobs()
         await channel.send_response(ws, req_id, ok=True, payload={"jobs": jobs})
@@ -1106,139 +1295,207 @@ def _register_web_handlers(
     async def _cron_job_get(ws, req_id, params, session_id):
         cc = _get_cron()
         if cc is None:
-            await channel.send_response(ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR"
+            )
             return
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
         job_id = str(params.get("id") or "").strip()
         if not job_id:
-            await channel.send_response(ws, req_id, ok=False, error="id is required", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="id is required", code="BAD_REQUEST"
+            )
             return
         job = await cc.get_job(job_id)
         if job is None:
-            await channel.send_response(ws, req_id, ok=False, error="job not found", code="NOT_FOUND")
+            await channel.send_response(
+                ws, req_id, ok=False, error="job not found", code="NOT_FOUND"
+            )
             return
         await channel.send_response(ws, req_id, ok=True, payload={"job": job})
 
     async def _cron_job_create(ws, req_id, params, session_id):
         cc = _get_cron()
         if cc is None:
-            await channel.send_response(ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR"
+            )
             return
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
         try:
             job = await cc.create_job(params)
             await channel.send_response(ws, req_id, ok=True, payload={"job": job})
         except Exception as e:  # noqa: BLE001
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="BAD_REQUEST"
+            )
 
     async def _cron_job_update(ws, req_id, params, session_id):
         cc = _get_cron()
         if cc is None:
-            await channel.send_response(ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR"
+            )
             return
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
         job_id = str(params.get("id") or "").strip()
         patch = params.get("patch") or {}
         if not job_id:
-            await channel.send_response(ws, req_id, ok=False, error="id is required", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="id is required", code="BAD_REQUEST"
+            )
             return
         if not isinstance(patch, dict):
-            await channel.send_response(ws, req_id, ok=False, error="patch must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="patch must be object", code="BAD_REQUEST"
+            )
             return
         try:
             job = await cc.update_job(job_id, patch)
             await channel.send_response(ws, req_id, ok=True, payload={"job": job})
         except KeyError:
-            await channel.send_response(ws, req_id, ok=False, error="job not found", code="NOT_FOUND")
+            await channel.send_response(
+                ws, req_id, ok=False, error="job not found", code="NOT_FOUND"
+            )
         except Exception as e:  # noqa: BLE001
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="BAD_REQUEST"
+            )
 
     async def _cron_job_delete(ws, req_id, params, session_id):
         cc = _get_cron()
         if cc is None:
-            await channel.send_response(ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR"
+            )
             return
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
         job_id = str(params.get("id") or "").strip()
         if not job_id:
-            await channel.send_response(ws, req_id, ok=False, error="id is required", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="id is required", code="BAD_REQUEST"
+            )
             return
         deleted = await cc.delete_job(job_id)
         if not deleted:
-            await channel.send_response(ws, req_id, ok=False, error="job not found", code="NOT_FOUND")
+            await channel.send_response(
+                ws, req_id, ok=False, error="job not found", code="NOT_FOUND"
+            )
             return
         await channel.send_response(ws, req_id, ok=True, payload={"deleted": True})
 
     async def _cron_job_toggle(ws, req_id, params, session_id):
         cc = _get_cron()
         if cc is None:
-            await channel.send_response(ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR"
+            )
             return
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
         job_id = str(params.get("id") or "").strip()
         enabled = params.get("enabled", None)
         if not job_id:
-            await channel.send_response(ws, req_id, ok=False, error="id is required", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="id is required", code="BAD_REQUEST"
+            )
             return
         if enabled is None:
-            await channel.send_response(ws, req_id, ok=False, error="enabled is required", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="enabled is required", code="BAD_REQUEST"
+            )
             return
         try:
             job = await cc.toggle_job(job_id, bool(enabled))
             await channel.send_response(ws, req_id, ok=True, payload={"job": job})
         except KeyError:
-            await channel.send_response(ws, req_id, ok=False, error="job not found", code="NOT_FOUND")
+            await channel.send_response(
+                ws, req_id, ok=False, error="job not found", code="NOT_FOUND"
+            )
 
     async def _cron_job_preview(ws, req_id, params, session_id):
         cc = _get_cron()
         if cc is None:
-            await channel.send_response(ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR"
+            )
             return
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
         job_id = str(params.get("id") or "").strip()
         count = params.get("count", 5)
         if not job_id:
-            await channel.send_response(ws, req_id, ok=False, error="id is required", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="id is required", code="BAD_REQUEST"
+            )
             return
         try:
-            next_runs = await cc.preview_job(job_id, int(count) if count is not None else 5)
-            await channel.send_response(ws, req_id, ok=True, payload={"next": next_runs})
+            next_runs = await cc.preview_job(
+                job_id, int(count) if count is not None else 5
+            )
+            await channel.send_response(
+                ws, req_id, ok=True, payload={"next": next_runs}
+            )
         except KeyError:
-            await channel.send_response(ws, req_id, ok=False, error="job not found", code="NOT_FOUND")
+            await channel.send_response(
+                ws, req_id, ok=False, error="job not found", code="NOT_FOUND"
+            )
         except Exception as e:  # noqa: BLE001
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="BAD_REQUEST"
+            )
 
     async def _cron_job_run_now(ws, req_id, params, session_id):
         cc = _get_cron()
         if cc is None:
-            await channel.send_response(ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error="cron not available", code="INTERNAL_ERROR"
+            )
             return
         if not isinstance(params, dict):
-            await channel.send_response(ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="params must be object", code="BAD_REQUEST"
+            )
             return
         job_id = str(params.get("id") or "").strip()
         if not job_id:
-            await channel.send_response(ws, req_id, ok=False, error="id is required", code="BAD_REQUEST")
+            await channel.send_response(
+                ws, req_id, ok=False, error="id is required", code="BAD_REQUEST"
+            )
             return
         try:
             run_id = await cc.run_now(job_id)
             await channel.send_response(ws, req_id, ok=True, payload={"run_id": run_id})
         except KeyError:
-            await channel.send_response(ws, req_id, ok=False, error="job not found", code="NOT_FOUND")
+            await channel.send_response(
+                ws, req_id, ok=False, error="job not found", code="NOT_FOUND"
+            )
         except Exception as e:  # noqa: BLE001
-            await channel.send_response(ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR")
+            await channel.send_response(
+                ws, req_id, ok=False, error=str(e), code="INTERNAL_ERROR"
+            )
 
     channel.register_method("config.get", _config_get)
     channel.register_method("config.set", _config_set)
@@ -1296,7 +1553,10 @@ async def _run() -> None:
     from jiuwenclaw.channel.feishu import FeishuChannel, FeishuConfig
     from jiuwenclaw.channel.web_channel import WebChannel, WebChannelConfig
     from jiuwenclaw.channel.xiaoyi_channel import XiaoyiChannel, XiaoyiChannelConfig
-    from jiuwenclaw.channel.telegram_channel import TelegramChannel, TelegramChannelConfig
+    from jiuwenclaw.channel.telegram_channel import (
+        TelegramChannel,
+        TelegramChannelConfig,
+    )
     from jiuwenclaw.channel.discord_channel import DiscordChannel, DiscordChannelConfig
     from jiuwenclaw.channel.wecom_channel import WecomChannel, WecomConfig
     from jiuwenclaw.gateway import (
@@ -1306,11 +1566,17 @@ async def _run() -> None:
         WebSocketAgentServerClient,
     )
     from jiuwenclaw.gateway.channel_manager import ChannelManager
-    from jiuwenclaw.gateway.cron import CronController, CronJobStore, CronSchedulerService
+    from jiuwenclaw.gateway.cron import (
+        CronController,
+        CronJobStore,
+        CronSchedulerService,
+    )
     from jiuwenclaw.gateway.message_handler import MessageHandler
     from jiuwenclaw.schema.message import Message, EventType, ReqMethod
     from jiuwenclaw.agentserver.memory.config import _load_config as _load_agent_config
-    from jiuwenclaw.agentserver.tools.browser_tools import restart_local_browser_runtime_server
+    from jiuwenclaw.agentserver.tools.browser_tools import (
+        restart_local_browser_runtime_server,
+    )
 
     agent_port = int(os.getenv("AGENT_PORT", "18092"))
     web_host = os.getenv("WEB_HOST", "127.0.0.1")
@@ -1350,8 +1616,12 @@ async def _run() -> None:
     await message_handler.start_forwarding()
 
     cron_store = CronJobStore()
-    cron_scheduler = CronSchedulerService(store=cron_store, agent_client=client, message_handler=message_handler)
-    cron_controller = CronController.get_instance(store=cron_store, scheduler=cron_scheduler)
+    cron_scheduler = CronSchedulerService(
+        store=cron_store, agent_client=client, message_handler=message_handler
+    )
+    cron_controller = CronController.get_instance(
+        store=cron_store, scheduler=cron_scheduler
+    )
 
     # agent实例化需要在定时任务后
     await agent.create_instance()
@@ -1362,7 +1632,9 @@ async def _run() -> None:
     channels_cfg: dict | None = None
     try:
         full_cfg = _load_agent_config()
-        heartbeat_cfg = full_cfg.get("heartbeat") if isinstance(full_cfg, dict) else None
+        heartbeat_cfg = (
+            full_cfg.get("heartbeat") if isinstance(full_cfg, dict) else None
+        )
         channels_cfg = full_cfg.get("channels") if isinstance(full_cfg, dict) else None
     except Exception as e:  # noqa: BLE001
         logger.warning("[App] 读取 config.yaml heartbeat 配置失败，将使用默认值: %s", e)
@@ -1384,7 +1656,11 @@ async def _run() -> None:
         or (str(cfg_every) if cfg_every is not None else "60")
     )
     # timeout_seconds 依旧仅由环境变量控制，保持兼容
-    heartbeat_timeout = float(os.getenv("HEARTBEAT_TIMEOUT", "30")) if os.getenv("HEARTBEAT_TIMEOUT") else None
+    heartbeat_timeout = (
+        float(os.getenv("HEARTBEAT_TIMEOUT", "30"))
+        if os.getenv("HEARTBEAT_TIMEOUT")
+        else None
+    )
     # relay_channel_id：环境变量优先，其次 heartbeat.target，最后默认 "web"
     heartbeat_relay_channel = os.getenv("HEARTBEAT_RELAY_CHANNEL_ID") or (
         str(cfg_target) if cfg_target is not None else "web"
@@ -1396,7 +1672,9 @@ async def _run() -> None:
         relay_channel_id=heartbeat_relay_channel,
         active_hours=cfg_active_hours if isinstance(cfg_active_hours, dict) else None,
     )
-    heartbeat_service = GatewayHeartbeatService(client, heartbeat_config, message_handler=message_handler)
+    heartbeat_service = GatewayHeartbeatService(
+        client, heartbeat_config, message_handler=message_handler
+    )
     await heartbeat_service.start()
 
     # 初始 Channel 配置（来自 config.yaml 的 channels 段，若不存在则为空）
@@ -1408,10 +1686,22 @@ async def _run() -> None:
     def _on_config_saved(updated_env_keys: set[str] | None = None) -> bool:
         """先尝试热更新，失败则安排延迟重启。返回 True 表示已热更新未重启，False 表示已安排重启。"""
         browser_runtime_keys = {
-            "MODEL_PROVIDER", "MODEL_NAME", "API_BASE", "API_KEY",
-            "VIDEO_PROVIDER", "VIDEO_MODEL_NAME", "VIDEO_API_BASE", "VIDEO_API_KEY",
-            "AUDIO_PROVIDER", "AUDIO_MODEL_NAME", "AUDIO_API_BASE", "AUDIO_API_KEY",
-            "VISION_PROVIDER", "VISION_MODEL_NAME", "VISION_API_BASE", "VISION_API_KEY",
+            "MODEL_PROVIDER",
+            "MODEL_NAME",
+            "API_BASE",
+            "API_KEY",
+            "VIDEO_PROVIDER",
+            "VIDEO_MODEL_NAME",
+            "VIDEO_API_BASE",
+            "VIDEO_API_KEY",
+            "AUDIO_PROVIDER",
+            "AUDIO_MODEL_NAME",
+            "AUDIO_API_BASE",
+            "AUDIO_API_KEY",
+            "VISION_PROVIDER",
+            "VISION_MODEL_NAME",
+            "VISION_API_BASE",
+            "VISION_API_KEY",
         }
         try:
             agent.reload_agent_config()
@@ -1424,7 +1714,10 @@ async def _run() -> None:
             return False
 
     web_config = WebChannelConfig(
-        enabled=True, host=web_host, port=web_port, path=web_path,
+        enabled=True,
+        host=web_host,
+        port=web_port,
+        path=web_path,
     )
     web_channel = WebChannel(web_config, _DummyBus())
     _register_web_handlers(
@@ -1462,7 +1755,11 @@ async def _run() -> None:
             metadata=msg.metadata,
         )
         channel_manager._message_handler.handle_message(normalized)
-        logger.info("[App] Web 入站 -> MessageHandler: id=%s channel_id=%s", msg.id, msg.channel_id)
+        logger.info(
+            "[App] Web 入站 -> MessageHandler: id=%s channel_id=%s",
+            msg.id,
+            msg.channel_id,
+        )
         # 对仅转发、无本地处理器的方法，标记为“已处理”，避免 WebChannel 再返回 METHOD_NOT_FOUND。
         if method_val in _FORWARD_NO_LOCAL_HANDLER_METHODS:
             return True
@@ -1489,36 +1786,58 @@ async def _run() -> None:
 
     _last_channels_conf = {}  # Store previous config to detect changes
 
-    def _should_restart_channel(channel_name: str, old_conf: dict, new_conf: dict) -> bool:
-        old_channel_conf = old_conf.get(channel_name) if isinstance(old_conf, dict) else None
-        new_channel_conf = new_conf.get(channel_name) if isinstance(new_conf, dict) else None
+    def _should_restart_channel(
+        channel_name: str, old_conf: dict, new_conf: dict
+    ) -> bool:
+        old_channel_conf = (
+            old_conf.get(channel_name) if isinstance(old_conf, dict) else None
+        )
+        new_channel_conf = (
+            new_conf.get(channel_name) if isinstance(new_conf, dict) else None
+        )
         if (old_channel_conf is None) != (new_channel_conf is None):
             return True
         if old_channel_conf is None:
             return False
         return old_channel_conf != new_channel_conf
 
-    async def _stop_channel(channel, task, channel_name: str, background_wait: bool = False) -> None:
+    async def _stop_channel(
+        channel, task, channel_name: str, background_wait: bool = False
+    ) -> None:
         if task is not None:
             task.cancel()
             if background_wait:
+
                 async def wait_cancel():
                     try:
                         await task
                     except (TypeError, asyncio.CancelledError):
-                        logger.info("[App] 取消旧 %sChannel 任务成功", channel_name.capitalize())
+                        logger.info(
+                            "[App] 取消旧 %sChannel 任务成功", channel_name.capitalize()
+                        )
                     except Exception as e:  # noqa: BLE001
-                        logger.warning("[App] 等待旧 %sChannel 任务结束时忽略异常: %s", channel_name.capitalize(), e)
+                        logger.warning(
+                            "[App] 等待旧 %sChannel 任务结束时忽略异常: %s",
+                            channel_name.capitalize(),
+                            e,
+                        )
+
                 asyncio.create_task(wait_cancel(), name=f"wait_{channel_name}_cancel")
             else:
                 try:
                     await asyncio.wait_for(task, timeout=5.0)
                 except asyncio.TimeoutError:
-                    logger.warning("[App] 等待 %sChannel 任务取消超时", channel_name.capitalize())
+                    logger.warning(
+                        "[App] 等待 %sChannel 任务取消超时", channel_name.capitalize()
+                    )
                 except asyncio.CancelledError:
                     pass
                 except Exception as e:  # noqa: BLE001
-                    logger.warning("[App] 等待旧 %sChannel 任务结束时忽略异常: %s", channel_name.capitalize(), e)
+                    logger.warning(
+                        "[App] 等待旧 %sChannel 任务结束时忽略异常: %s",
+                        channel_name.capitalize(),
+                        e,
+                    )
 
         if channel is not None:
             try:
@@ -1526,16 +1845,22 @@ async def _run() -> None:
             except asyncio.TimeoutError:
                 logger.warning("[App] 停止 %sChannel 超时", channel_name.capitalize())
             except Exception as e:  # noqa: BLE001
-                logger.warning("[App] 停止旧 %sChannel 失败: %s", channel_name.capitalize(), e)
+                logger.warning(
+                    "[App] 停止旧 %sChannel 失败: %s", channel_name.capitalize(), e
+                )
             channel_manager.unregister_channel(channel.channel_id)
 
-    def _is_channel_enabled(conf: dict | None, required_fields: list[str]) -> tuple[bool, str]:
+    def _is_channel_enabled(
+        conf: dict | None, required_fields: list[str]
+    ) -> tuple[bool, str]:
         if conf is None:
             return False, "未配置或格式错误"
         enabled_raw = conf.get("enabled", None)
         if enabled_raw is None:
             all_fields_present = all(conf.get(f) for f in required_fields)
-            return all_fields_present, f"缺少 {','.join(required_fields)}" if not all_fields_present else ""
+            return all_fields_present, (
+                f"缺少 {','.join(required_fields)}" if not all_fields_present else ""
+            )
         return bool(enabled_raw), "enabled = false" if not enabled_raw else ""
 
     async def _apply_channel_config(conf: dict) -> None:
@@ -1548,7 +1873,15 @@ async def _run() -> None:
 
         changed_channels = [
             c
-            for c in ["feishu", "xiaoyi", "dingtalk", "telegram", "whatsapp", "discord", "wecom"]
+            for c in [
+                "feishu",
+                "xiaoyi",
+                "dingtalk",
+                "telegram",
+                "whatsapp",
+                "discord",
+                "wecom",
+            ]
             if _should_restart_channel(c, _last_channels_conf, conf)
         ]
         _last_channels_conf = dict(conf or {})
@@ -1559,26 +1892,40 @@ async def _run() -> None:
             feishu_channel, feishu_task = None, None
 
             if isinstance(feishu_conf, dict):
-                enabled, reason = _is_channel_enabled(feishu_conf, ["app_id", "app_secret"])
+                enabled, reason = _is_channel_enabled(
+                    feishu_conf, ["app_id", "app_secret"]
+                )
                 if not enabled:
-                    logger.info("[App] channels.feishu.%s，FeishuChannel 未启用", reason)
+                    logger.info(
+                        "[App] channels.feishu.%s，FeishuChannel 未启用", reason
+                    )
                 else:
                     feishu_config = FeishuConfig(
                         enabled=True,
                         app_id=str(feishu_conf.get("app_id") or "").strip(),
                         app_secret=str(feishu_conf.get("app_secret") or "").strip(),
                         encrypt_key=str(feishu_conf.get("encrypt_key") or "").strip(),
-                        verification_token=str(feishu_conf.get("verification_token") or "").strip(),
+                        verification_token=str(
+                            feishu_conf.get("verification_token") or ""
+                        ).strip(),
                         allow_from=feishu_conf.get("allow_from") or [],
-                        enable_streaming=bool(feishu_conf.get("enable_streaming", True)),
+                        enable_streaming=bool(
+                            feishu_conf.get("enable_streaming", True)
+                        ),
                         chat_id=str(feishu_conf.get("chat_id") or "").strip(),
                     )
                     feishu_channel = FeishuChannel(feishu_config, _DummyBus())
                     channel_manager.register_channel(feishu_channel)
-                    feishu_task = asyncio.create_task(feishu_channel.start(), name="feishu")
-                    logger.info("[App] 已按 config.yaml.channels.feishu 注册 FeishuChannel")
+                    feishu_task = asyncio.create_task(
+                        feishu_channel.start(), name="feishu"
+                    )
+                    logger.info(
+                        "[App] 已按 config.yaml.channels.feishu 注册 FeishuChannel"
+                    )
             else:
-                logger.info("[App] channels.feishu 未配置或格式错误，FeishuChannel 不启用")
+                logger.info(
+                    "[App] channels.feishu 未配置或格式错误，FeishuChannel 不启用"
+                )
 
         if "xiaoyi" in changed_channels:
             xiaoyi_conf = conf.get("xiaoyi") if isinstance(conf, dict) else None
@@ -1586,9 +1933,13 @@ async def _run() -> None:
             xiaoyi_channel, xiaoyi_task = None, None
 
             if isinstance(xiaoyi_conf, dict):
-                enabled, reason = _is_channel_enabled(xiaoyi_conf, ["ak", "sk", "agent_id"])
+                enabled, reason = _is_channel_enabled(
+                    xiaoyi_conf, ["ak", "sk", "agent_id"]
+                )
                 if not enabled:
-                    logger.info("[App] channels.xiaoyi.%s，XiaoyiChannel 未启用", reason)
+                    logger.info(
+                        "[App] channels.xiaoyi.%s，XiaoyiChannel 未启用", reason
+                    )
                 else:
                     if xiaoyi_conf.get("mode") == "xiaoyi_claw":
                         xiaoyi_config = XiaoyiChannelConfig(
@@ -1600,56 +1951,84 @@ async def _run() -> None:
                             agent_id=str(xiaoyi_conf.get("agent_id") or "").strip(),
                             uid=str(xiaoyi_conf.get("uid") or "").strip(),
                             api_key=str(xiaoyi_conf.get("api_key") or "").strip(),
-                            file_upload_url=str(xiaoyi_conf.get("file_upload_url") or "").strip(),
+                            file_upload_url=str(
+                                xiaoyi_conf.get("file_upload_url") or ""
+                            ).strip(),
                             ws_url1=str(xiaoyi_conf.get("ws_url1")).strip(),
                             ws_url2=str(xiaoyi_conf.get("ws_url2")).strip(),
-                            enable_streaming=bool(xiaoyi_conf.get("enable_streaming", True)),
+                            enable_streaming=bool(
+                                xiaoyi_conf.get("enable_streaming", True)
+                            ),
                         )
                     else:
                         xiaoyi_config = XiaoyiChannelConfig(
                             enabled=True,
-                            mode=str(xiaoyi_conf.get("mode") or "xiaoyi_channel").strip(),
+                            mode=str(
+                                xiaoyi_conf.get("mode") or "xiaoyi_channel"
+                            ).strip(),
                             ak=str(xiaoyi_conf.get("ak") or "").strip(),
                             sk=str(xiaoyi_conf.get("sk") or "").strip(),
                             api_id=str(xiaoyi_conf.get("api_id") or "").strip(),
                             push_id=str(xiaoyi_conf.get("push_id") or "").strip(),
                             push_url=str(xiaoyi_conf.get("push_url") or "").strip(),
                             agent_id=str(xiaoyi_conf.get("agent_id") or "").strip(),
-                            ws_url1=str(xiaoyi_conf.get("ws_url1") or "").strip() \
-                                or "wss://hag.cloud.huawei.com/openclaw/v1/ws/link",
-                            ws_url2=str(xiaoyi_conf.get("ws_url2") or "").strip() \
-                                or "wss://116.63.174.231/openclaw/v1/ws/link",
-                            enable_streaming=bool(xiaoyi_conf.get("enable_streaming", True)),
+                            ws_url1=str(xiaoyi_conf.get("ws_url1") or "").strip()
+                            or "wss://hag.cloud.huawei.com/openclaw/v1/ws/link",
+                            ws_url2=str(xiaoyi_conf.get("ws_url2") or "").strip()
+                            or "wss://116.63.174.231/openclaw/v1/ws/link",
+                            enable_streaming=bool(
+                                xiaoyi_conf.get("enable_streaming", True)
+                            ),
                         )
                     xiaoyi_channel = XiaoyiChannel(xiaoyi_config, _DummyBus())
                     channel_manager.register_channel(xiaoyi_channel)
-                    xiaoyi_task = asyncio.create_task(xiaoyi_channel.start(), name="xiaoyi")
-                    logger.info("[App] 已按 config.yaml.channels.xiaoyi 注册 XiaoyiChannel")
+                    xiaoyi_task = asyncio.create_task(
+                        xiaoyi_channel.start(), name="xiaoyi"
+                    )
+                    logger.info(
+                        "[App] 已按 config.yaml.channels.xiaoyi 注册 XiaoyiChannel"
+                    )
             else:
-                logger.info("[App] channels.xiaoyi 未配置或格式错误，XiaoyiChannel 不启用")
+                logger.info(
+                    "[App] channels.xiaoyi 未配置或格式错误，XiaoyiChannel 不启用"
+                )
 
         if "dingtalk" in changed_channels:
             dingtalk_conf = conf.get("dingtalk") if isinstance(conf, dict) else None
-            await _stop_channel(dingtalk_channel, dingtalk_task, "dingtalk", background_wait=True)
+            await _stop_channel(
+                dingtalk_channel, dingtalk_task, "dingtalk", background_wait=True
+            )
             dingtalk_channel, dingtalk_task = None, None
 
             if isinstance(dingtalk_conf, dict):
-                enabled, reason = _is_channel_enabled(dingtalk_conf, ["client_id", "client_secret"])
+                enabled, reason = _is_channel_enabled(
+                    dingtalk_conf, ["client_id", "client_secret"]
+                )
                 if not enabled:
-                    logger.info("[App] channels.dingtalk.%s，DingtalkChannel 未启用", reason)
+                    logger.info(
+                        "[App] channels.dingtalk.%s，DingtalkChannel 未启用", reason
+                    )
                 else:
                     dingtalk_config = DingTalkConfig(
                         enabled=True,
                         client_id=str(dingtalk_conf.get("client_id") or "").strip(),
-                        client_secret=str(dingtalk_conf.get("client_secret") or "").strip(),
+                        client_secret=str(
+                            dingtalk_conf.get("client_secret") or ""
+                        ).strip(),
                         allow_from=dingtalk_conf.get("allow_from") or [],
                     )
                     dingtalk_channel = DingTalkChannel(dingtalk_config, _DummyBus())
                     channel_manager.register_channel(dingtalk_channel)
-                    dingtalk_task = asyncio.create_task(dingtalk_channel.start(), name="dingtalk")
-                    logger.info("[App] 已按 config.yaml.channels.dingtalk 注册 DingtalkChannel")
+                    dingtalk_task = asyncio.create_task(
+                        dingtalk_channel.start(), name="dingtalk"
+                    )
+                    logger.info(
+                        "[App] 已按 config.yaml.channels.dingtalk 注册 DingtalkChannel"
+                    )
             else:
-                logger.info("[App] channels.dingtalk 未配置或格式错误，DingtalkChannel 不启用")
+                logger.info(
+                    "[App] channels.dingtalk 未配置或格式错误，DingtalkChannel 不启用"
+                )
 
         if "telegram" in changed_channels:
             telegram_conf = conf.get("telegram") if isinstance(conf, dict) else None
@@ -1659,21 +2038,33 @@ async def _run() -> None:
             if isinstance(telegram_conf, dict):
                 enabled, reason = _is_channel_enabled(telegram_conf, ["bot_token"])
                 if not enabled:
-                    logger.info("[App] channels.telegram.%s，TelegramChannel 未启用", reason)
+                    logger.info(
+                        "[App] channels.telegram.%s，TelegramChannel 未启用", reason
+                    )
                 else:
                     telegram_config = TelegramChannelConfig(
                         enabled=True,
                         bot_token=str(telegram_conf.get("bot_token") or "").strip(),
                         allow_from=telegram_conf.get("allow_from") or [],
-                        parse_mode=str(telegram_conf.get("parse_mode") or "Markdown").strip(),
-                        group_chat_mode=str(telegram_conf.get("group_chat_mode") or "mention").strip(),
+                        parse_mode=str(
+                            telegram_conf.get("parse_mode") or "Markdown"
+                        ).strip(),
+                        group_chat_mode=str(
+                            telegram_conf.get("group_chat_mode") or "mention"
+                        ).strip(),
                     )
                     telegram_channel = TelegramChannel(telegram_config, _DummyBus())
                     channel_manager.register_channel(telegram_channel)
-                    telegram_task = asyncio.create_task(telegram_channel.start(), name="telegram")
-                    logger.info("[App] 已按 config.yaml.channels.telegram 注册 TelegramChannel")
+                    telegram_task = asyncio.create_task(
+                        telegram_channel.start(), name="telegram"
+                    )
+                    logger.info(
+                        "[App] 已按 config.yaml.channels.telegram 注册 TelegramChannel"
+                    )
             else:
-                logger.info("[App] channels.telegram 未配置或格式错误，TelegramChannel 不启用")
+                logger.info(
+                    "[App] channels.telegram 未配置或格式错误，TelegramChannel 不启用"
+                )
 
         if "discord" in changed_channels:
             discord_conf = conf.get("discord") if isinstance(conf, dict) else None
@@ -1683,22 +2074,32 @@ async def _run() -> None:
             if isinstance(discord_conf, dict):
                 enabled, reason = _is_channel_enabled(discord_conf, ["bot_token"])
                 if not enabled:
-                    logger.info("[App] channels.discord.%s，DiscordChannel 未启用", reason)
+                    logger.info(
+                        "[App] channels.discord.%s，DiscordChannel 未启用", reason
+                    )
                 else:
                     discord_config = DiscordChannelConfig(
                         enabled=True,
                         bot_token=str(discord_conf.get("bot_token") or "").strip(),
-                        application_id=str(discord_conf.get("application_id") or "").strip(),
+                        application_id=str(
+                            discord_conf.get("application_id") or ""
+                        ).strip(),
                         guild_id=str(discord_conf.get("guild_id") or "").strip(),
                         channel_id=str(discord_conf.get("channel_id") or "").strip(),
                         allow_from=discord_conf.get("allow_from") or [],
                     )
                     discord_channel = DiscordChannel(discord_config, _DummyBus())
                     channel_manager.register_channel(discord_channel)
-                    discord_task = asyncio.create_task(discord_channel.start(), name="discord")
-                    logger.info("[App] 已按 config.yaml.channels.discord 注册 DiscordChannel")
+                    discord_task = asyncio.create_task(
+                        discord_channel.start(), name="discord"
+                    )
+                    logger.info(
+                        "[App] 已按 config.yaml.channels.discord 注册 DiscordChannel"
+                    )
             else:
-                logger.info("[App] channels.discord 未配置或格式错误，DiscordChannel 不启用")
+                logger.info(
+                    "[App] channels.discord 未配置或格式错误，DiscordChannel 不启用"
+                )
 
         # ----- WhatsAppChannel -----
         if "whatsapp" in changed_channels:
@@ -1707,12 +2108,17 @@ async def _run() -> None:
             whatsapp_channel, whatsapp_task = None, None
 
             if isinstance(whatsapp_conf, dict):
-                bridge_ws_url = str(whatsapp_conf.get("bridge_ws_url") or "ws://127.0.0.1:19600/ws").strip()
+                bridge_ws_url = str(
+                    whatsapp_conf.get("bridge_ws_url") or "ws://127.0.0.1:19600/ws"
+                ).strip()
                 default_jid = str(whatsapp_conf.get("default_jid") or "").strip()
                 allow_from = whatsapp_conf.get("allow_from") or []
                 enable_streaming = bool(whatsapp_conf.get("enable_streaming", True))
                 auto_start_bridge = bool(whatsapp_conf.get("auto_start_bridge", False))
-                bridge_command = str(whatsapp_conf.get("bridge_command") or "node scripts/whatsapp-bridge.js").strip()
+                bridge_command = str(
+                    whatsapp_conf.get("bridge_command")
+                    or "node scripts/whatsapp-bridge.js"
+                ).strip()
                 bridge_workdir = str(whatsapp_conf.get("bridge_workdir") or "").strip()
                 bridge_env_raw = whatsapp_conf.get("bridge_env") or {}
                 bridge_env = bridge_env_raw if isinstance(bridge_env_raw, dict) else {}
@@ -1724,9 +2130,13 @@ async def _run() -> None:
                     enabled = bool(enabled_raw)
 
                 if not enabled:
-                    logger.info("[App] channels.whatsapp.enabled = false，WhatsAppChannel 未启用")
+                    logger.info(
+                        "[App] channels.whatsapp.enabled = false，WhatsAppChannel 未启用"
+                    )
                 elif not bridge_ws_url:
-                    logger.info("[App] channels.whatsapp 缺少 bridge_ws_url，WhatsAppChannel 未启用")
+                    logger.info(
+                        "[App] channels.whatsapp 缺少 bridge_ws_url，WhatsAppChannel 未启用"
+                    )
                 else:
                     whatsapp_config = WhatsAppChannelConfig(
                         enabled=True,
@@ -1741,10 +2151,16 @@ async def _run() -> None:
                     )
                     whatsapp_channel = WhatsAppChannel(whatsapp_config, _DummyBus())
                     channel_manager.register_channel(whatsapp_channel)
-                    whatsapp_task = asyncio.create_task(whatsapp_channel.start(), name="whatsapp")
-                    logger.info("[App] 已按 config.yaml.channels.whatsapp 注册 WhatsAppChannel")
+                    whatsapp_task = asyncio.create_task(
+                        whatsapp_channel.start(), name="whatsapp"
+                    )
+                    logger.info(
+                        "[App] 已按 config.yaml.channels.whatsapp 注册 WhatsAppChannel"
+                    )
             else:
-                logger.info("[App] channels.whatsapp 未配置或格式错误，WhatsAppChannel 不启用")
+                logger.info(
+                    "[App] channels.whatsapp 未配置或格式错误，WhatsAppChannel 不启用"
+                )
 
         # ----- WecomChannel -----
         if "wecom" in changed_channels:
@@ -1761,17 +2177,28 @@ async def _run() -> None:
                         enabled=True,
                         bot_id=str(wecom_conf.get("bot_id") or "").strip(),
                         secret=str(wecom_conf.get("secret") or "").strip(),
-                        ws_url=str(wecom_conf.get("ws_url") or "wss://openws.work.weixin.qq.com").strip(),
+                        ws_url=str(
+                            wecom_conf.get("ws_url")
+                            or "wss://openws.work.weixin.qq.com"
+                        ).strip(),
                         allow_from=wecom_conf.get("allow_from") or [],
                         enable_streaming=bool(wecom_conf.get("enable_streaming", True)),
-                        send_thinking_message=bool(wecom_conf.get("send_thinking_message", True)),
+                        send_thinking_message=bool(
+                            wecom_conf.get("send_thinking_message", True)
+                        ),
                     )
                     wecom_channel = WecomChannel(wecom_config, _DummyBus())
                     channel_manager.register_channel(wecom_channel)
-                    wecom_task = asyncio.create_task(wecom_channel.start(), name="wecom")
-                    logger.info("[App] 已按 config.yaml.channels.wecom 注册 WecomChannel")
+                    wecom_task = asyncio.create_task(
+                        wecom_channel.start(), name="wecom"
+                    )
+                    logger.info(
+                        "[App] 已按 config.yaml.channels.wecom 注册 WecomChannel"
+                    )
             else:
-                logger.info("[App] channels.wecom 未配置或格式错误，WecomChannel 不启用")
+                logger.info(
+                    "[App] channels.wecom 未配置或格式错误，WecomChannel 不启用"
+                )
 
     # 将「配置更新时如何重新实例化 Channel」逻辑注册到 ChannelManager
     channel_manager.set_config_callback(_apply_channel_config)
@@ -1783,7 +2210,9 @@ async def _run() -> None:
     web_task = asyncio.create_task(web_channel.start(), name="web-channel")
     logger.info(
         "[App] 已启动: Web ws://%s:%s%s  修改配置后将自动重启服务。Ctrl+C 退出。",
-        web_host, web_port, web_path,
+        web_host,
+        web_port,
+        web_path,
     )
 
     # 主循环仅以 WebChannel 的生命周期为准：

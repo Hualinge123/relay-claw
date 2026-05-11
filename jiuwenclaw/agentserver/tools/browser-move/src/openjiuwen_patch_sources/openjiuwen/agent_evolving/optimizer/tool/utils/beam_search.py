@@ -19,7 +19,7 @@ class TreeNode:
         depth = self.get_depth()
         string = f'{"    "*depth}it={depth} score={self.score:.1f} data="{self.data}"'
         for child in self.children:
-            string += '\n' + repr(child)
+            string += "\n" + repr(child)
         return string
 
     def get_depth(self):
@@ -28,21 +28,20 @@ class TreeNode:
         return self.parent.get_depth() + 1
 
 
-
 class BeamSearch:
     def __init__(
-            self, 
-            method, 
-            beam_width, 
-            expand_num, 
-            max_depth, 
-            num_workers=1, 
-            verbose=False, 
-            early_stop=True, 
-            check_valid=False, 
-            max_score=100., 
-            top_k=1
-        ):
+        self,
+        method,
+        beam_width,
+        expand_num,
+        max_depth,
+        num_workers=1,
+        verbose=False,
+        early_stop=True,
+        check_valid=False,
+        max_score=100.0,
+        top_k=1,
+    ):
         self.method = method
         self.beam_width = beam_width
         self.max_depth = max_depth
@@ -60,7 +59,11 @@ class BeamSearch:
 
     def search(self, tool):
         start_time = time.time()
-        examples = self.method.get_examples(tool) if callable(getattr(self.method, 'get_examples', None)) else None
+        examples = (
+            self.method.get_examples(tool)
+            if callable(getattr(self.method, "get_examples", None))
+            else None
+        )
 
         # initial root node generation / evaluation
         root = None
@@ -90,16 +93,23 @@ class BeamSearch:
         # expand and prune
         for depth in range(1, self.max_depth + 1):
             if time.time() - start_time > self.timeout:
-                nodes_sorted = sorted(best_nodes, reverse=True, key=lambda x: x.score)[:self.top_k]
+                nodes_sorted = sorted(best_nodes, reverse=True, key=lambda x: x.score)[
+                    : self.top_k
+                ]
                 return [node.history for node in nodes_sorted]
-            if self.early_stop and self.check_early_stop(beam_list, max_score=self.max_score, k=self.top_k):
+            if self.early_stop and self.check_early_stop(
+                beam_list, max_score=self.max_score, k=self.top_k
+            ):
                 break
             beam_list = self.expand(beam_list, tool, examples, depth)
             beam_list = self.prune(beam_list)
             best_nodes += beam_list
 
-        nodes_sorted = sorted([node for node in best_nodes if node.get_depth() > 0], 
-                              reverse=True, key=lambda x: x.score)[:self.top_k]
+        nodes_sorted = sorted(
+            [node for node in best_nodes if node.get_depth() > 0],
+            reverse=True,
+            key=lambda x: x.score,
+        )[: self.top_k]
 
         return [node.history for node in nodes_sorted]
 
@@ -156,9 +166,9 @@ class BeamSearch:
 
     def prune(self, beam_list):
         sorted_beam_list = sorted(beam_list, reverse=True, key=lambda x: x.score)
-        return sorted_beam_list[:self.beam_width]
+        return sorted_beam_list[: self.beam_width]
 
-    def check_early_stop(self, beam_list, max_score=100., k=1):
+    def check_early_stop(self, beam_list, max_score=100.0, k=1):
         x = self.top_k
         if len(beam_list) < k:
             return False

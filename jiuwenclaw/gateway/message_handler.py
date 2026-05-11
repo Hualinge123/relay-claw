@@ -24,6 +24,8 @@ class ChannelMode(str, Enum):
 class ChannelControlState:
     session_id: str | None = None
     mode: ChannelMode = ChannelMode.PLAN
+
+
 if TYPE_CHECKING:
     from jiuwenclaw.gateway.agent_client import AgentServerClient
     from jiuwenclaw.schema.agent import AgentRequest, AgentResponse, AgentResponseChunk
@@ -44,7 +46,9 @@ class MessageHandler(ABC):
 
     _instance: "MessageHandler | None" = None
 
-    def __new__(cls, agent_client: "AgentServerClient", *args: Any, **kwargs: Any) -> "MessageHandler":
+    def __new__(
+        cls, agent_client: "AgentServerClient", *args: Any, **kwargs: Any
+    ) -> "MessageHandler":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -75,7 +79,9 @@ class MessageHandler(ABC):
         self._load_channel_states_from_config()
 
     @classmethod
-    def get_instance(cls, agent_client: "AgentServerClient | None" = None) -> "MessageHandler":
+    def get_instance(
+        cls, agent_client: "AgentServerClient | None" = None
+    ) -> "MessageHandler":
         """获取单例实例。
 
         - 若实例已存在：可直接调用 get_instance() 或 get_instance(None)，无需传入 client。
@@ -94,7 +100,9 @@ class MessageHandler(ABC):
         self._user_messages.put_nowait(msg)
         logger.info(
             "[MessageHandler] _user_messages 入队: id=%s channel_id=%s session_id=%s",
-            msg.id, msg.channel_id, msg.session_id,
+            msg.id,
+            msg.channel_id,
+            msg.session_id,
         )
 
     # ---------- Channel 控制状态：\new_session / \mode ----------
@@ -141,7 +149,9 @@ class MessageHandler(ABC):
         suffix = secrets.token_hex(3)
         return f"{channel_id}_{ts}_{suffix}"
 
-    async def _send_channel_notice(self, channel_id: str, session_id: str | None, text: str) -> None:
+    async def _send_channel_notice(
+        self, channel_id: str, session_id: str | None, text: str
+    ) -> None:
         """向指定 channel 发送一条系统提示消息."""
         from jiuwenclaw.schema.message import Message, EventType
 
@@ -174,7 +184,12 @@ class MessageHandler(ABC):
         if not text:
             return False
 
-        logger.info('this is in _handle_channel_control, channel id is %s, text is %s, "\\new_session" in text is %s', ch, text, str("\\new_session" in text))
+        logger.info(
+            'this is in _handle_channel_control, channel id is %s, text is %s, "\\new_session" in text is %s',
+            ch,
+            text,
+            str("\\new_session" in text),
+        )
         # \new_session：重置当前 Channel 的会话 ID
         if "/new_session" == text:
             state = self._channel_states.get(ch) or ChannelControlState()
@@ -184,7 +199,11 @@ class MessageHandler(ABC):
             self._save_channel_state_to_config(ch)
             # 给当前会话回复提示（用原有 session_id）
             asyncio.create_task(
-                self._send_channel_notice(ch, msg.session_id, f"[收到 CLI 指令], session_id 已变更为 {new_sid}")
+                self._send_channel_notice(
+                    ch,
+                    msg.session_id,
+                    f"[收到 CLI 指令], session_id 已变更为 {new_sid}",
+                )
             )
             return True
         elif "/new_session" in text:
@@ -194,15 +213,21 @@ class MessageHandler(ABC):
             return True
 
         # \mode plan / \mode agent
-        if text == "/mode plan" or text == "/mode agent": 
+        if text == "/mode plan" or text == "/mode agent":
             parts = text.split()
             if len(parts) >= 2 and parts[1] in ("plan", "agent"):
                 state = self._channel_states.get(ch) or ChannelControlState()
-                state.mode = ChannelMode.AGENT if parts[1] == "agent" else ChannelMode.PLAN
+                state.mode = (
+                    ChannelMode.AGENT if parts[1] == "agent" else ChannelMode.PLAN
+                )
                 self._channel_states[ch] = state
                 self._save_channel_state_to_config(ch)
                 asyncio.create_task(
-                    self._send_channel_notice(ch, msg.session_id, f"[收到 CLI 指令], mode 已变更为 {state.mode.value}")
+                    self._send_channel_notice(
+                        ch,
+                        msg.session_id,
+                        f"[收到 CLI 指令], mode 已变更为 {state.mode.value}",
+                    )
                 )
                 return True
         elif "/mode" in text:
@@ -240,7 +265,9 @@ class MessageHandler(ABC):
         """将消息放入 user_messages 队列（同步）."""
         self._user_messages.put_nowait(msg)
 
-    async def consume_user_messages(self, timeout: float | None = None) -> "Message | None":
+    async def consume_user_messages(
+        self, timeout: float | None = None
+    ) -> "Message | None":
         """消费一条 user_messages；timeout 为 None 则阻塞，否则超时返回 None."""
         if timeout is not None and timeout <= 0:
             try:
@@ -264,7 +291,9 @@ class MessageHandler(ABC):
         """将 Agent 响应放入 robot_messages 队列（同步）."""
         self._robot_messages.put_nowait(msg)
 
-    async def consume_robot_messages(self, timeout: float | None = None) -> "Message | None":
+    async def consume_robot_messages(
+        self, timeout: float | None = None
+    ) -> "Message | None":
         """消费一条 robot_messages；timeout 为 None 则阻塞，否则超时返回 None."""
         if timeout is not None and timeout <= 0:
             try:
@@ -293,9 +322,10 @@ class MessageHandler(ABC):
             metadata=msg.metadata,
         )
 
-
     @staticmethod
-    def _response_to_message(resp: "AgentResponse", session_id: str | None) -> "Message":
+    def _response_to_message(
+        resp: "AgentResponse", session_id: str | None
+    ) -> "Message":
         from jiuwenclaw.schema.message import Message, EventType
 
         # 检查 payload 中是否包含 event_type，如果包含则创建事件消息
@@ -388,7 +418,9 @@ class MessageHandler(ABC):
             ReqMethod.CHAT_ANSWER,
         )
 
-    async def _process_non_stream_request(self, msg: "Message", req: "AgentRequest") -> None:
+    async def _process_non_stream_request(
+        self, msg: "Message", req: "AgentRequest"
+    ) -> None:
         """执行单次非流式 Agent 请求并将结果写入 robot_messages（供串行或后台任务复用）。"""
         try:
             resp = await self._agent_client.send_request(req)
@@ -425,8 +457,7 @@ class MessageHandler(ABC):
                 msg = await self.consume_user_messages(timeout=None)
                 if msg is None:
                     continue
-                
-         
+
                 # 先处理 Channel 控制指令（仅 feishu/xiaoyi/dingtalk/whatsapp）
                 if self._handle_channel_control(msg):
                     # 该消息仅用于修改 session/mode，已给 Channel 回复提示，不再转发给 Agent
@@ -439,7 +470,8 @@ class MessageHandler(ABC):
                 if msg.req_method == ReqMethod.CHAT_CANCEL:
                     logger.info(
                         "[MessageHandler] 收到中断请求: id=%s channel_id=%s",
-                        msg.id, msg.channel_id,
+                        msg.id,
+                        msg.channel_id,
                     )
                     new_input = (msg.params or {}).get("new_input")
                     has_new_input = isinstance(new_input, str) and new_input.strip()
@@ -453,21 +485,28 @@ class MessageHandler(ABC):
                         for rid, task in list(self._stream_tasks.items()):
                             if not task.done():
                                 logger.info(
-                                    "[MessageHandler] supplement: 取消流式任务 request_id=%s", rid,
+                                    "[MessageHandler] supplement: 取消流式任务 request_id=%s",
+                                    rid,
                                 )
                                 task.cancel()
                                 tasks_to_cancel.append(task)
                         if tasks_to_cancel:
-                            await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+                            await asyncio.gather(
+                                *tasks_to_cancel, return_exceptions=True
+                            )
 
                         # 2. 通知前端 supplement（前端据此判断 is_processing 状态）
                         await self._send_interrupt_result_notification(
-                            msg.id, msg.channel_id, msg.session_id, "supplement",
+                            msg.id,
+                            msg.channel_id,
+                            msg.session_id,
+                            "supplement",
                         )
 
                         # 3. 发送 supplement intent 到 AgentServer（取消任务但保留 todo）
                         #    用 await 确保 agent 侧先完成取消再启动新任务
                         from jiuwenclaw.schema.agent import AgentRequest as _AgentReq
+
                         supplement_req = _AgentReq(
                             request_id=f"supplement_{int(time.time() * 1000):x}",
                             channel_id=msg.channel_id,
@@ -504,7 +543,8 @@ class MessageHandler(ABC):
                         self._user_messages.put_nowait(new_msg)
                         logger.info(
                             "[MessageHandler] supplement: 旧任务已取消，新任务已入队: id=%s session_id=%s",
-                            new_msg.id, msg.session_id,
+                            new_msg.id,
+                            msg.session_id,
                         )
 
                     elif intent == "cancel":
@@ -512,12 +552,16 @@ class MessageHandler(ABC):
                         for rid, task in list(self._stream_tasks.items()):
                             if not task.done():
                                 logger.info(
-                                    "[MessageHandler] 取消流式任务: request_id=%s", rid,
+                                    "[MessageHandler] 取消流式任务: request_id=%s",
+                                    rid,
                                 )
                                 task.cancel()
                                 sid = self._stream_sessions.get(rid)
                                 await self._send_interrupt_result_notification(
-                                    rid, msg.channel_id, sid, "cancel",
+                                    rid,
+                                    msg.channel_id,
+                                    sid,
+                                    "cancel",
                                 )
                         # Fire-and-forget: 发送取消请求到 AgentServer
                         req = self._message_to_request(msg)
@@ -529,14 +573,19 @@ class MessageHandler(ABC):
                         asyncio.create_task(self._send_interrupt_to_agent(req))
                         # 通知前端状态变更
                         await self._send_interrupt_result_notification(
-                            msg.id, msg.channel_id, msg.session_id, intent,
+                            msg.id,
+                            msg.channel_id,
+                            msg.session_id,
+                            intent,
                         )
 
                     continue
 
                 logger.info(
                     "[MessageHandler] 从 user_messages 取出，发往 AgentServer: id=%s channel_id=%s is_stream=%s",
-                    msg.id, msg.channel_id, msg.is_stream,
+                    msg.id,
+                    msg.channel_id,
+                    msg.is_stream,
                 )
                 req = self._message_to_request(msg)
                 try:
@@ -544,7 +593,10 @@ class MessageHandler(ABC):
                         # 流式处理：启动后台任务，支持多任务并发
                         # 通知前端新任务开始处理
                         await self._send_processing_status(
-                            req.request_id, msg.session_id, msg.channel_id, is_processing=True,
+                            req.request_id,
+                            msg.session_id,
+                            msg.channel_id,
+                            is_processing=True,
                         )
                         task = asyncio.create_task(
                             self._process_stream(req, msg.session_id)
@@ -553,12 +605,16 @@ class MessageHandler(ABC):
                         self._stream_sessions[req.request_id] = msg.session_id
                         logger.info(
                             "[MessageHandler] Stream 任务已启动（后台运行）: request_id=%s channel_id=%s 当前并发=%d",
-                            req.request_id, req.channel_id, len(self._stream_tasks),
+                            req.request_id,
+                            req.channel_id,
+                            len(self._stream_tasks),
                         )
                         # 不 await，让流式任务在后台运行，_forward_loop 继续处理下一个消息
                     elif self._non_stream_rpc_may_run_parallel(req):
                         # 非流式且非聊天：后台执行，避免慢 RPC（如 SkillNet）阻塞队列中的其它请求
-                        method_label = req.req_method.value if req.req_method else "none"
+                        method_label = (
+                            req.req_method.value if req.req_method else "none"
+                        )
                         asyncio.create_task(
                             self._process_non_stream_request(msg, req),
                             name=f"gw-nonstr-{method_label}-{req.request_id[:24]}",
@@ -571,17 +627,22 @@ class MessageHandler(ABC):
                     else:
                         await self._process_non_stream_request(msg, req)
                 except Exception as e:
-                    logger.exception("AgentServer send_request failed for %s: %s", msg.id, e)
+                    logger.exception(
+                        "AgentServer send_request failed for %s: %s", msg.id, e
+                    )
                     err_msg = self._build_error_out_message(msg, e)
                     await self.publish_robot_messages(err_msg)
                     logger.info(
-                            "[MessageHandler] 错误响应已写入 robot_messages: id=%s channel_id=%s",
-                        msg.id, msg.channel_id,
+                        "[MessageHandler] 错误响应已写入 robot_messages: id=%s channel_id=%s",
+                        msg.id,
+                        msg.channel_id,
                     )
             except asyncio.CancelledError:
                 break
 
-    async def _process_stream(self, req: "AgentRequest", session_id: str | None) -> None:
+    async def _process_stream(
+        self, req: "AgentRequest", session_id: str | None
+    ) -> None:
         """处理流式请求，逐个 chunk 写入 robot_messages.
 
         这个方法被包装为 Task，在后台运行，可以被随时取消。
@@ -603,7 +664,8 @@ class MessageHandler(ABC):
                 await self.publish_robot_messages(out)
                 logger.debug(
                     "[MessageHandler] Stream chunk 已写入 robot_messages: request_id=%s event_type=%s",
-                    chunk.request_id, out.event_type,
+                    chunk.request_id,
+                    out.event_type,
                 )
             logger.info(
                 "[MessageHandler] Stream 正常完成: request_id=%s",
@@ -627,7 +689,10 @@ class MessageHandler(ABC):
             # 所有流式任务正常结束后，通知前端全部处理完成
             if not cancelled and not self._stream_tasks:
                 await self._send_processing_status(
-                    req.request_id, session_id, req.channel_id, is_processing=False,
+                    req.request_id,
+                    session_id,
+                    req.channel_id,
+                    is_processing=False,
                 )
                 logger.info(
                     "[MessageHandler] 所有流式任务已完成，已发送 is_processing=false: session_id=%s",
@@ -672,13 +737,18 @@ class MessageHandler(ABC):
             resp = await self._agent_client.send_request(req)
             logger.info(
                 "[MessageHandler] AgentServer 中断响应(已丢弃): request_id=%s ok=%s",
-                resp.request_id, resp.ok,
+                resp.request_id,
+                resp.ok,
             )
         except Exception as e:
             logger.warning("[MessageHandler] AgentServer 中断请求失败(忽略): %s", e)
 
     async def _send_interrupt_result_notification(
-        self, request_id: str, channel_id: str, session_id: str | None, intent: str,
+        self,
+        request_id: str,
+        channel_id: str,
+        session_id: str | None,
+        intent: str,
     ) -> None:
         """发送 interrupt_result 事件到前端（pause / resume 等）."""
         from jiuwenclaw.schema.message import Message, EventType
@@ -709,11 +779,17 @@ class MessageHandler(ABC):
         await self.publish_robot_messages(notify_msg)
         logger.info(
             "[MessageHandler] 已发送 interrupt_result 通知: intent=%s request_id=%s",
-            intent, request_id,
+            intent,
+            request_id,
         )
 
     async def _send_processing_status(
-        self, request_id: str, session_id: str | None, channel_id: str, *, is_processing: bool,
+        self,
+        request_id: str,
+        session_id: str | None,
+        channel_id: str,
+        *,
+        is_processing: bool,
     ) -> None:
         """发送 chat.processing_status 事件到客户端."""
         from jiuwenclaw.schema.message import Message, EventType
@@ -757,7 +833,9 @@ class MessageHandler(ABC):
             return
         self._running = True
         self._forward_task = asyncio.create_task(self._forward_loop())
-        logger.info("[MessageHandler] 转发循环已启动 (_user_messages -> AgentServer -> _robot_messages)")
+        logger.info(
+            "[MessageHandler] 转发循环已启动 (_user_messages -> AgentServer -> _robot_messages)"
+        )
 
     async def stop_forwarding(self) -> None:
         """停止转发任务."""

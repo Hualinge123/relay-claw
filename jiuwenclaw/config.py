@@ -11,7 +11,6 @@ from ruamel.yaml import YAML
 
 from jiuwenclaw.utils import get_config_file
 
-
 _CONFIG_MODULE_DIR = Path(__file__).parent
 _CONFIG_YAML_PATH = get_config_file()
 
@@ -38,7 +37,7 @@ def resolve_env_vars(value: Any) -> Any:
     """
     if isinstance(value, str):
         # 匹配 ${VAR:-default} 格式
-        pattern = r'\$\{([^:}]+)(?::-([^}]*))?\}'
+        pattern = r"\$\{([^:}]+)(?::-([^}]*))?\}"
 
         def replace_env(match):
             var_name = match.group(1)

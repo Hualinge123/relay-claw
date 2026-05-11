@@ -17,10 +17,12 @@ from openjiuwen.core.foundation.tool import tool
 
 from jiuwenclaw.utils import get_workspace_dir
 
-
 _DANGEROUS_COMMAND_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\brm\s+-rf\b", re.IGNORECASE), "blocked pattern: rm -rf"),
-    (re.compile(r"\bdel\s+/[a-z]*[fsq][a-z]*\b", re.IGNORECASE), "blocked pattern: del /f /s /q"),
+    (
+        re.compile(r"\bdel\s+/[a-z]*[fsq][a-z]*\b", re.IGNORECASE),
+        "blocked pattern: del /f /s /q",
+    ),
     (re.compile(r"\brd\s+/s\s+/q\b", re.IGNORECASE), "blocked pattern: rd /s /q"),
     (re.compile(r"\bformat\s+[a-z]:", re.IGNORECASE), "blocked pattern: format drive"),
     (re.compile(r"\bshutdown\b", re.IGNORECASE), "blocked pattern: shutdown"),
@@ -119,7 +121,9 @@ def _available_unix_shell(prefer_bash: bool) -> Sequence[str]:
     return [sh, "-lc" if prefer_bash else "-c"]
 
 
-def _resolve_execution_plan(command: str, shell_type: str) -> tuple[list[str] | str, bool, str]:
+def _resolve_execution_plan(
+    command: str, shell_type: str
+) -> tuple[list[str] | str, bool, str]:
     normalized = _normalize_shell_type(shell_type)
     is_windows = os.name == "nt"
 
@@ -128,13 +132,19 @@ def _resolve_execution_plan(command: str, shell_type: str) -> tuple[list[str] | 
             normalized = "powershell" if _looks_like_powershell(command) else "cmd"
         if normalized == "powershell":
             exe = _available_powershell()
-            return [exe, "-NoProfile", "-NonInteractive", "-Command", command], False, "powershell"
+            return (
+                [exe, "-NoProfile", "-NonInteractive", "-Command", command],
+                False,
+                "powershell",
+            )
         if normalized == "cmd":
             return command, True, "cmd"
         if normalized in {"bash", "sh"}:
             exe = shutil.which("bash") if normalized == "bash" else shutil.which("sh")
             if not exe:
-                raise RuntimeError(f"Requested shell '{normalized}' is not available on this system.")
+                raise RuntimeError(
+                    f"Requested shell '{normalized}' is not available on this system."
+                )
             flag = "-lc" if normalized == "bash" else "-c"
             return [exe, flag, command], False, normalized
         raise RuntimeError(f"Unsupported shell_type for Windows: {normalized}")
@@ -144,8 +154,14 @@ def _resolve_execution_plan(command: str, shell_type: str) -> tuple[list[str] | 
     if normalized == "powershell":
         exe = shutil.which("pwsh") or shutil.which("powershell")
         if not exe:
-            raise RuntimeError("Requested shell 'powershell' is not available on this system.")
-        return [exe, "-NoProfile", "-NonInteractive", "-Command", command], False, "powershell"
+            raise RuntimeError(
+                "Requested shell 'powershell' is not available on this system."
+            )
+        return (
+            [exe, "-NoProfile", "-NonInteractive", "-Command", command],
+            False,
+            "powershell",
+        )
     if normalized == "cmd":
         raise RuntimeError("shell_type 'cmd' is only supported on Windows.")
     if normalized == "bash":
@@ -169,8 +185,8 @@ def _run_command_sync(
         shell=use_shell,
         cwd=str(workdir),
         text=True,
-        encoding='utf-8',
-        errors='replace',
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         timeout=timeout_seconds,
     )

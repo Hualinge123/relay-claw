@@ -16,7 +16,6 @@ import webview
 
 from jiuwenclaw.utils import USER_WORKSPACE_DIR, get_logs_dir
 
-
 BACKEND_HOST = "127.0.0.1"
 BACKEND_PORT = 19000
 FRONTEND_HOST = "127.0.0.1"
@@ -339,7 +338,9 @@ def _wait_for_http(
             conn.close()
         time.sleep(0.35)
 
-    raise RuntimeError(f"Timed out waiting for http://{host}:{port}{path}: {last_error}")
+    raise RuntimeError(
+        f"Timed out waiting for http://{host}:{port}{path}: {last_error}"
+    )
 
 
 class _WindowApi:
@@ -360,7 +361,9 @@ class _WindowApi:
 
 
 class DesktopRuntime:
-    def __init__(self, frontend_host: str, frontend_port: int, backend_port: int) -> None:
+    def __init__(
+        self, frontend_host: str, frontend_port: int, backend_port: int
+    ) -> None:
         self.frontend_host = frontend_host
         self.frontend_port = frontend_port
         self.backend_port = backend_port
@@ -443,23 +446,25 @@ class DesktopRuntime:
         script_path = updates_dir / "install-update.cmd"
         app_executable = Path(sys.executable).resolve()
         script_path.write_text(
-            "\r\n".join([
-                "@echo off",
-                "setlocal",
-                f"set \"TARGET_PID={os.getpid()}\"",
-                f"set \"INSTALLER={target}\"",
-                f"set \"APP_EXE={app_executable}\"",
-                ":wait_loop",
-                'tasklist /FI "PID eq %TARGET_PID%" | findstr /B /C:"%TARGET_PID%" >nul',
-                "if %ERRORLEVEL%==0 (",
-                "  timeout /t 1 /nobreak >nul",
-                "  goto wait_loop",
-                ")",
-                'start "" /wait "%INSTALLER%" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CLOSEAPPLICATIONS',
-                "timeout /t 2 /nobreak >nul",
-                'start "" "%APP_EXE%"',
-                "endlocal",
-            ]),
+            "\r\n".join(
+                [
+                    "@echo off",
+                    "setlocal",
+                    f'set "TARGET_PID={os.getpid()}"',
+                    f'set "INSTALLER={target}"',
+                    f'set "APP_EXE={app_executable}"',
+                    ":wait_loop",
+                    'tasklist /FI "PID eq %TARGET_PID%" | findstr /B /C:"%TARGET_PID%" >nul',
+                    "if %ERRORLEVEL%==0 (",
+                    "  timeout /t 1 /nobreak >nul",
+                    "  goto wait_loop",
+                    ")",
+                    'start "" /wait "%INSTALLER%" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CLOSEAPPLICATIONS',
+                    "timeout /t 2 /nobreak >nul",
+                    'start "" "%APP_EXE%"',
+                    "endlocal",
+                ]
+            ),
             encoding="utf-8",
         )
 
@@ -550,7 +555,9 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Launch JiuwenClaw desktop window.")
     parser.add_argument("--title", default="JiuwenClaw", help="Desktop window title.")
     parser.add_argument("--width", type=int, default=1440, help="Initial window width.")
-    parser.add_argument("--height", type=int, default=960, help="Initial window height.")
+    parser.add_argument(
+        "--height", type=int, default=960, help="Initial window height."
+    )
     parser.add_argument(
         "--debug",
         action="store_true",

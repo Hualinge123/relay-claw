@@ -131,6 +131,7 @@ class AgentWebSocketServer:
 
         try:
             from websockets.legacy.server import serve as legacy_serve
+
             self._server = await legacy_serve(
                 self._connection_handler,
                 self._host,
@@ -140,6 +141,7 @@ class AgentWebSocketServer:
             )
         except ImportError:
             import websockets
+
             self._server = await websockets.serve(
                 self._connection_handler,
                 self._host,
@@ -147,9 +149,7 @@ class AgentWebSocketServer:
                 ping_interval=self._ping_interval,
                 ping_timeout=self._ping_timeout,
             )
-        logger.info(
-            "[AgentWebSocketServer] 已启动: ws://%s:%s", self._host, self._port
-        )
+        logger.info("[AgentWebSocketServer] 已启动: ws://%s:%s", self._host, self._port)
 
     async def stop(self) -> None:
         """停止 WebSocket 服务端."""
@@ -202,7 +202,9 @@ class AgentWebSocketServer:
             if tasks:
                 await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _handle_message(self, ws: Any, raw: str | bytes, send_lock: asyncio.Lock) -> None:
+    async def _handle_message(
+        self, ws: Any, raw: str | bytes, send_lock: asyncio.Lock
+    ) -> None:
         """解析一条 JSON 请求并分发到 IAgentServer 处理."""
         try:
             data = json.loads(raw)
@@ -248,7 +250,9 @@ class AgentWebSocketServer:
                     json.dumps(_response_to_payload(error_resp), ensure_ascii=False)
                 )
 
-    async def _handle_unary(self, ws: Any, request: AgentRequest, send_lock: asyncio.Lock) -> None:
+    async def _handle_unary(
+        self, ws: Any, request: AgentRequest, send_lock: asyncio.Lock
+    ) -> None:
         """非流式处理：调用 process_message，返回一条完整 AgentResponse."""
         resp = await self._agent.process_message(request)
         payload = _response_to_payload(resp)
@@ -259,7 +263,9 @@ class AgentWebSocketServer:
             request.request_id,
         )
 
-    async def _handle_stream(self, ws: Any, request: AgentRequest, send_lock: asyncio.Lock) -> None:
+    async def _handle_stream(
+        self, ws: Any, request: AgentRequest, send_lock: asyncio.Lock
+    ) -> None:
         """流式处理：调用 process_message_stream，逐条发送 AgentResponseChunk."""
         chunk_count = 0
         async for chunk in self._agent.process_message_stream(request):
@@ -280,9 +286,7 @@ class AgentWebSocketServer:
         可含 event_type 等字段供 Gateway 转为 Message 派发到 Channel。
         """
         if self._current_ws is None or self._current_send_lock is None:
-            logger.warning(
-                "[AgentWebSocketServer] send_push 失败: 无活跃 Gateway 连接"
-            )
+            logger.warning("[AgentWebSocketServer] send_push 失败: 无活跃 Gateway 连接")
             return
 
         try:

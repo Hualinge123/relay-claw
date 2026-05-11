@@ -76,7 +76,9 @@ def run_smoke_checks() -> Dict[str, Any]:
     }
 
 
-async def run_live_check(query: str, session_id: str, cancel_after_s: float = 0.0) -> Dict[str, Any]:
+async def run_live_check(
+    query: str, session_id: str, cancel_after_s: float = 0.0
+) -> Dict[str, Any]:
     try:
         from playwright_runtime.runtime import BrowserAgentRuntime
     except ModuleNotFoundError as exc:
@@ -88,7 +90,9 @@ async def run_live_check(query: str, session_id: str, cancel_after_s: float = 0.
 
     provider, api_key, api_base = resolve_model_settings()
     if not api_key:
-        raise RuntimeError("Missing API key for live run. Set OPENROUTER_API_KEY or OPENAI_API_KEY.")
+        raise RuntimeError(
+            "Missing API key for live run. Set OPENROUTER_API_KEY or OPENAI_API_KEY."
+        )
 
     model_name = (os.getenv("MODEL_NAME") or "anthropic/claude-sonnet-4").strip()
     guardrails = BrowserRunGuardrails(
@@ -109,7 +113,9 @@ async def run_live_check(query: str, session_id: str, cancel_after_s: float = 0.
     try:
         await runtime.ensure_started()
         if cancel_after_s > 0:
-            request_task = asyncio.create_task(runtime.handle_request(query=query, session_id=session_id))
+            request_task = asyncio.create_task(
+                runtime.handle_request(query=query, session_id=session_id)
+            )
             await asyncio.sleep(cancel_after_s)
             await runtime.cancel_run(session_id=session_id)
             result = await request_task
@@ -161,7 +167,9 @@ async def run_live_controller_check(
 
     provider, api_key, api_base = resolve_model_settings()
     if not api_key:
-        raise RuntimeError("Missing API key for live run. Set OPENROUTER_API_KEY or OPENAI_API_KEY.")
+        raise RuntimeError(
+            "Missing API key for live run. Set OPENROUTER_API_KEY or OPENAI_API_KEY."
+        )
 
     model_name = (os.getenv("MODEL_NAME") or "anthropic/claude-sonnet-4").strip()
     guardrails = BrowserRunGuardrails(
@@ -265,7 +273,9 @@ def main() -> int:
 
         if args.via_controller:
             if args.cancel_after_s > 0:
-                raise RuntimeError("--cancel-after-s is not supported with --via-controller mode.")
+                raise RuntimeError(
+                    "--cancel-after-s is not supported with --via-controller mode."
+                )
             live_result = asyncio.run(
                 run_live_controller_check(
                     query=args.query,
@@ -276,12 +286,18 @@ def main() -> int:
             )
         else:
             live_result = asyncio.run(
-                run_live_check(query=args.query, session_id=args.session_id, cancel_after_s=args.cancel_after_s)
+                run_live_check(
+                    query=args.query,
+                    session_id=args.session_id,
+                    cancel_after_s=args.cancel_after_s,
+                )
             )
         print(json.dumps(live_result, ensure_ascii=False, indent=2))
         return 0 if live_result.get("ok") else 2
     except Exception as exc:
-        print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False, indent=2))
+        print(
+            json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False, indent=2)
+        )
         return 1
 
 

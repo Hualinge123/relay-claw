@@ -79,7 +79,9 @@ class PermissionEngine:
 
         # 2. 工具允许时，再检查外部路径（仅当工具通过后才检查路径）
         if permission == PermissionLevel.ALLOW:
-            ext_result = self._external_checker.check_external_paths(tool_name, tool_args)
+            ext_result = self._external_checker.check_external_paths(
+                tool_name, tool_args
+            )
             if ext_result:
                 logger.info("Tool %s blocked by external directory check", tool_name)
                 return ext_result
@@ -92,7 +94,10 @@ class PermissionEngine:
 
         logger.info(
             "Permission check: tool=%s, result=%s, rule=%s, channel=%s",
-            tool_name, permission.value, matched_rule, channel_id,
+            tool_name,
+            permission.value,
+            matched_rule,
+            channel_id,
         )
         return result
 
@@ -135,4 +140,3 @@ def set_permission_engine(engine: PermissionEngine):
     """替换全局权限引擎 (测试用)."""
     global _permission_engine
     _permission_engine = engine
-

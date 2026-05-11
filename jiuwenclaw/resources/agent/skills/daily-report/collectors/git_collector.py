@@ -106,7 +106,9 @@ class GitCollector:
         except Exception as e:
             return ""
 
-    def get_commits(self, date: Optional[str] = None, author: Optional[str] = None) -> GitStats:
+    def get_commits(
+        self, date: Optional[str] = None, author: Optional[str] = None
+    ) -> GitStats:
         """
         获取指定日期的提交记录
 
@@ -154,7 +156,9 @@ class GitCollector:
             commit_hash, message, author_name, date_str = parts
 
             try:
-                commit_date = datetime.fromisoformat(date_str.replace(" ", "T").split("+")[0])
+                commit_date = datetime.fromisoformat(
+                    date_str.replace(" ", "T").split("+")[0]
+                )
             except ValueError:
                 commit_date = datetime.now(_REPORT_TZ)
 
@@ -212,7 +216,9 @@ class GitCollector:
         if end_date is None:
             end_date = datetime.now(_REPORT_TZ)
         else:
-            end_date = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=_REPORT_TZ)
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                tzinfo=_REPORT_TZ
+            )
 
         result = {}
         for i in range(7):
@@ -261,13 +267,15 @@ class GitCollector:
             stats = self.get_commits(check_date)
 
             for commit in stats.commits:
-                result.append({
-                    "date": commit.date.strftime("%Y-%m-%d"),
-                    "time": commit.date.strftime("%H:%M"),
-                    "hour": commit.date.hour,
-                    "message": commit.message,
-                    "hash": commit.hash,
-                })
+                result.append(
+                    {
+                        "date": commit.date.strftime("%Y-%m-%d"),
+                        "time": commit.date.strftime("%H:%M"),
+                        "hour": commit.date.hour,
+                        "message": commit.message,
+                        "hash": commit.hash,
+                    }
+                )
 
         return result
 

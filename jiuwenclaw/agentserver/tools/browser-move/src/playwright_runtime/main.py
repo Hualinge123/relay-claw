@@ -24,7 +24,9 @@ from playwright_runtime import REPO_ROOT  # noqa: F401
 # so that our retry/timeout/reconnect logic is active without modifying openjiuwen.
 import openjiuwen.core.runner.resources_manager.tool_manager as _tool_mgr_mod
 from playwright_runtime.clients.stdio_client import BrowserMoveStdioClient
-from playwright_runtime.clients.streamable_http_client import BrowserMoveStreamableHttpClient
+from playwright_runtime.clients.streamable_http_client import (
+    BrowserMoveStreamableHttpClient,
+)
 
 _tool_mgr_mod.StdioClient = BrowserMoveStdioClient
 _tool_mgr_mod.StreamableHttpClient = BrowserMoveStreamableHttpClient
@@ -46,7 +48,9 @@ async def main() -> None:
     provider, api_key, api_base = resolve_model_settings()
     model_name = (os.getenv("MODEL_NAME") or "anthropic/claude-sonnet-4").strip()
     if not api_key:
-        raise RuntimeError("Missing API key. Set API_KEY (or OPENROUTER_API_KEY / OPENAI_API_KEY / DASHSCOPE_API_KEY).")
+        raise RuntimeError(
+            "Missing API key. Set API_KEY (or OPENROUTER_API_KEY / OPENAI_API_KEY / DASHSCOPE_API_KEY)."
+        )
 
     guardrails = BrowserRunGuardrails(
         max_steps=GUARDRAIL_MAX_STEPS,
@@ -70,7 +74,10 @@ async def main() -> None:
 
     try:
         await runtime.ensure_started()
-        mcp_tools = await Runner.resource_mgr.get_mcp_tool_infos(server_id=mcp_cfg.server_id) or []
+        mcp_tools = (
+            await Runner.resource_mgr.get_mcp_tool_infos(server_id=mcp_cfg.server_id)
+            or []
+        )
 
         print("=" * 72)
         print("Playwright Browser Runtime")

@@ -71,9 +71,9 @@ def _decode_bing_redirect(url: str) -> str:
         payload = encoded[2:]
         padding = "=" * (-len(payload) % 4)
         try:
-            decoded = base64.urlsafe_b64decode((payload + padding).encode("utf-8")).decode(
-                "utf-8", errors="ignore"
-            )
+            decoded = base64.urlsafe_b64decode(
+                (payload + padding).encode("utf-8")
+            ).decode("utf-8", errors="ignore")
             if decoded.startswith(("http://", "https://")):
                 return decoded
         except Exception:
@@ -96,13 +96,19 @@ def _is_ddg_challenge_page(status_code: int, html: str) -> bool:
     return any(marker in text for marker in markers)
 
 
-def _search_duckduckgo_sync(query: str, max_results: int, timeout_seconds: int) -> list[dict[str, str]]:
+def _search_duckduckgo_sync(
+    query: str, max_results: int, timeout_seconds: int
+) -> list[dict[str, str]]:
     url = f"https://duckduckgo.com/html/?q={quote_plus(query)}"
-    response = _http_request("GET", url, headers=_REQUEST_HEADERS, timeout=timeout_seconds)
+    response = _http_request(
+        "GET", url, headers=_REQUEST_HEADERS, timeout=timeout_seconds
+    )
     if _is_ddg_challenge_page(response.status_code, response.text):
         raise RuntimeError("DuckDuckGo anti-bot challenge page returned")
     if response.status_code != 200:
-        raise RuntimeError(f"DuckDuckGo returned non-200 status: {response.status_code}")
+        raise RuntimeError(
+            f"DuckDuckGo returned non-200 status: {response.status_code}"
+        )
     response.raise_for_status()
     html = response.text
 
@@ -136,12 +142,16 @@ def _search_duckduckgo_via_jina_sync(
     query: str, max_results: int, timeout_seconds: int
 ) -> list[dict[str, str]]:
     url = f"https://r.jina.ai/http://duckduckgo.com/html/?q={quote_plus(query)}"
-    response = _http_request("GET", url, headers=_REQUEST_HEADERS, timeout=timeout_seconds)
+    response = _http_request(
+        "GET", url, headers=_REQUEST_HEADERS, timeout=timeout_seconds
+    )
     response.raise_for_status()
     text = response.text or ""
 
     # Parse markdown links rendered by r.jina.ai.
-    matches = re.findall(r"\[([^\]\n]+)\]\((https?://[^\s)]+)\)", text, flags=re.IGNORECASE)
+    matches = re.findall(
+        r"\[([^\]\n]+)\]\((https?://[^\s)]+)\)", text, flags=re.IGNORECASE
+    )
 
     rows: list[dict[str, str]] = []
     seen: set[str] = set()
@@ -165,9 +175,13 @@ def _search_duckduckgo_via_jina_sync(
     return rows
 
 
-def _search_bing_sync(query: str, max_results: int, timeout_seconds: int) -> list[dict[str, str]]:
+def _search_bing_sync(
+    query: str, max_results: int, timeout_seconds: int
+) -> list[dict[str, str]]:
     url = f"https://www.bing.com/search?q={quote_plus(query)}"
-    response = _http_request("GET", url, headers=_REQUEST_HEADERS, timeout=timeout_seconds)
+    response = _http_request(
+        "GET", url, headers=_REQUEST_HEADERS, timeout=timeout_seconds
+    )
     response.raise_for_status()
     html = response.text
 
@@ -193,9 +207,17 @@ def _search_bing_sync(query: str, max_results: int, timeout_seconds: int) -> lis
         if not href or href in seen:
             continue
         seen.add(href)
-        snippet_match = re.search(r"<p>(.*?)</p>", block, flags=re.IGNORECASE | re.DOTALL)
+        snippet_match = re.search(
+            r"<p>(.*?)</p>", block, flags=re.IGNORECASE | re.DOTALL
+        )
         snippet = _strip_tags(snippet_match.group(1)) if snippet_match else ""
-        rows.append({"title": title or f"Result {len(rows) + 1}", "url": href, "snippet": snippet})
+        rows.append(
+            {
+                "title": title or f"Result {len(rows) + 1}",
+                "url": href,
+                "snippet": snippet,
+            }
+        )
         if len(rows) >= max_results:
             break
 
@@ -242,7 +264,9 @@ def _parse_perplexity_citations(data: dict[str, Any]) -> list[str]:
             if isinstance(item, str):
                 urls.append(item)
             elif isinstance(item, dict):
-                maybe_url = item.get("url") or item.get("link") or item.get("source_url")
+                maybe_url = (
+                    item.get("url") or item.get("link") or item.get("source_url")
+                )
                 if maybe_url:
                     urls.append(str(maybe_url))
         if urls:
@@ -250,7 +274,9 @@ def _parse_perplexity_citations(data: dict[str, Any]) -> list[str]:
     return []
 
 
-def _perplexity_search_sync(query: str, max_results: int, timeout_seconds: int) -> dict[str, Any]:
+def _perplexity_search_sync(
+    query: str, max_results: int, timeout_seconds: int
+) -> dict[str, Any]:
     perplexity_key = os.environ.get("PERPLEXITY_API_KEY", "")
     if not perplexity_key:
         raise ValueError("PERPLEXITY_API_KEY is not set")
@@ -258,7 +284,10 @@ def _perplexity_search_sync(query: str, max_results: int, timeout_seconds: int) 
     payload = {
         "model": os.environ.get("PPLX_MODEL", "sonar-pro"),
         "messages": [
-            {"role": "system", "content": "Provide concise answer and include citations."},
+            {
+                "role": "system",
+                "content": "Provide concise answer and include citations.",
+            },
             {"role": "user", "content": query},
         ],
         "max_tokens": 1024,
@@ -268,7 +297,10 @@ def _perplexity_search_sync(query: str, max_results: int, timeout_seconds: int) 
     response = _http_request(
         "POST",
         os.environ.get("PPLX_API_URL", "https://api.perplexity.ai/chat/completions"),
-        headers={"Authorization": f"Bearer {perplexity_key}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {perplexity_key}",
+            "Content-Type": "application/json",
+        },
         json=payload,
         timeout=timeout_seconds,
     )
@@ -287,7 +319,9 @@ def _perplexity_search_sync(query: str, max_results: int, timeout_seconds: int) 
     }
 
 
-def _serper_search_sync(query: str, max_results: int, timeout_seconds: int) -> dict[str, Any]:
+def _serper_search_sync(
+    query: str, max_results: int, timeout_seconds: int
+) -> dict[str, Any]:
     serper_key = os.environ.get("SERPER_API_KEY", "")
     if not serper_key:
         raise ValueError("SERPER_API_KEY is not set")
@@ -324,7 +358,10 @@ def _jina_search_sync(query: str, timeout_seconds: int) -> dict[str, Any]:
     response = _http_request(
         "POST",
         "https://deepsearch.jina.ai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {jina_key}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {jina_key}",
+            "Content-Type": "application/json",
+        },
         json=payload,
         timeout=timeout_seconds,
     )
@@ -343,7 +380,9 @@ def _jina_search_sync(query: str, timeout_seconds: int) -> dict[str, Any]:
     name="mcp_free_search",
     description="Free search via DuckDuckGo. Input query and return ranked URLs with snippets.",
 )
-async def mcp_free_search(query: str, max_results: int = 8, timeout_seconds: int = 20) -> str:
+async def mcp_free_search(
+    query: str, max_results: int = 8, timeout_seconds: int = 20
+) -> str:
     query = (query or "").strip()
     if not query:
         return "[ERROR]: query cannot be empty."

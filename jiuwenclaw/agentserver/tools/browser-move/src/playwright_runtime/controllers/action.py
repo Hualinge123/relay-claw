@@ -30,8 +30,7 @@ class RuntimeRunner(Protocol):
         session_id: str | None = None,
         request_id: str | None = None,
         timeout_s: int | None = None,
-    ) -> dict[str, Any]:
-        ...
+    ) -> dict[str, Any]: ...
 
 
 _ACTIONS: dict[str, ActionHandler] = {}
@@ -52,14 +51,18 @@ class ActionController(BaseController):
         lock: asyncio.Lock | None = None,
     ) -> None:
         self._actions: dict[str, ActionHandler] = actions if actions is not None else {}
-        self._action_specs: dict[str, dict[str, Any]] = action_specs if action_specs is not None else {}
+        self._action_specs: dict[str, dict[str, Any]] = (
+            action_specs if action_specs is not None else {}
+        )
         self._runtime_runner: RuntimeRunner | None = runtime_runner
         self._lock: asyncio.Lock = lock if lock is not None else asyncio.Lock()
 
     def bind_runtime(self, runtime: Any) -> None:
         run_browser_task = getattr(runtime, "run_browser_task", None)
         if run_browser_task is None or not callable(run_browser_task):
-            raise ValueError("runtime must expose an async run_browser_task(...) method")
+            raise ValueError(
+                "runtime must expose an async run_browser_task(...) method"
+            )
 
         async def _runner(
             *,
@@ -83,7 +86,9 @@ class ActionController(BaseController):
     def clear_runtime_runner(self) -> None:
         self.bind_runtime_runner(None)
 
-    def register_action(self, name: str, handler: ActionHandler, *, overwrite: bool = True) -> None:
+    def register_action(
+        self, name: str, handler: ActionHandler, *, overwrite: bool = True
+    ) -> None:
         action_name = _normalize_action_name(name)
         if not action_name:
             raise ValueError("action name must be non-empty")
@@ -155,7 +160,9 @@ class ActionController(BaseController):
 
         try:
             async with self._lock:
-                raw = await _maybe_await(handler(session_id=sid, request_id=rid, **kwargs))
+                raw = await _maybe_await(
+                    handler(session_id=sid, request_id=rid, **kwargs)
+                )
 
             response = dict(raw) if isinstance(raw, dict) else {"result": raw}
             response.setdefault("ok", True)
@@ -360,7 +367,7 @@ def _build_coordinate_script(payload: dict[str, Any]) -> str:
         "    if (params.element_source) {\n"
         "      source = await getPoint(params.element_source, params.element_source_offset, 'source');\n"
         "      if (!source) {\n"
-        "        return { ok: false, error: 'Failed to determine source coordinates from selector. Use the exact visible text (e.g. \"Learn more\" not \"More information\") or a valid CSS/Playwright selector.', source: null, target: null };\n"
+        '        return { ok: false, error: \'Failed to determine source coordinates from selector. Use the exact visible text (e.g. "Learn more" not "More information") or a valid CSS/Playwright selector.\', source: null, target: null };\n'
         "      }\n"
         "    }\n"
         "    if (params.element_target) {\n"
@@ -560,7 +567,9 @@ def _build_drag_payload(
 
 
 def _has_selector_inputs(payload: dict[str, Any]) -> bool:
-    return bool((payload.get("element_source") or "").strip()) and bool((payload.get("element_target") or "").strip())
+    return bool((payload.get("element_source") or "").strip()) and bool(
+        (payload.get("element_target") or "").strip()
+    )
 
 
 def _has_source_selector(payload: dict[str, Any]) -> bool:
@@ -571,7 +580,12 @@ def _has_source_selector(payload: dict[str, Any]) -> bool:
 def _has_coordinate_inputs(payload: dict[str, Any]) -> bool:
     return all(
         payload.get(k) is not None
-        for k in ("coord_source_x", "coord_source_y", "coord_target_x", "coord_target_y")
+        for k in (
+            "coord_source_x",
+            "coord_source_y",
+            "coord_target_x",
+            "coord_target_y",
+        )
     )
 
 
@@ -609,7 +623,9 @@ def clear_runtime_runner() -> None:
     bind_runtime_runner(None)
 
 
-def register_action(name: str, handler: ActionHandler, *, overwrite: bool = True) -> None:
+def register_action(
+    name: str, handler: ActionHandler, *, overwrite: bool = True
+) -> None:
     _DEFAULT_CONTROLLER.register_action(name=name, handler=handler, overwrite=overwrite)
 
 
@@ -652,7 +668,10 @@ async def run_action(
 
 def register_example_actions(controller: ActionController | None = None) -> None:
     ctl = controller or _DEFAULT_CONTROLLER
-    async def ping(session_id: str = "", request_id: str = "", **kwargs: Any) -> ActionResult:
+
+    async def ping(
+        session_id: str = "", request_id: str = "", **kwargs: Any
+    ) -> ActionResult:
         return {
             "ok": True,
             "pong": True,
@@ -780,7 +799,9 @@ def register_example_actions(controller: ActionController | None = None) -> None
             task=task_prompt,
             session_id=session_id or None,
             request_id=request_id or None,
-            timeout_s=timeout_s if isinstance(timeout_s, int) and timeout_s > 0 else None,
+            timeout_s=(
+                timeout_s if isinstance(timeout_s, int) and timeout_s > 0 else None
+            ),
         )
         if not runtime_result.get("ok", False):
             return {
@@ -875,7 +896,9 @@ def register_example_actions(controller: ActionController | None = None) -> None
             task=task_prompt,
             session_id=session_id or None,
             request_id=request_id or None,
-            timeout_s=timeout_s if isinstance(timeout_s, int) and timeout_s > 0 else None,
+            timeout_s=(
+                timeout_s if isinstance(timeout_s, int) and timeout_s > 0 else None
+            ),
         )
         if not runtime_result.get("ok", False):
             return {

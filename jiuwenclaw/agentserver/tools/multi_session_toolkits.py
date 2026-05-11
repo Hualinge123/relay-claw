@@ -58,7 +58,13 @@ class SessionTask(BaseModel):
 class MultiSessionToolkit:
     """Toolkit for multi-session agent task tracking. Supports parallel sub-agent execution."""
 
-    def __init__(self, session_id: str, channel_id: str, request_id: str, sub_agent_config: ReActAgentConfig) -> None:
+    def __init__(
+        self,
+        session_id: str,
+        channel_id: str,
+        request_id: str,
+        sub_agent_config: ReActAgentConfig,
+    ) -> None:
         """Initialize MultiSessionToolkit for a session.
 
         Args:
@@ -81,16 +87,17 @@ class MultiSessionToolkit:
     async def get_sub_agent(self) -> ReActAgent:
         """Create and return a sub-agent instance. Override in subclass."""
         logger.debug("[MultiSessionToolkit] get_sub_agent 创建子 agent")
-        agent_card = AgentCard(
-            name="spawn_sub_agent"
-        )
+        agent_card = AgentCard(name="spawn_sub_agent")
         agent = ReActAgent(agent_card)
         agent.configure(self._sub_agent_config)
         mcp_tools = get_mcp_tools()
         for mcp_tool in mcp_tools:
             Runner.resource_mgr.add_tool(mcp_tool)
             agent.ability_manager.add(mcp_tool.card)
-        logger.debug("[MultiSessionToolkit] get_sub_agent 完成 mcp_tools_count=%d", len(mcp_tools))
+        logger.debug(
+            "[MultiSessionToolkit] get_sub_agent 完成 mcp_tools_count=%d",
+            len(mcp_tools),
+        )
         return agent
 
     async def _run_and_notify(
@@ -116,7 +123,9 @@ class MultiSessionToolkit:
 
         try:
             result = await Runner.run_agent(agent, inputs)
-            result_str = result.get("output", "") if isinstance(result, dict) else str(result)
+            result_str = (
+                result.get("output", "") if isinstance(result, dict) else str(result)
+            )
             logger.info(
                 "[MultiSessionToolkit] 协程完成 session_id=%s status=completed result_len=%d",
                 session_id,
@@ -143,10 +152,13 @@ class MultiSessionToolkit:
             self._tasks.pop(session_id, None)
             logger.debug(
                 "[MultiSessionToolkit] _run_and_notify 结束 session_id=%s 剩余协程数=%d",
-                session_id, len(self._tasks)
+                session_id,
+                len(self._tasks),
             )
 
-    def _update_session(self, session_id: str, status: Status, result: str = "") -> None:
+    def _update_session(
+        self, session_id: str, status: Status, result: str = ""
+    ) -> None:
         """Update session task status in self.sessions."""
         for st in self.sessions:
             if st.session_id == session_id:
@@ -179,7 +191,9 @@ class MultiSessionToolkit:
 
         st = next((s for s in self.sessions if s.session_id == session_id), None)
         description = st.description if st else ""
-        index = next((i for i, s in enumerate(self.sessions) if s.session_id == session_id), 0)
+        index = next(
+            (i for i, s in enumerate(self.sessions) if s.session_id == session_id), 0
+        )
         total = len(self.sessions)
 
         # 前端 SubtaskStatus: 'completed' | 'error'，cancelled 映射为 error
@@ -218,15 +232,19 @@ class MultiSessionToolkit:
         if self.all_tasks_done():
             session_result_summary = "后台会话任务均已完成：\n"
             for st in self.sessions:
-                session_result_summary += (f"\nsession_id: {st.session_id}\n"
-                                           f"description: {st.description}\nresult: {st.result}\n")
+                session_result_summary += (
+                    f"\nsession_id: {st.session_id}\n"
+                    f"description: {st.description}\nresult: {st.result}\n"
+                )
             inputs = {
                 "conversation_id": self.session_id,
-                "query": json.dumps({
-                    "source": "system",
-                    "content": session_result_summary,
-                    "type": "notify"
-                }),
+                "query": json.dumps(
+                    {
+                        "source": "system",
+                        "content": session_result_summary,
+                        "type": "notify",
+                    }
+                ),
             }
             # 使用 run_agent_streaming 而非 run_agent，以确保 session.post_run() 被调用，
             # 从而将对话历史持久化到 checkpoint。run_agent 不会创建 Session 或调用 post_run，
@@ -255,7 +273,9 @@ class MultiSessionToolkit:
                     else:
                         final_output = "".join(accumulated) if accumulated else ""
             result = {
-                "output": final_output if final_output is not None else "".join(accumulated),
+                "output": (
+                    final_output if final_output is not None else "".join(accumulated)
+                ),
                 "result_type": "answer",
             }
             payload = {
@@ -286,7 +306,11 @@ class MultiSessionToolkit:
                 i + 1,
                 len(task_descriptions),
                 session_id,
-                task_description[:60] + "..." if len(task_description) > 60 else task_description,
+                (
+                    task_description[:60] + "..."
+                    if len(task_description) > 60
+                    else task_description
+                ),
             )
             agent = await self.get_sub_agent()
             inputs = {
@@ -320,14 +344,19 @@ class MultiSessionToolkit:
             )
             return f"未找到 session_id={session_id}"
         if task.done():
-            logger.info("[MultiSessionToolkit] cancel_session session_id=%s 已结束，无需取消", session_id)
+            logger.info(
+                "[MultiSessionToolkit] cancel_session session_id=%s 已结束，无需取消",
+                session_id,
+            )
             return f"session_id={session_id} 已结束"
         task.cancel()
         try:
             await asyncio.gather(task, return_exceptions=True)
         except asyncio.CancelledError:
             pass
-        logger.info("[MultiSessionToolkit] cancel_session 已取消 session_id=%s", session_id)
+        logger.info(
+            "[MultiSessionToolkit] cancel_session 已取消 session_id=%s", session_id
+        )
         return f"已取消 session_id={session_id}"
 
     async def list_all_sessions(self) -> str:
@@ -341,7 +370,9 @@ class MultiSessionToolkit:
             return "暂无协程"
         lines = []
         for st in self.sessions:
-            lines.append(f"{st.session_id} | {st.description} | {st.status.value} | {st.result}")
+            lines.append(
+                f"{st.session_id} | {st.description} | {st.status.value} | {st.result}"
+            )
         return "\n".join(lines)
 
     def get_tools(self) -> List[Tool]:
@@ -407,4 +438,6 @@ class MultiSessionToolkit:
 
     def all_tasks_done(self) -> bool:
         """判断是否所有任务都已结束。"""
-        return all([s.status in [Status.COMPLETED, Status.ERROR] for s in self.sessions])
+        return all(
+            [s.status in [Status.COMPLETED, Status.ERROR] for s in self.sessions]
+        )

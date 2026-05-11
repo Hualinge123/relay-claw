@@ -5,6 +5,7 @@
 Emits todo.updated events after todo tool calls for frontend real-time sync.
 Sends evolution approval requests to user via chat.ask_user_question (keep/undo).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -22,7 +23,7 @@ from openjiuwen.core.foundation.llm import (
     SystemMessage,
     UserMessage,
     BaseMessage,
-    Model
+    Model,
 )
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.session.agent import Session
@@ -41,7 +42,6 @@ from jiuwenclaw.agentserver.tools.todo_toolkits import TodoToolkit
 from jiuwenclaw.evolution.service import EvolutionService
 from jiuwenclaw.utils import get_agent_memory_dir, get_workspace_dir, logger
 from jiuwenclaw.config import get_config
-
 
 # 加载流式输出配置
 _react_config = get_config().get("react", {})
@@ -119,8 +119,12 @@ class JiuClawReActAgent(ReActAgent):
     def __init__(self, card: AgentCard) -> None:
         self._evolution_service: Optional[EvolutionService] = None
         self._pending_auto_evolution_history: Optional[List[Any]] = None
-        self._pending_approvals: Dict[str, asyncio.Future] = {}  # request_id -> Future (权限审批)
-        self._pending_permission_meta: Dict[str, dict] = {}  # request_id -> {tool_name, tool_args}
+        self._pending_approvals: Dict[str, asyncio.Future] = (
+            {}
+        )  # request_id -> Future (权限审批)
+        self._pending_permission_meta: Dict[str, dict] = (
+            {}
+        )  # request_id -> {tool_name, tool_args}
         super().__init__(card)
         self._stream_tasks: set[asyncio.Task] = set()
         self._pause_events: dict[str, asyncio.Event] = {}  # task_key -> event
@@ -138,7 +142,7 @@ class JiuClawReActAgent(ReActAgent):
         messages: List,
         tools: Optional[List[ToolInfo]] = None,
         session: Optional[Session] = None,
-        chunk_threshold: int = 10
+        chunk_threshold: int = 10,
     ) -> AssistantMessage:
         """Call LLM with messages and optional tools (streaming if session provided)
 
@@ -161,9 +165,7 @@ class JiuClawReActAgent(ReActAgent):
         else:
             # Non-streaming mode for backward compatibility
             return await llm.invoke(
-                model=self._config.model_name,
-                messages=messages,
-                tools=tools
+                model=self._config.model_name, messages=messages, tools=tools
             )
 
     async def _call_llm_stream(
@@ -172,7 +174,7 @@ class JiuClawReActAgent(ReActAgent):
         messages: List,
         tools: Optional[List[ToolInfo]],
         session: Session,
-        chunk_threshold: int
+        chunk_threshold: int,
     ) -> AssistantMessage:
         """Stream LLM invocation and send partial answers when content exceeds threshold
 
@@ -191,7 +193,9 @@ class JiuClawReActAgent(ReActAgent):
         last_sent_length = 0  # Track last sent content length
 
         try:
-            async for chunk in llm.stream(messages, tools=tools, model=self._config.model_name):
+            async for chunk in llm.stream(
+                messages, tools=tools, model=self._config.model_name
+            ):
                 # Accumulate chunks using AssistantMessageChunk's __add__ method
                 if accumulated_chunk is None:
                     accumulated_chunk = chunk
@@ -205,8 +209,8 @@ class JiuClawReActAgent(ReActAgent):
                         index=chunk_count,
                         payload={
                             "output": chunk.reasoning_content,
-                            "result_type": "answer"
-                        }
+                            "result_type": "answer",
+                        },
                     )
                     await session.write_stream(stream_output)
                     chunk_count += 1
@@ -267,10 +271,11 @@ class JiuClawReActAgent(ReActAgent):
                 role=accumulated_chunk.role or "assistant",
                 content=accumulated_chunk.content or "",
                 tool_calls=accumulated_chunk.tool_calls or [],
-                usage_metadata=getattr(accumulated_chunk, 'usage_metadata', None),
-                finish_reason=getattr(accumulated_chunk, 'finish_reason', None) or "stop",
-                parser_content=getattr(accumulated_chunk, 'parser_content', None),
-                reasoning_content=getattr(accumulated_chunk, 'reasoning_content', None),
+                usage_metadata=getattr(accumulated_chunk, "usage_metadata", None),
+                finish_reason=getattr(accumulated_chunk, "finish_reason", None)
+                or "stop",
+                parser_content=getattr(accumulated_chunk, "parser_content", None),
+                reasoning_content=getattr(accumulated_chunk, "reasoning_content", None),
             )
 
         except Exception as e:
@@ -315,7 +320,7 @@ class JiuClawReActAgent(ReActAgent):
             session_id = ""
         else:
             raise ValueError("Input must be dict with 'query' or str")
-        
+
         stripped = user_input.strip()
         stripped = EvolutionService.extract_user_content(stripped)
         # Intercept slash commands (skip ReAct reasoning loop to save tokens)
@@ -323,7 +328,9 @@ class JiuClawReActAgent(ReActAgent):
             if self._evolution_service is None:
                 return {"output": "演进功能未启用。", "result_type": "error"}
             messages = await self._get_session_messages(session)
-            return await self._evolution_service.handle_evolve_command(stripped, session, messages)
+            return await self._evolution_service.handle_evolve_command(
+                stripped, session, messages
+            )
         if stripped.startswith(_CMD_SOLIDIFY):
             if self._evolution_service is None:
                 return {"output": "演进功能未启用。", "result_type": "error"}
@@ -336,9 +343,7 @@ class JiuClawReActAgent(ReActAgent):
         # Build system messages once before loop
         system_messages = self._build_system_messages(session_id)
 
-        tools = _deduplicate_tools_by_name(
-            await self.ability_manager.list_tool_info()
-        )
+        tools = _deduplicate_tools_by_name(await self.ability_manager.list_tool_info())
 
         # Validate and fix incomplete context before entering ReAct loop
         await self._fix_incomplete_tool_context(context)
@@ -364,7 +369,9 @@ class JiuClawReActAgent(ReActAgent):
             history_messages = context_window.get_messages()
             history_snapshot = list(history_messages)
             # Filter out SystemMessage from history to avoid "System message must be at the beginning" error
-            history_messages = [m for m in history_messages if not isinstance(m, SystemMessage)]
+            history_messages = [
+                m for m in history_messages if not isinstance(m, SystemMessage)
+            ]
             messages = [*system_messages, *history_messages]
 
             compression_to_show = []
@@ -374,13 +381,15 @@ class JiuClawReActAgent(ReActAgent):
                     original_message = await context.reloader_tool().invoke(
                         inputs={
                             "offload_handle": message.offload_handle,
-                            "offload_type": message.offload_type
+                            "offload_type": message.offload_type,
                         }
                     )
                     compression_to_show.append((message, original_message))
                 else:
                     uncompressed.append(message)
-            await self._emit_context_compression(session, compression_to_show, uncompressed)
+            await self._emit_context_compression(
+                session, compression_to_show, uncompressed
+            )
 
             try:
                 ai_message = await self._call_llm(
@@ -398,7 +407,9 @@ class JiuClawReActAgent(ReActAgent):
                 history_messages = context_window.get_messages()
                 history_snapshot = list(history_messages)
                 # Filter out SystemMessage from history to avoid "System message must be at the beginning" error
-                history_messages = [m for m in history_messages if not isinstance(m, SystemMessage)]
+                history_messages = [
+                    m for m in history_messages if not isinstance(m, SystemMessage)
+                ]
                 messages = [*system_messages, *history_messages]
                 ai_message = await self._call_llm(
                     messages,
@@ -419,7 +430,9 @@ class JiuClawReActAgent(ReActAgent):
                 # ---- 权限检查：在执行工具前逐一检查权限 ----
                 allowed_tool_calls, denied_results = await check_tool_permissions(
                     ai_message.tool_calls,
-                    channel_id=getattr(session, "channel_id", "web") if session else "web",
+                    channel_id=(
+                        getattr(session, "channel_id", "web") if session else "web"
+                    ),
                     session_id=session_id or None,
                     session=session,
                     request_approval_callback=self._request_permission_approval,
@@ -436,12 +449,15 @@ class JiuClawReActAgent(ReActAgent):
                 try:
                     # 先把被拒绝的工具调用写入 ToolMessage
                     from openjiuwen.core.foundation.llm import ToolMessage as _ToolMsg
+
                     for tc, deny_msg in denied_results:
                         tool_call_id = getattr(tc, "id", "")
-                        await context.add_messages(_ToolMsg(
-                            content=deny_msg,
-                            tool_call_id=tool_call_id,
-                        ))
+                        await context.add_messages(
+                            _ToolMsg(
+                                content=deny_msg,
+                                tool_call_id=tool_call_id,
+                            )
+                        )
                         if session is not None:
                             await self._emit_tool_result(session, tc, deny_msg)
 
@@ -452,13 +468,19 @@ class JiuClawReActAgent(ReActAgent):
                         )
 
                         for i, (_result, tool_msg) in enumerate(results):
-                            tc = allowed_tool_calls[i] if i < len(allowed_tool_calls) else None
+                            tc = (
+                                allowed_tool_calls[i]
+                                if i < len(allowed_tool_calls)
+                                else None
+                            )
                             if tc is not None:
-                                tool_msg = self._maybe_inject_body_experience(tc, tool_msg)
+                                tool_msg = self._maybe_inject_body_experience(
+                                    tc, tool_msg
+                                )
                             await context.add_messages(tool_msg)
                             if session is not None:
                                 await self._emit_tool_result(session, tc, _result)
-                    
+
                     tool_messages_added = True
 
                     # Detect if todo tool was called, emit todo.updated if so
@@ -471,13 +493,17 @@ class JiuClawReActAgent(ReActAgent):
                     # On exception or cancellation, add placeholder tool messages to keep context valid
                     if not tool_messages_added:
                         from openjiuwen.core.foundation.llm import ToolMessage
+
                         for tc in ai_message.tool_calls:
                             tool_call_id = getattr(tc, "id", "")
-                            error_msg = f"Tool execution interrupted or failed: {tc.name}"
-                            await context.add_messages(ToolMessage(
-                                content=error_msg,
-                                tool_call_id=tool_call_id
-                            ))
+                            error_msg = (
+                                f"Tool execution interrupted or failed: {tc.name}"
+                            )
+                            await context.add_messages(
+                                ToolMessage(
+                                    content=error_msg, tool_call_id=tool_call_id
+                                )
+                            )
                     raise
             else:
                 # No tool calls: add assistant message directly to context
@@ -534,7 +560,9 @@ class JiuClawReActAgent(ReActAgent):
         async def stream_process() -> None:
             try:
                 self._pending_auto_evolution_history = None
-                final_result = await self.invoke(inputs, session, _pause_event=pause_event)
+                final_result = await self.invoke(
+                    inputs, session, _pause_event=pause_event
+                )
 
                 if session is not None:
                     # Extract content and check if it was already streamed
@@ -610,7 +638,11 @@ class JiuClawReActAgent(ReActAgent):
 
                 # Handle auto-scan evolution after answer
                 history = self._pending_auto_evolution_history
-                if history is not None and self._evolution_service is not None and session is not None:
+                if (
+                    history is not None
+                    and self._evolution_service is not None
+                    and session is not None
+                ):
                     # Signal frontend that main processing is done before evolution starts,
                     # so new user input is treated as a normal submit (not interrupt).
                     await session.write_stream(
@@ -621,7 +653,9 @@ class JiuClawReActAgent(ReActAgent):
                         )
                     )
                     try:
-                        await self._evolution_service.run_auto_evolution(session, history)
+                        await self._evolution_service.run_auto_evolution(
+                            session, history
+                        )
                     except Exception as e:
                         logger.warning("[ReActAgent] auto evolution error: %s", e)
                 self._pending_auto_evolution_history = None
@@ -630,15 +664,15 @@ class JiuClawReActAgent(ReActAgent):
             except Exception as e:
                 logger.exception("stream error: %s", e)
                 await session.write_stream(
-                            OutputSchema(
-                                type="answer",
-                                index=0,
-                                payload={
-                                    "output": str(e),
-                                    "result_type": "error",
-                                },
-                            )
-                        )
+                    OutputSchema(
+                        type="answer",
+                        index=0,
+                        payload={
+                            "output": str(e),
+                            "result_type": "error",
+                        },
+                    )
+                )
             finally:
                 if session is not None:
                     await self.context_engine.save_contexts(session)
@@ -684,7 +718,7 @@ class JiuClawReActAgent(ReActAgent):
             except Exception:
                 tool_args = {}
 
-        #risk = assess_command_risk_static(tool_name, tool_args)
+        # risk = assess_command_risk_static(tool_name, tool_args)
         risk = await assess_command_risk_with_llm(
             self._get_llm(), self._config.model_name, tool_name, tool_args
         )
@@ -697,9 +731,13 @@ class JiuClawReActAgent(ReActAgent):
             args_preview = str(tool_args)[:500]
 
         always_allow_hint = ""
-        #shell_injection_warning = ""
+        # shell_injection_warning = ""
         if tool_name == "mcp_exec_command":
-            cmd = tool_args.get("command", tool_args.get("cmd", "")) if isinstance(tool_args, dict) else ""
+            cmd = (
+                tool_args.get("command", tool_args.get("cmd", ""))
+                if isinstance(tool_args, dict)
+                else ""
+            )
             if cmd:
                 # import re as _re
                 # _ops_re = _re.compile(r'[;&|`<>]|\$[({]|\r?\n')
@@ -708,18 +746,18 @@ class JiuClawReActAgent(ReActAgent):
                 #         "\n\n> **⚠ 安全警告：** 该命令包含 shell 操作符"
                 #         "（如 `&&` `;` `|` 等），可能存在命令注入风险，请仔细核查\n"
                 #     )
-                always_allow_hint = (
-                    f"\n\n> 选择「总是允许」将自动放行 `{cmd}` 命令"
-                )
+                always_allow_hint = f"\n\n> 选择「总是允许」将自动放行 `{cmd}` 命令"
         elif tool_name:
-            always_allow_hint = f"\n\n> 选择「总是允许」将自动放行所有 `{tool_name}` 调用"
+            always_allow_hint = (
+                f"\n\n> 选择「总是允许」将自动放行所有 `{tool_name}` 调用"
+            )
 
         question_text = (
             f"**工具 `{tool_name}` 需要授权才能执行**\n\n"
             f"**安全风险评估：** {risk['icon']} **{risk['level']}风险**\n\n"
             f"> {risk['explanation']}\n\n"
         )
-        #question_text += shell_injection_warning
+        # question_text += shell_injection_warning
         if args_preview and args_preview != "{}":
             question_text += f"参数：\n```json\n{args_preview}\n```\n"
         question_text += f"\n匹配规则：`{result.matched_rule or 'N/A'}`"
@@ -745,8 +783,14 @@ class JiuClawReActAgent(ReActAgent):
                                 "question": question_text,
                                 "header": "权限审批",
                                 "options": [
-                                    {"label": "本次允许", "description": "仅本次授权执行"},
-                                    {"label": "总是允许", "description": "记住该规则，以后自动放行"},
+                                    {
+                                        "label": "本次允许",
+                                        "description": "仅本次授权执行",
+                                    },
+                                    {
+                                        "label": "总是允许",
+                                        "description": "记住该规则，以后自动放行",
+                                    },
                                     {"label": "拒绝", "description": "拒绝执行此工具"},
                                 ],
                                 "multi_select": False,
@@ -756,7 +800,9 @@ class JiuClawReActAgent(ReActAgent):
                 )
             )
         except Exception:
-            logger.debug("_request_permission_approval: popup send failed", exc_info=True)
+            logger.debug(
+                "_request_permission_approval: popup send failed", exc_info=True
+            )
             self._pending_approvals.pop(request_id, None)
             self._pending_permission_meta.pop(request_id, None)
             return "deny"
@@ -766,7 +812,8 @@ class JiuClawReActAgent(ReActAgent):
         except asyncio.TimeoutError:
             logger.info(
                 "[ReActAgent] Permission approval timeout (tool=%s, id=%s), auto-rejecting",
-                tool_name, request_id,
+                tool_name,
+                request_id,
             )
             return "deny"
         finally:
@@ -792,7 +839,9 @@ class JiuClawReActAgent(ReActAgent):
         except Exception:
             logger.debug("tool_call emit failed", exc_info=True)
 
-    async def _emit_tool_result(self, session: Session, tool_call: Any, result: Any) -> None:
+    async def _emit_tool_result(
+        self, session: Session, tool_call: Any, result: Any
+    ) -> None:
         """Emit tool_result OutputSchema, notify frontend of tool execution result."""
         try:
             # todo 工具结果待优化
@@ -802,8 +851,12 @@ class JiuClawReActAgent(ReActAgent):
                     index=0,
                     payload={
                         "tool_result": {
-                            "tool_name": getattr(tool_call, "name", "") if tool_call else "",
-                            "tool_call_id": getattr(tool_call, "id", "") if tool_call else "",
+                            "tool_name": (
+                                getattr(tool_call, "name", "") if tool_call else ""
+                            ),
+                            "tool_call_id": (
+                                getattr(tool_call, "id", "") if tool_call else ""
+                            ),
                             "result": str(result)[:1000] if result is not None else "",
                         }
                     },
@@ -832,14 +885,16 @@ class JiuClawReActAgent(ReActAgent):
 
             todos = []
             for t in tasks:
-                todos.append({
-                    "id": str(t.idx),
-                    "content": t.tasks,
-                    "activeForm": t.tasks,
-                    "status": status_mapping.get(t.status.value, "pending"),
-                    "createdAt": now,
-                    "updatedAt": now,
-                })
+                todos.append(
+                    {
+                        "id": str(t.idx),
+                        "content": t.tasks,
+                        "activeForm": t.tasks,
+                        "status": status_mapping.get(t.status.value, "pending"),
+                        "createdAt": now,
+                        "updatedAt": now,
+                    }
+                )
 
             await session.write_stream(
                 OutputSchema(
@@ -851,7 +906,9 @@ class JiuClawReActAgent(ReActAgent):
         except Exception:
             logger.debug("todo.updated emit failed", exc_info=True)
 
-    async def _emit_context_compression(self, session: Session, compression_to_show, uncompressed) -> None:
+    async def _emit_context_compression(
+        self, session: Session, compression_to_show, uncompressed
+    ) -> None:
         """Emit current context compression content."""
         try:
             try:
@@ -918,22 +975,30 @@ class JiuClawReActAgent(ReActAgent):
                         tool_calls = getattr(messages[i], "tool_calls", None)
                         if tool_calls:
                             for tc in tool_calls:
-                                tool_id_cache.append({
-                                    "tool_call_id": getattr(tc, "id", ""),
-                                    "tool_name": getattr(tc, "name", ""),
-                                })
+                                tool_id_cache.append(
+                                    {
+                                        "tool_call_id": getattr(tc, "id", ""),
+                                        "tool_name": getattr(tc, "name", ""),
+                                    }
+                                )
                     else:
-                        logger.info("Fixed incomplete tool context with placeholder messages")
+                        logger.info(
+                            "Fixed incomplete tool context with placeholder messages"
+                        )
                         for tc in tool_id_cache:
                             tool_name = tc["tool_name"]
                             tool_call_id = tc["tool_call_id"]
                             if tool_call_id in tool_message_cache:
-                                await context.add_messages(tool_message_cache[tool_call_id])
+                                await context.add_messages(
+                                    tool_message_cache[tool_call_id]
+                                )
                             else:
-                                await context.add_messages(ToolMessage(
-                                    content=f"[工具执行被中断] 工具 {tool_name} 执行过程中被用户打断，没有执行结果。",
-                                    tool_call_id=tool_call_id
-                                ))
+                                await context.add_messages(
+                                    ToolMessage(
+                                        content=f"[工具执行被中断] 工具 {tool_name} 执行过程中被用户打断，没有执行结果。",
+                                        tool_call_id=tool_call_id,
+                                    )
+                                )
                         tool_id_cache = []
                 elif isinstance(messages[i], ToolMessage):
                     if not tool_id_cache:
@@ -946,17 +1011,21 @@ class JiuClawReActAgent(ReActAgent):
                         tool_message_cache[messages[i].tool_call_id] = messages[i]
                         continue
                 else:
-                    logger.info("Fixed incomplete tool context with placeholder messages")
+                    logger.info(
+                        "Fixed incomplete tool context with placeholder messages"
+                    )
                     for tc in tool_id_cache:
                         tool_name = tc["tool_name"]
                         tool_call_id = tc["tool_call_id"]
                         if tool_call_id in tool_message_cache:
                             await context.add_messages(tool_message_cache[tool_call_id])
                         else:
-                            await context.add_messages(ToolMessage(
-                                content=f"[工具执行被中断] 工具 {tool_name} 执行过程中被用户打断，没有执行结果。",
-                                tool_call_id=tool_call_id
-                            ))
+                            await context.add_messages(
+                                ToolMessage(
+                                    content=f"[工具执行被中断] 工具 {tool_name} 执行过程中被用户打断，没有执行结果。",
+                                    tool_call_id=tool_call_id,
+                                )
+                            )
                     tool_id_cache = []
                     await context.add_messages(messages[i])
         except Exception as e:
@@ -992,13 +1061,22 @@ class JiuClawReActAgent(ReActAgent):
                         meta.get("tool_args", {}),
                     )
             future.set_result("allow_always")
-            logger.info("[ReActAgent] Permission approval: request_id=%s decision=allow_always", request_id)
+            logger.info(
+                "[ReActAgent] Permission approval: request_id=%s decision=allow_always",
+                request_id,
+            )
         elif "本次允许" in selected:
             future.set_result("allow_once")
-            logger.info("[ReActAgent] Permission approval: request_id=%s decision=allow_once", request_id)
+            logger.info(
+                "[ReActAgent] Permission approval: request_id=%s decision=allow_once",
+                request_id,
+            )
         else:
             future.set_result("deny")
-            logger.info("[ReActAgent] Permission approval: request_id=%s decision=deny", request_id)
+            logger.info(
+                "[ReActAgent] Permission approval: request_id=%s decision=deny",
+                request_id,
+            )
         return True
 
     def _get_skill_messages(self) -> List[SystemMessage]:
@@ -1030,7 +1108,9 @@ class JiuClawReActAgent(ReActAgent):
                         m = re.search(r"Skill name:\s*(\S+?);", line)
                         if m:
                             skill_name = m.group(1)
-                            desc_text = self._evolution_service.store.format_desc_experience_text(skill_name)
+                            desc_text = self._evolution_service.store.format_desc_experience_text(
+                                skill_name
+                            )
                             if desc_text:
                                 aug_line += f"\n  Skill description patch: {desc_text}"
                     augmented.append(aug_line)
@@ -1052,7 +1132,12 @@ class JiuClawReActAgent(ReActAgent):
 
         try:
             import json as _json
-            args = _json.loads(tc.arguments) if isinstance(tc.arguments, str) else tc.arguments
+
+            args = (
+                _json.loads(tc.arguments)
+                if isinstance(tc.arguments, str)
+                else tc.arguments
+            )
             file_path: str = args.get("file_path", "")
         except Exception:
             return tool_msg
@@ -1062,11 +1147,17 @@ class JiuClawReActAgent(ReActAgent):
             return tool_msg
 
         skill_name = m.group(1)
-        body_text = self._evolution_service.store.format_body_experience_text(skill_name)
+        body_text = self._evolution_service.store.format_body_experience_text(
+            skill_name
+        )
         if not body_text:
             return tool_msg
 
-        original = tool_msg.content if isinstance(tool_msg.content, str) else str(tool_msg.content)
+        original = (
+            tool_msg.content
+            if isinstance(tool_msg.content, str)
+            else str(tool_msg.content)
+        )
         tool_msg.content = original + body_text
         logger.info("[ReActAgent] injected body experience for skill=%s", skill_name)
         return tool_msg
@@ -1080,8 +1171,14 @@ class JiuClawReActAgent(ReActAgent):
             return []
         try:
             context = await self._init_context(session)
-            context_window = await context.get_context_window(system_messages=[], tools=None)
-            return list(context_window.get_messages()) if hasattr(context_window, "get_messages") else []
+            context_window = await context.get_context_window(
+                system_messages=[], tools=None
+            )
+            return (
+                list(context_window.get_messages())
+                if hasattr(context_window, "get_messages")
+                else []
+            )
         except Exception as exc:
             logger.warning("Failed to get session messages: %s", exc)
             return []

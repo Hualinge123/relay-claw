@@ -93,7 +93,9 @@ class DataAggregator:
         self.email_collector = None
         self.email_config = email_config
 
-    def collect(self, date: Optional[str] = None, include_comparison: bool = True) -> CollectedData:
+    def collect(
+        self, date: Optional[str] = None, include_comparison: bool = True
+    ) -> CollectedData:
         """
         聚合采集数据
 
@@ -161,12 +163,14 @@ class DataAggregator:
                 "git_commits": {
                     "current": current_data.git.total_commits,
                     "previous": yesterday_data.git.total_commits,
-                    "change": current_data.git.total_commits - yesterday_data.git.total_commits,
+                    "change": current_data.git.total_commits
+                    - yesterday_data.git.total_commits,
                 },
                 "todo_completed": {
                     "current": current_data.todo.completed,
                     "previous": yesterday_data.todo.completed,
-                    "change": current_data.todo.completed - yesterday_data.todo.completed,
+                    "change": current_data.todo.completed
+                    - yesterday_data.todo.completed,
                 },
             }
 
@@ -178,7 +182,8 @@ class DataAggregator:
                 "git_commits": {
                     "current": current_data.git.total_commits,
                     "previous": last_week_data.git.total_commits,
-                    "change": current_data.git.total_commits - last_week_data.git.total_commits,
+                    "change": current_data.git.total_commits
+                    - last_week_data.git.total_commits,
                 },
             }
 
@@ -206,7 +211,9 @@ class DataAggregator:
         if end_date is None:
             end_date = datetime.now(_REPORT_TZ)
         else:
-            end_date = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=_REPORT_TZ)
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                tzinfo=_REPORT_TZ
+            )
 
         result = {}
         for i in range(7):
@@ -248,7 +255,9 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python aggregator.py <workspace_dir> [git_repo] [email] [auth_code]")
+        print(
+            "Usage: python aggregator.py <workspace_dir> [git_repo] [email] [auth_code]"
+        )
         sys.exit(1)
 
     workspace_dir = sys.argv[1]
@@ -295,7 +304,9 @@ def main():
         print("\n历史对比:")
         if "yesterday" in data.comparison:
             y = data.comparison["yesterday"]
-            print(f"  vs 昨日: 提交 {y['git_commits']['change']:+d}, 任务 {y['todo_completed']['change']:+d}")
+            print(
+                f"  vs 昨日: 提交 {y['git_commits']['change']:+d}, 任务 {y['todo_completed']['change']:+d}"
+            )
 
 
 if __name__ == "__main__":

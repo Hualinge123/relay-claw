@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from jiuwenclaw.utils import logger
+
 if TYPE_CHECKING:
     from jiuwenclaw.gateway.agent_client import AgentServerClient
     from jiuwenclaw.gateway.message_handler import MessageHandler
@@ -24,7 +25,9 @@ HEARTBEAT_OK = "HEARTBEAT_OK"
 HEARTBEAT_PROMPT = "如果你的workspace目录存在HEARTBEAT.md文件, 读取文件内容并且根据文件内容执行任务. 如果没有HEARTBEAT.md文件, 仅回复HEARTBEAT_OK"
 
 
-def normalize_active_hours(active_hours: dict[str, str] | None) -> dict[str, str] | None:
+def normalize_active_hours(
+    active_hours: dict[str, str] | None,
+) -> dict[str, str] | None:
     """将 active_hours 的 start/end 规范为 "HH:MM" 字符串。
 
     YAML 中未加引号的 22:00 会被解析为 1320（60 进制），此处将数字转回 "HH:MM"。
@@ -42,6 +45,7 @@ def normalize_active_hours(active_hours: dict[str, str] | None) -> dict[str, str
         else:
             result[k] = str(v) if v is not None else ""
     return result
+
 
 __all__ = [
     "HEARTBEAT_CHANNEL_ID",
@@ -182,7 +186,10 @@ class GatewayHeartbeatService(IHeartbeat):
             params={"heartbeat": HEARTBEAT_PROMPT},
         )
         try:
-            if self._config.timeout_seconds is not None and self._config.timeout_seconds > 0:
+            if (
+                self._config.timeout_seconds is not None
+                and self._config.timeout_seconds > 0
+            ):
                 resp = await asyncio.wait_for(
                     self._agent_client.send_request(request),
                     timeout=self._config.timeout_seconds,
@@ -205,14 +212,28 @@ class GatewayHeartbeatService(IHeartbeat):
                 elif isinstance(content, str):
                     heartbeat_content = content
             logger.info("Gateway heartbeat content: %s", heartbeat_content)
-            if HEARTBEAT_OK in (heartbeat_content if isinstance(heartbeat_content, str) else "").upper():
-                logger.info("Gateway heartbeat OK: request_id=%s (last_tick_at=%.0f)", request_id, self._last_tick_at)
+            if (
+                HEARTBEAT_OK
+                in (
+                    heartbeat_content if isinstance(heartbeat_content, str) else ""
+                ).upper()
+            ):
+                logger.info(
+                    "Gateway heartbeat OK: request_id=%s (last_tick_at=%.0f)",
+                    request_id,
+                    self._last_tick_at,
+                )
             else:
-                logger.info("Gateway heartbeat complete: request_id=%s (last_tick_at=%.0f)", request_id, self._last_tick_at)
+                logger.info(
+                    "Gateway heartbeat complete: request_id=%s (last_tick_at=%.0f)",
+                    request_id,
+                    self._last_tick_at,
+                )
 
             # 将 resp.payload["heartbeat"] 作为 event 类型 Message 回传到配置的 channel（如 WebChannel）
             if self._config.relay_channel_id and self._message_handler:
                 from jiuwenclaw.schema.message import Message, EventType
+
                 relay_msg = Message(
                     id=f"heartbeat-relay-{request_id}",
                     type="event",
@@ -225,7 +246,10 @@ class GatewayHeartbeatService(IHeartbeat):
                     event_type=EventType.HEARTBEAT_RELAY,
                 )
                 await self._message_handler.publish_robot_messages(relay_msg)
-                logger.debug("Gateway heartbeat relay to channel %s", self._config.relay_channel_id)
+                logger.debug(
+                    "Gateway heartbeat relay to channel %s",
+                    self._config.relay_channel_id,
+                )
 
         except asyncio.TimeoutError:
             self._last_tick_ok = False
@@ -281,7 +305,9 @@ class GatewayHeartbeatService(IHeartbeat):
             # 跨午夜区间：如 22:00-06:00
             return now_minutes >= start_minutes or now_minutes < end_minutes
         except Exception as e:  # noqa: BLE001
-            logger.warning("Invalid heartbeat active_hours config %r: %s", active_hours, e)
+            logger.warning(
+                "Invalid heartbeat active_hours config %r: %s", active_hours, e
+            )
             # 配置非法时，为避免误停心跳，按“始终生效”处理
             return True
 

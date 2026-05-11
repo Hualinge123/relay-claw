@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from typing import Awaitable, Callable, Optional
 
-from openjiuwen.core.single_agent.middleware.base import AgentCallbackContext, AgentMiddleware
+from openjiuwen.core.single_agent.middleware.base import (
+    AgentCallbackContext,
+    AgentMiddleware,
+)
 
 
 class BrowserRunCancelled(RuntimeError):

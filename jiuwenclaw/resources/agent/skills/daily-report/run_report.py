@@ -33,18 +33,23 @@ except ImportError:
 os.environ["PYTHONIOENCODING"] = "utf-8"
 if sys.platform == "win32":
     # 强制设置 stdout/stderr 为 UTF-8
-    if hasattr(sys.stdout, 'buffer'):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    if hasattr(sys.stderr, 'buffer'):
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    if hasattr(sys.stdout, "buffer"):
+        sys.stdout = io.TextIOWrapper(
+            sys.stdout.buffer, encoding="utf-8", errors="replace"
+        )
+    if hasattr(sys.stderr, "buffer"):
+        sys.stderr = io.TextIOWrapper(
+            sys.stderr.buffer, encoding="utf-8", errors="replace"
+        )
 
 try:
     import imaplib
     import email
     from email.header import decode_header
+
     IMAP_AVAILABLE = True
     # 注册ID命令（163邮箱需要）
-    imaplib.Commands['ID'] = ('NONAUTH', 'AUTH', 'SELECTED')
+    imaplib.Commands["ID"] = ("NONAUTH", "AUTH", "SELECTED")
 except ImportError:
     IMAP_AVAILABLE = False
     imaplib = None
@@ -69,15 +74,20 @@ def collect_git_stats(date: str = None) -> dict:
 
     try:
         result = subprocess.run(
-            ["git", "-C", str(REPO_ROOT), "log",
-             f"--since={date} 00:00:00",
-             f"--until={date} 23:59:59",
-             "--format=%H|%s|%an|%ai",
-             "--numstat"],
+            [
+                "git",
+                "-C",
+                str(REPO_ROOT),
+                "log",
+                f"--since={date} 00:00:00",
+                f"--until={date} 23:59:59",
+                "--format=%H|%s|%an|%ai",
+                "--numstat",
+            ],
             capture_output=True,
             text=True,
             encoding="utf-8",
-            timeout=30
+            timeout=30,
         )
 
         commits = []
@@ -96,7 +106,7 @@ def collect_git_stats(date: str = None) -> dict:
                         "message": parts[1],
                         "author": parts[2],
                         "insertions": 0,
-                        "deletions": 0
+                        "deletions": 0,
                     }
                 elif current_commit and "\t" in line:
                     stat_parts = line.split("\t")
@@ -118,7 +128,7 @@ def collect_git_stats(date: str = None) -> dict:
             "total_commits": len(commits),
             "total_insertions": total_insertions,
             "total_deletions": total_deletions,
-            "commits": commits
+            "commits": commits,
         }
     except Exception as e:
         return {"error": str(e)}
@@ -188,9 +198,12 @@ def collect_email_stats(date: str = None) -> dict:
             if status == "OK" and data:
                 # 解析 STATUS 响应: b'"INBOX" (MESSAGES 39 UNSEEN 32)'
                 import re
-                response = data[0].decode() if isinstance(data[0], bytes) else str(data[0])
-                messages_match = re.search(r'MESSAGES\s+(\d+)', response)
-                unseen_match = re.search(r'UNSEEN\s+(\d+)', response)
+
+                response = (
+                    data[0].decode() if isinstance(data[0], bytes) else str(data[0])
+                )
+                messages_match = re.search(r"MESSAGES\s+(\d+)", response)
+                unseen_match = re.search(r"UNSEEN\s+(\d+)", response)
                 if messages_match:
                     total_emails = int(messages_match.group(1))
                 if unseen_match:
@@ -203,7 +216,7 @@ def collect_email_stats(date: str = None) -> dict:
         return {
             "received_today": total_emails,
             "unread": unread,
-            "date": date if date else datetime.now(_REPORT_TZ).strftime("%Y-%m-%d")
+            "date": date if date else datetime.now(_REPORT_TZ).strftime("%Y-%m-%d"),
         }
     except Exception as e:
         # 返回默认值而不是错误
@@ -211,7 +224,7 @@ def collect_email_stats(date: str = None) -> dict:
             "received_today": 0,
             "unread": 0,
             "date": date if date else datetime.now(_REPORT_TZ).strftime("%Y-%m-%d"),
-            "error": str(e)[:50]  # 截断错误信息
+            "error": str(e)[:50],  # 截断错误信息
         }
 
 
@@ -274,8 +287,10 @@ def collect_email_content(limit: int = 20, days: int = 30) -> list:
             return []
 
         # 搜索最近N天的邮件
-        since_date = (datetime.now(_REPORT_TZ) - timedelta(days=days)).strftime("%d-%b-%Y")
-        typ, msg_ids = mail.search(None, f'(SINCE {since_date})')
+        since_date = (datetime.now(_REPORT_TZ) - timedelta(days=days)).strftime(
+            "%d-%b-%Y"
+        )
+        typ, msg_ids = mail.search(None, f"(SINCE {since_date})")
 
         if typ != "OK" or not msg_ids[0]:
             mail.logout()
@@ -310,7 +325,9 @@ def collect_email_content(limit: int = 20, days: int = 30) -> list:
                     from_addr = ""
                     for part, encoding in decoded:
                         if isinstance(part, bytes):
-                            from_addr += part.decode(encoding or "utf-8", errors="ignore")
+                            from_addr += part.decode(
+                                encoding or "utf-8", errors="ignore"
+                            )
                         else:
                             from_addr += part
 
@@ -333,19 +350,22 @@ def collect_email_content(limit: int = 20, days: int = 30) -> list:
                             html_body = payload.decode(charset, errors="ignore")
                             # 简单清理HTML标签
                             import re
-                            body = re.sub(r'<[^>]+>', ' ', html_body)
-                            body = re.sub(r'\s+', ' ', body).strip()
+
+                            body = re.sub(r"<[^>]+>", " ", html_body)
+                            body = re.sub(r"\s+", " ", body).strip()
                 else:
                     payload = msg.get_payload(decode=True)
                     charset = msg.get_content_charset() or "utf-8"
                     body = payload.decode(charset, errors="ignore") if payload else ""
 
-                emails.append({
-                    "subject": subject[:100],
-                    "from": from_addr[:80],
-                    "date": date_str,
-                    "body_preview": body[:500] if body else ""
-                })
+                emails.append(
+                    {
+                        "subject": subject[:100],
+                        "from": from_addr[:80],
+                        "date": date_str,
+                        "body_preview": body[:500] if body else "",
+                    }
+                )
 
             except Exception:
                 continue
@@ -431,10 +451,12 @@ def generate_daily_report(date: str = None, enable_ai: bool = True) -> str:
 
     # 添加邮箱统计（如果采集成功）
     if "error" not in email_stats:
-        lines.extend([
-            f"| 邮件收件 | {email_stats.get('received_today', 0)} 封 |",
-            f"| 未读邮件 | {email_stats.get('unread', 0)} 封 |",
-        ])
+        lines.extend(
+            [
+                f"| 邮件收件 | {email_stats.get('received_today', 0)} 封 |",
+                f"| 未读邮件 | {email_stats.get('unread', 0)} 封 |",
+            ]
+        )
 
     lines.append("")
 
@@ -447,12 +469,14 @@ def generate_daily_report(date: str = None, enable_ai: bool = True) -> str:
 
     # 代码提交
     if git_stats.get("commits"):
-        lines.extend([
-            "## 💻 代码提交",
-            "",
-            "| 时间 | 提交信息 | 变更 |",
-            "|------|----------|------|",
-        ])
+        lines.extend(
+            [
+                "## 💻 代码提交",
+                "",
+                "| 时间 | 提交信息 | 变更 |",
+                "|------|----------|------|",
+            ]
+        )
         for commit in git_stats["commits"][:10]:
             lines.append(
                 f"| {commit.get('hash', '-')} | {commit.get('message', '-')[:40]} | "
@@ -496,23 +520,30 @@ def generate_daily_report(date: str = None, enable_ai: bool = True) -> str:
                 },
                 "memory": {
                     "content": memory_content[:500] if memory_content else "",
-                }
+                },
             }
 
             # 采集工作模式分析数据
             pattern_data = []
             for i in range(7):
-                check_date = (datetime.now(_REPORT_TZ) - timedelta(days=i)).strftime("%Y-%m-%d")
+                check_date = (datetime.now(_REPORT_TZ) - timedelta(days=i)).strftime(
+                    "%Y-%m-%d"
+                )
                 day_stats = collect_git_stats(check_date)
                 for commit in day_stats.get("commits", []):
-                    pattern_data.append({
-                        "date": check_date,
-                        "time": commit.get("hash", "")[:8],  # 使用 hash 作为时间占位
-                        "message": commit.get("message", ""),
-                    })
+                    pattern_data.append(
+                        {
+                            "date": check_date,
+                            "time": commit.get("hash", "")[
+                                :8
+                            ],  # 使用 hash 作为时间占位
+                            "message": commit.get("message", ""),
+                        }
+                    )
 
             # 运行 AI 分析
             import asyncio
+
             ai_result = asyncio.run(ai_analyzer.analyze_full(ai_data, pattern_data))
 
             # 在开头添加 AI 摘要
@@ -559,7 +590,9 @@ def generate_daily_report(date: str = None, enable_ai: bool = True) -> str:
 
                 peak_hours = ai_result.work_pattern.get("peak_hours", [])
                 if peak_hours:
-                    lines.append(f"- **效率高峰时段**: {', '.join([f'{h}:00' for h in peak_hours])}")
+                    lines.append(
+                        f"- **效率高峰时段**: {', '.join([f'{h}:00' for h in peak_hours])}"
+                    )
 
                 avg_commits = ai_result.work_pattern.get("avg_commits_per_day", 0)
                 if avg_commits > 0:
@@ -593,6 +626,7 @@ def generate_monthly_report(year: int = None, month: int = None) -> str:
         month = now.month
 
     import calendar
+
     _, days_in_month = calendar.monthrange(year, month)
 
     # 采集整月数据
@@ -629,7 +663,11 @@ def generate_monthly_report(year: int = None, month: int = None) -> str:
 
     # 获取当前未读邮件数
     current_email_stats = collect_email_stats()
-    current_unread = current_email_stats.get("unread", 0) if "error" not in current_email_stats else 0
+    current_unread = (
+        current_email_stats.get("unread", 0)
+        if "error" not in current_email_stats
+        else 0
+    )
 
     # 生成报告
     lines = [
@@ -646,36 +684,44 @@ def generate_monthly_report(year: int = None, month: int = None) -> str:
 
     # 添加邮箱统计
     if email_collection_days > 0:
-        lines.extend([
-            f"| 邮件收件 | {total_emails_received} 封 |",
-            f"| 当前未读 | {current_unread} 封 |",
-        ])
+        lines.extend(
+            [
+                f"| 邮件收件 | {total_emails_received} 封 |",
+                f"| 当前未读 | {current_unread} 封 |",
+            ]
+        )
     elif email_errors:
         lines.append(f"| 邮箱状态 | 采集失败: {email_errors[0][:30]}... |")
 
     lines.append("")
 
     # 工作总结
-    lines.extend([
-        "## 📝 工作总结",
-        "",
-        f"本月共完成 {total_commits} 次代码提交，",
-        f"净增代码 {total_insertions - total_deletions} 行。",
-    ])
+    lines.extend(
+        [
+            "## 📝 工作总结",
+            "",
+            f"本月共完成 {total_commits} 次代码提交，",
+            f"净增代码 {total_insertions - total_deletions} 行。",
+        ]
+    )
 
     if email_collection_days > 0:
-        lines.extend([
-            "",
-            f"邮箱方面，本月共收到 {total_emails_received} 封邮件，",
-            f"当前有 {current_unread} 封未读邮件。",
-        ])
+        lines.extend(
+            [
+                "",
+                f"邮箱方面，本月共收到 {total_emails_received} 封邮件，",
+                f"当前有 {current_unread} 封未读邮件。",
+            ]
+        )
 
     # 添加近期邮件摘要
-    lines.extend([
-        "",
-        "## 📧 近期邮件摘要",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## 📧 近期邮件摘要",
+            "",
+        ]
+    )
 
     # 读取最近30天的邮件
     recent_emails = collect_email_content(limit=15, days=30)
@@ -684,20 +730,22 @@ def generate_monthly_report(year: int = None, month: int = None) -> str:
             lines.append(f"### {em['subject'][:50]}")
             lines.append(f"**发件人**: {em['from']}")
             lines.append(f"**时间**: {em['date']}")
-            if em['body_preview']:
+            if em["body_preview"]:
                 lines.append(f"**内容预览**: {em['body_preview'][:200]}...")
             lines.append("")
     else:
         lines.append("暂无邮件数据")
         lines.append("")
 
-    lines.extend([
-        "",
-        "## 🔜 下月计划",
-        "",
-        "- 继续完善项目功能",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## 🔜 下月计划",
+            "",
+            "- 继续完善项目功能",
+            "",
+        ]
+    )
 
     return "\n".join(lines)
 
@@ -707,12 +755,14 @@ def main():
     parser.add_argument(
         "type",
         choices=["daily", "weekly", "monthly"],
-        help="报告类型: daily(日报), weekly(周报), monthly(月报)"
+        help="报告类型: daily(日报), weekly(周报), monthly(月报)",
     )
     parser.add_argument("--date", "-d", help="日期 (YYYY-MM-DD)")
     parser.add_argument("--year", "-y", type=int, help="年份")
     parser.add_argument("--month", "-m", type=int, help="月份")
-    parser.add_argument("--save", "-s", action="store_true", default=True, help="保存到文件(默认开启)")
+    parser.add_argument(
+        "--save", "-s", action="store_true", default=True, help="保存到文件(默认开启)"
+    )
     parser.add_argument("--no-save", action="store_true", help="不保存文件，直接输出")
     parser.add_argument("--output-file", "-o", help="输出文件路径")
     parser.add_argument("--ai", action="store_true", help="启用 AI 智能分析")
@@ -762,6 +812,7 @@ def main():
     except Exception as e:
         print(f"ERROR:{e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 

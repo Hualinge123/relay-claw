@@ -7,7 +7,12 @@ from typing import Any, AsyncIterator, Dict, List, Optional, Union
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.operator import Operator, LLMCallOperator, ToolCallOperator
 from openjiuwen.core.context_engine import ContextEngine, ModelContext
-from openjiuwen.core.foundation.llm import AssistantMessage, Model, UserMessage, SystemMessage
+from openjiuwen.core.foundation.llm import (
+    AssistantMessage,
+    Model,
+    UserMessage,
+    SystemMessage,
+)
 from openjiuwen.core.memory import LongTermMemory, MemoryScopeConfig
 from openjiuwen.core.session.agent import Session
 from openjiuwen.core.session.stream import OutputSchema
@@ -44,9 +49,7 @@ class ReActAgentEvolve(BaseAgent):
             card: Agent card (required)
         """
         self._config = self._create_default_config()
-        self.context_engine = ContextEngine(
-            self._config.context_engine_config
-        )
+        self.context_engine = ContextEngine(self._config.context_engine_config)
         self._llm = None
         # Unified naming: *_op indicates evolvable Operator
         # LLM Operator uses lazy init: model_client_config/model_config_obj may only be ready after configure()
@@ -69,13 +72,15 @@ class ReActAgentEvolve(BaseAgent):
     def _init_memory_scope(self) -> None:
         """Initialize memory scope (subclass can override configuration)"""
         if self._config.mem_scope_id:
-            LongTermMemory().set_scope_config(self._config.mem_scope_id, MemoryScopeConfig())
+            LongTermMemory().set_scope_config(
+                self._config.mem_scope_id, MemoryScopeConfig()
+            )
 
     def _create_default_config(self) -> ReActAgentConfig:
         """Create default configuration"""
         return ReActAgentConfig()
 
-    def configure(self, config: ReActAgentConfig) -> 'BaseAgent':
+    def configure(self, config: ReActAgentConfig) -> "BaseAgent":
         """Set configuration
 
         Args:
@@ -92,16 +97,16 @@ class ReActAgentEvolve(BaseAgent):
         self._config = config
 
         # Reset LLM if model config changed
-        if (old_config.model_provider != config.model_provider or
-                old_config.api_key != config.api_key or
-                old_config.api_base != config.api_base):
+        if (
+            old_config.model_provider != config.model_provider
+            or old_config.api_key != config.api_key
+            or old_config.api_base != config.api_base
+        ):
             self._llm = None
 
         # Update context_engine if context window limit changed
         if old_config.context_engine_config != config.context_engine_config:
-            self.context_engine = ContextEngine(
-                config.context_engine_config
-            )
+            self.context_engine = ContextEngine(config.context_engine_config)
 
         # Update memory_scope if memory scope ID changed
         if old_config.mem_scope_id != config.mem_scope_id:
@@ -165,7 +170,9 @@ class ReActAgentEvolve(BaseAgent):
         else:
             # prompt_template may change after configure/self-evolving:
             # ensure operator internal view aligns with config
-            self._llm_op.update_system_prompt(getattr(self._config, "prompt_template", []))
+            self._llm_op.update_system_prompt(
+                getattr(self._config, "prompt_template", [])
+            )
         return self._llm_op
 
     def _get_skill_messages(self) -> List[SystemMessage]:
@@ -197,10 +204,16 @@ class ReActAgentEvolve(BaseAgent):
             ValueError: If model configuration is not configured
         """
         if self._llm is None:
-            if self._config.model_client_config is None and self._config.model_config_obj is None:
-                raise ValueError("model_client_config is required. Use configure_model_client() to set it.")
+            if (
+                self._config.model_client_config is None
+                and self._config.model_config_obj is None
+            ):
+                raise ValueError(
+                    "model_client_config is required. Use configure_model_client() to set it."
+                )
             self._llm = Model(
-                model_client_config=self._config.model_client_config, model_config=self._config.model_config_obj
+                model_client_config=self._config.model_client_config,
+                model_config=self._config.model_config_obj,
             )
         return self._llm
 
@@ -208,32 +221,35 @@ class ReActAgentEvolve(BaseAgent):
         """Register a skill"""
         self._skill_util.register_skills(skill_path, self)
 
-    async def _init_context(
-            self,
-            session: Optional[Session]
-    ) -> ModelContext:
+    async def _init_context(self, session: Optional[Session]) -> ModelContext:
         if self._config.context_processors:
-            from openjiuwen.core.context_engine.token.tiktoken_counter import TiktokenCounter
+            from openjiuwen.core.context_engine.token.tiktoken_counter import (
+                TiktokenCounter,
+            )
+
             context = await self.context_engine.create_context(
                 session=session,
                 processors=self._config.context_processors,
-                token_counter=TiktokenCounter()
+                token_counter=TiktokenCounter(),
             )
         else:
-            context = await self.context_engine.create_context(
-                session=session
-            )
+            context = await self.context_engine.create_context(session=session)
         context_reloader = context.reloader_tool()
         if self._config.context_engine_config.enable_reload:
             self.ability_manager.add(context_reloader.card)
             from openjiuwen.core.runner import Runner
-            if not Runner.resource_mgr.get_tool(context_reloader.card.id, tag=self.card.id):
+
+            if not Runner.resource_mgr.get_tool(
+                context_reloader.card.id, tag=self.card.id
+            ):
                 Runner.resource_mgr.add_tool(context_reloader, tag=self.card.id)
         else:
             self.ability_manager.remove(context_reloader.card.name)
         return context
 
-    async def invoke(self, inputs: Any, session: Optional[Session] = None) -> Dict[str, Any]:
+    async def invoke(
+        self, inputs: Any, session: Optional[Session] = None
+    ) -> Dict[str, Any]:
         """Execute ReAct process
 
         Args:
@@ -261,17 +277,21 @@ class ReActAgentEvolve(BaseAgent):
 
         # ReAct loop
         for iteration in range(self._config.max_iterations):
-            logger.info(f"ReAct iteration {iteration + 1}/{self._config.max_iterations}")
+            logger.info(
+                f"ReAct iteration {iteration + 1}/{self._config.max_iterations}"
+            )
 
             # Get context window (system_prompt injected by react_llm operator)
-            context_window = await context.get_context_window(system_messages=[], tools=tools if tools else None)
+            context_window = await context.get_context_window(
+                system_messages=[], tools=tools if tools else None
+            )
 
             # Hook: before model call
             await self._execute_callbacks(
                 AgentCallbackEvent.BEFORE_MODEL_CALL,
                 inputs=inputs,
                 iteration=iteration + 1,
-                messages=context_window.get_messages()
+                messages=context_window.get_messages(),
             )
 
             skill_messages = self._get_skill_messages()
@@ -280,7 +300,10 @@ class ReActAgentEvolve(BaseAgent):
             llm_op = self._get_llm_op()
             history_messages = context_window.get_messages()
             ai_message = await llm_op.invoke(
-                inputs={"query": user_input, "messages": [*skill_messages, *history_messages]},
+                inputs={
+                    "query": user_input,
+                    "messages": [*skill_messages, *history_messages],
+                },
                 session=session,
                 tools=context_window.get_tools() or None,
             )
@@ -290,18 +313,22 @@ class ReActAgentEvolve(BaseAgent):
                 AgentCallbackEvent.AFTER_MODEL_CALL,
                 inputs=inputs,
                 iteration=iteration + 1,
-                response=ai_message
+                response=ai_message,
             )
 
             # Add AI message to context
-            ai_msg_for_context = AssistantMessage(content=ai_message.content, tool_calls=ai_message.tool_calls)
+            ai_msg_for_context = AssistantMessage(
+                content=ai_message.content, tool_calls=ai_message.tool_calls
+            )
             await context.add_messages(ai_msg_for_context)
 
             # Check for tool calls
             if ai_message.tool_calls:
                 # Log tool calls
                 for tool_call in ai_message.tool_calls:
-                    logger.info(f"Executing tool: {tool_call.name} with args: {tool_call.arguments}")
+                    logger.info(
+                        f"Executing tool: {tool_call.name} with args: {tool_call.arguments}"
+                    )
 
                     # Hook: before tool call
                     await self._execute_callbacks(
@@ -309,14 +336,16 @@ class ReActAgentEvolve(BaseAgent):
                         inputs=inputs,
                         iteration=iteration + 1,
                         tool_name=tool_call.name,
-                        tool_args=tool_call.arguments
+                        tool_args=tool_call.arguments,
                     )
 
                 # Execute tools via Operator (react_tool)
                 tool_op = self._tool_op
                 if tool_op is None:
                     raise RuntimeError("react_tool operator is not initialized")
-                results = await tool_op.invoke({"tool_calls": ai_message.tool_calls}, session=session)
+                results = await tool_op.invoke(
+                    {"tool_calls": ai_message.tool_calls}, session=session
+                )
 
                 # Process results and add tool messages to context
                 for idx, (tool_result, tool_msg) in enumerate(results):
@@ -331,20 +360,15 @@ class ReActAgentEvolve(BaseAgent):
                         iteration=iteration + 1,
                         tool_name=tool_call.name,
                         tool_args=tool_call.arguments,
-                        tool_result=tool_result
+                        tool_result=tool_result,
                     )
             else:
                 # No tool calls, return AI response
                 await self.context_engine.save_contexts(session)
-                result = {
-                    "output": ai_message.content,
-                    "result_type": "answer"
-                }
+                result = {"output": ai_message.content, "result_type": "answer"}
                 # Hook: after invoke
                 await self._execute_callbacks(
-                    AgentCallbackEvent.AFTER_INVOKE,
-                    inputs=inputs,
-                    result=result
+                    AgentCallbackEvent.AFTER_INVOKE, inputs=inputs, result=result
                 )
                 return result
 
@@ -352,13 +376,11 @@ class ReActAgentEvolve(BaseAgent):
         await self.context_engine.save_contexts(session)
         result = {
             "output": "Max iterations reached without completion",
-            "result_type": "error"
+            "result_type": "error",
         }
         # Hook: after invoke
         await self._execute_callbacks(
-            AgentCallbackEvent.AFTER_INVOKE,
-            inputs=inputs,
-            result=result
+            AgentCallbackEvent.AFTER_INVOKE, inputs=inputs, result=result
         )
         return result
 
@@ -390,11 +412,18 @@ class ReActAgentEvolve(BaseAgent):
                 # Write to session stream if available
                 if session is not None and hasattr(session, "write_stream"):
                     await session.write_stream(
-                        OutputSchema(type="answer", index=0, payload={"output": final_result, "result_type": "answer"})
+                        OutputSchema(
+                            type="answer",
+                            index=0,
+                            payload={"output": final_result, "result_type": "answer"},
+                        )
                     )
             except Exception as e:
                 logger.error(f"ReActAgent stream error: {e}")
-                final_result_holder["result"] = {"output": str(e), "result_type": "error"}
+                final_result_holder["result"] = {
+                    "output": str(e),
+                    "result_type": "error",
+                }
             finally:
                 # Close stream
                 if session is not None:

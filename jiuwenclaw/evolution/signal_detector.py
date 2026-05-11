@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 """SignalDetector - Rules-based signal extraction from conversation messages."""
+
 from __future__ import annotations
 
 import re
@@ -74,9 +75,21 @@ class SignalDetector:
         active_skill: Optional[str] = None
 
         for msg in messages:
-            role = msg.get("role", "") if isinstance(msg, dict) else getattr(msg, "role", "")
-            content = msg.get("content", "") if isinstance(msg, dict) else getattr(msg, "content", "")
-            tool_calls = msg.get("tool_calls", []) if isinstance(msg, dict) else getattr(msg, "tool_calls", [])
+            role = (
+                msg.get("role", "")
+                if isinstance(msg, dict)
+                else getattr(msg, "role", "")
+            )
+            content = (
+                msg.get("content", "")
+                if isinstance(msg, dict)
+                else getattr(msg, "content", "")
+            )
+            tool_calls = (
+                msg.get("tool_calls", [])
+                if isinstance(msg, dict)
+                else getattr(msg, "tool_calls", [])
+            )
 
             if role == "assistant" and tool_calls:
                 active_skill = self._detect_skill_from_tool_calls(
@@ -90,26 +103,30 @@ class SignalDetector:
                         continue
                     tool_name = msg.get("name") or msg.get("tool_name")
                     excerpt = _extract_around_match(content, match)
-                    signals.append(EvolutionSignal(
-                        type="execution_failure",
-                        evolution_type=self._classify_type(active_skill),
-                        section="Troubleshooting",
-                        excerpt=excerpt,
-                        tool_name=tool_name,
-                        skill_name=active_skill,
-                    ))
+                    signals.append(
+                        EvolutionSignal(
+                            type="execution_failure",
+                            evolution_type=self._classify_type(active_skill),
+                            section="Troubleshooting",
+                            excerpt=excerpt,
+                            tool_name=tool_name,
+                            skill_name=active_skill,
+                        )
+                    )
 
             elif role == "user":
                 match = _CORRECTION_PATTERN.search(content)
                 if match:
                     excerpt = _extract_around_match(content, match)
-                    signals.append(EvolutionSignal(
-                        type="user_correction",
-                        evolution_type=self._classify_type(active_skill),
-                        section="Examples",
-                        excerpt=excerpt,
-                        skill_name=active_skill,
-                    ))
+                    signals.append(
+                        EvolutionSignal(
+                            type="user_correction",
+                            evolution_type=self._classify_type(active_skill),
+                            section="Examples",
+                            excerpt=excerpt,
+                            skill_name=active_skill,
+                        )
+                    )
 
         return self._deduplicate(signals)
 
@@ -134,7 +151,11 @@ class SignalDetector:
         """从 tool_calls 里判断是否读过某 SKILL.md。"""
         for tc in tool_calls:
             name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "")
-            args = tc.get("arguments") if isinstance(tc, dict) else getattr(tc, "arguments", "")
+            args = (
+                tc.get("arguments")
+                if isinstance(tc, dict)
+                else getattr(tc, "arguments", "")
+            )
 
             if "file" in name.lower() or "read" in name.lower():
                 m = _SKILL_MD_PATTERN.search(args)

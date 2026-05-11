@@ -66,7 +66,16 @@ class CronController:
         base = datetime.now(tz=tz)
         _ = _cron_next_push_dt(cron_expr, base)
 
-    _DESCRIPTION_TIME_KEYWORDS = ("每天", "每周", "每月", "上午", "下午", "早上", "晚上", "凌晨")
+    _DESCRIPTION_TIME_KEYWORDS = (
+        "每天",
+        "每周",
+        "每月",
+        "上午",
+        "下午",
+        "早上",
+        "晚上",
+        "凌晨",
+    )
 
     def _normalize_targets(self, raw: Any) -> str:
         """将 targets 规范为 CronTargetChannel 枚举值。"""
@@ -89,7 +98,6 @@ class CronController:
             return name
         return description
 
-
     async def list_jobs(self) -> list[dict[str, Any]]:
         jobs = await self._store.list_jobs()
         return [j.to_dict() for j in jobs]
@@ -101,7 +109,9 @@ class CronController:
     async def create_job(self, params: dict[str, Any]) -> dict[str, Any]:
         name = str(params.get("name") or "").strip()
         cron_expr = str(params.get("cron_expr") or "").strip()
-        timezone = str(params.get("timezone") or "Asia/Shanghai").strip() or "Asia/Shanghai"
+        timezone = (
+            str(params.get("timezone") or "Asia/Shanghai").strip() or "Asia/Shanghai"
+        )
         enabled = bool(params.get("enabled", True))
         description = str(params.get("description") or "")
         wake_offset_seconds = params.get("wake_offset_seconds", None)
@@ -116,7 +126,9 @@ class CronController:
             cron_expr=cron_expr,
             timezone=timezone,
             enabled=enabled,
-            wake_offset_seconds=int(wake_offset_seconds) if wake_offset_seconds is not None else None,
+            wake_offset_seconds=(
+                int(wake_offset_seconds) if wake_offset_seconds is not None else None
+            ),
             description=description,
             targets=targets,
         )
@@ -136,7 +148,9 @@ class CronController:
             self._validate_schedule(cron_expr=cron_expr, timezone=timezone)
         if "description" in patch:
             name = str(patch.get("name") or existing.name or "").strip()
-            patch["description"] = self._normalize_description(str(patch.get("description") or ""), name)
+            patch["description"] = self._normalize_description(
+                str(patch.get("description") or ""), name
+            )
 
         job = await self._store.update_job(job_id, patch)
         await self._scheduler.reload()
@@ -165,7 +179,9 @@ class CronController:
         push_dt = base
         for _ in range(count):
             push_dt = _cron_next_push_dt(job.cron_expr, push_dt)
-            wake_dt = push_dt - timedelta(seconds=max(0, int(job.wake_offset_seconds or 0)))
+            wake_dt = push_dt - timedelta(
+                seconds=max(0, int(job.wake_offset_seconds or 0))
+            )
             out.append({"wake_at": wake_dt.isoformat(), "push_at": push_dt.isoformat()})
         return out
 

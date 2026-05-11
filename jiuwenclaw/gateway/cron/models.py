@@ -45,7 +45,9 @@ class CronTarget:
     def from_dict(data: dict[str, Any]) -> "CronTarget":
         channel_id = str(data.get("channel_id") or "").strip()
         session_id_raw = data.get("session_id", None)
-        session_id = str(session_id_raw).strip() if isinstance(session_id_raw, str) else None
+        session_id = (
+            str(session_id_raw).strip() if isinstance(session_id_raw, str) else None
+        )
         if not channel_id:
             raise ValueError("target.channel_id is required")
         return CronTarget(channel_id=channel_id, session_id=session_id or None)
@@ -117,8 +119,12 @@ class CronJob:
 
         created_at = data.get("created_at", None)
         updated_at = data.get("updated_at", None)
-        created_at_f = float(created_at) if isinstance(created_at, (int, float)) else None
-        updated_at_f = float(updated_at) if isinstance(updated_at, (int, float)) else None
+        created_at_f = (
+            float(created_at) if isinstance(created_at, (int, float)) else None
+        )
+        updated_at_f = (
+            float(updated_at) if isinstance(updated_at, (int, float)) else None
+        )
 
         if not job_id:
             raise ValueError("id is required")

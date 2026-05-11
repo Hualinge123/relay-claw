@@ -12,13 +12,21 @@ from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.logging import workflow_logger, LogEventType
 from openjiuwen.core.common.utils.schema_utils import SchemaUtils
 from openjiuwen.core.workflow.components.base import ComponentConfig
-from openjiuwen.core.workflow.components.component import ComponentComposable, ComponentExecutable
+from openjiuwen.core.workflow.components.component import (
+    ComponentComposable,
+    ComponentExecutable,
+)
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session.node import Session
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm import (
-    BaseMessage, SystemMessage, UserMessage, ModelRequestConfig, ModelClientConfig, Model
+    BaseMessage,
+    SystemMessage,
+    UserMessage,
+    ModelRequestConfig,
+    ModelClientConfig,
+    Model,
 )
 from openjiuwen.core.foundation.prompt import PromptTemplate
 
@@ -57,12 +65,12 @@ class WorkflowLLMResponseType(Enum):
 RESPONSE_FORMAT_TO_PROMPT_MAP = {
     WorkflowLLMResponseType.JSON.value: {
         _INSTRUCTION_NAME: "jsonInstruction",
-        _TEMPLATE_NAME: "llm_json_formatting"
+        _TEMPLATE_NAME: "llm_json_formatting",
     },
     WorkflowLLMResponseType.MARKDOWN.value: {
         _INSTRUCTION_NAME: "markdownInstruction",
-        _TEMPLATE_NAME: "llm_markdown_formatting"
-    }
+        _TEMPLATE_NAME: "llm_markdown_formatting",
+    },
 }
 
 
@@ -77,10 +85,7 @@ class ValidationUtils:
 
     @staticmethod
     def raise_invalid_params_error(error_msg: str = "") -> None:
-        raise build_error(
-            StatusCode.COMPONENT_LLM_CONFIG_INVALID,
-            error_msg=error_msg
-        )
+        raise build_error(StatusCode.COMPONENT_LLM_CONFIG_INVALID, error_msg=error_msg)
 
     @staticmethod
     def validate_type(instance: Any, expected_type: str) -> None:
@@ -88,18 +93,23 @@ class ValidationUtils:
             "object": lambda x: isinstance(x, dict),
             "array": lambda value: isinstance(value, list),
             "string": lambda value: isinstance(value, str),
-            "integer": lambda value: isinstance(value, int) and not isinstance(value, bool),
+            "integer": lambda value: isinstance(value, int)
+            and not isinstance(value, bool),
             "boolean": lambda value: isinstance(value, bool),
-            "number": lambda value: isinstance(value, (float, int)) and not isinstance(value, bool),
+            "number": lambda value: isinstance(value, (float, int))
+            and not isinstance(value, bool),
         }
 
         validator = type_validators.get(expected_type)
         if not validator:
-            ValidationUtils.raise_invalid_params_error(error_msg=f"{expected_type} is not a valid type")
+            ValidationUtils.raise_invalid_params_error(
+                error_msg=f"{expected_type} is not a valid type"
+            )
 
         if not validator(instance):
             ValidationUtils.raise_invalid_params_error(
-                error_msg=f"expected type {expected_type} but got {type(instance)}")
+                error_msg=f"expected type {expected_type} but got {type(instance)}"
+            )
 
     @staticmethod
     def validate_json_schema(instance: Any, schema: Dict[str, Any]) -> None:
@@ -120,10 +130,14 @@ class ValidationUtils:
         required_fields = schema.get("required", [])
         missing_fields = [field for field in required_fields if field not in instance]
         if missing_fields:
-            ValidationUtils.raise_invalid_params_error(f"missing required properties {missing_fields}")
+            ValidationUtils.raise_invalid_params_error(
+                f"missing required properties {missing_fields}"
+            )
         for prop_name, prop_schema in schema["properties"].items():
             if prop_name in instance:
-                ValidationUtils.validate_json_schema(instance=instance[prop_name], schema=prop_schema)
+                ValidationUtils.validate_json_schema(
+                    instance=instance[prop_name], schema=prop_schema
+                )
 
     @staticmethod
     def _validate_array_items(instance: Any, schema: Dict[str, Any]) -> None:
@@ -132,29 +146,37 @@ class ValidationUtils:
 
         for i, item in enumerate(instance):
             try:
-                ValidationUtils.validate_json_schema(instance=item, schema=schema["items"])
+                ValidationUtils.validate_json_schema(
+                    instance=item, schema=schema["items"]
+                )
             except BaseError as e:
-                ValidationUtils.raise_invalid_params_error(f"invalid array item {i}: {type(e).__name__}")
+                ValidationUtils.raise_invalid_params_error(
+                    f"invalid array item {i}: {type(e).__name__}"
+                )
 
     @staticmethod
     def validate_outputs_config(outputs_config: Any) -> None:
         """Validate output config parameters"""
         if not outputs_config:
-            ValidationUtils.raise_invalid_params_error("outputs config must not be empty")
+            ValidationUtils.raise_invalid_params_error(
+                "outputs config must not be empty"
+            )
         if not isinstance(outputs_config, dict):
             ValidationUtils.raise_invalid_params_error("outputs config must be a dict")
 
 
 class SchemaGenerator:
     @staticmethod
-    def generate_json_schema(outputs_config: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def generate_json_schema(
+        outputs_config: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
         properties = {}
         required = []
 
         for field_name, field_config in outputs_config.items():
             properties[field_name] = {
                 "type": field_config.get("type", "string"),
-                "description": field_config.get("description", "")
+                "description": field_config.get("description", ""),
             }
 
             if field_config.get("type") == "array" and "items" in field_config:
@@ -166,11 +188,7 @@ class SchemaGenerator:
             if field_config.get("required", True):
                 required.append(field_name)
 
-        return {
-            "type": "object",
-            "properties": properties,
-            "required": required
-        }
+        return {"type": "object", "properties": properties, "required": required}
 
 
 class JsonParser:
@@ -184,7 +202,9 @@ class JsonParser:
             if UserConfig.is_sensitive():
                 ValidationUtils.raise_invalid_params_error("Json parse error")
             else:
-                ValidationUtils.raise_invalid_params_error(f"Json parse error: {response_content}")
+                ValidationUtils.raise_invalid_params_error(
+                    f"Json parse error: {response_content}"
+                )
 
     @staticmethod
     def _clean_markdown_blocks(content: str):
@@ -201,24 +221,28 @@ class JsonParser:
         if lines and lines[-1] == "```":
             lines = lines[:-1]
 
-        return '\n'.join(lines).strip()
+        return "\n".join(lines).strip()
 
 
 class OutputFormatter:
     @staticmethod
-    def format_response(response_content: str, response_format: dict, outputs_config: dict) -> dict:
+    def format_response(
+        response_content: str, response_format: dict, outputs_config: dict
+    ) -> dict:
         response_type = response_format.get("type")
         ValidationUtils.validate_outputs_config(outputs_config)
 
         formatters = {
             "text": OutputFormatter._format_text_response,
             "markdown": OutputFormatter._format_text_response,
-            "json": OutputFormatter._format_json_response
+            "json": OutputFormatter._format_json_response,
         }
 
         formatter = formatters.get(response_type)
         if not formatter:
-            ValidationUtils.raise_invalid_params_error(f"no supported response type: '{response_type}'")
+            ValidationUtils.raise_invalid_params_error(
+                f"no supported response type: '{response_type}'"
+            )
 
         return formatter(response_content, outputs_config)
 
@@ -226,7 +250,8 @@ class OutputFormatter:
     def _format_text_response(response_content: str, outputs_config: dict) -> dict:
         if len(outputs_config) != 1:
             ValidationUtils.raise_invalid_params_error(
-                f"text/markdown response type, outputs_config must contain only one field")
+                f"text/markdown response type, outputs_config must contain only one field"
+            )
         field_name = next(iter(outputs_config))
         return {field_name: response_content}
 
@@ -234,7 +259,8 @@ class OutputFormatter:
     def _format_json_response(response_content: str, outputs_config: dict) -> dict:
         if not outputs_config:
             ValidationUtils.raise_invalid_params_error(
-                f"json response format, output config should contain at least one field")
+                f"json response format, output config should contain at least one field"
+            )
 
         parsed_json = JsonParser.parse_json_content(response_content)
 
@@ -244,21 +270,31 @@ class OutputFormatter:
             return SchemaUtils.format_with_schema(parsed_json, outputs_config)
         else:
             json_schema = SchemaGenerator.generate_json_schema(outputs_config)
-            OutputFormatter._validate_json_schema(parsed_json, json_schema, response_content)
+            OutputFormatter._validate_json_schema(
+                parsed_json, json_schema, response_content
+            )
 
-            return OutputFormatter._extract_configured_fields(parsed_json, outputs_config)
+            return OutputFormatter._extract_configured_fields(
+                parsed_json, outputs_config
+            )
 
     @staticmethod
-    def _validate_json_schema(parsed_json: dict, json_schema: dict, original_content: str) -> None:
+    def _validate_json_schema(
+        parsed_json: dict, json_schema: dict, original_content: str
+    ) -> None:
         try:
             ValidationUtils.validate_json_schema(parsed_json, json_schema)
         except BaseError as e:
             raise e
         except Exception as e:
             if UserConfig.is_sensitive():
-                ValidationUtils.raise_invalid_params_error("json schema validation failed.")
+                ValidationUtils.raise_invalid_params_error(
+                    "json schema validation failed."
+                )
             else:
-                ValidationUtils.raise_invalid_params_error(f"json schema validation failed: {original_content}")
+                ValidationUtils.raise_invalid_params_error(
+                    f"json schema validation failed: {original_content}"
+                )
 
     @staticmethod
     def _extract_configured_fields(parsed_json: dict, outputs_config: dict) -> dict:
@@ -270,9 +306,15 @@ class OutputFormatter:
                 if field_config.get("required", True):
                     missing_keys.append(field_name)
             else:
-                iterable_data = list(v) if (v := parsed_json[field_name]) and isinstance(v, dict) else []
+                iterable_data = (
+                    list(v)
+                    if (v := parsed_json[field_name]) and isinstance(v, dict)
+                    else []
+                )
                 for key in iterable_data:
-                    if isinstance(key, str) and key not in field_config.get("properties", {}):
+                    if isinstance(key, str) and key not in field_config.get(
+                        "properties", {}
+                    ):
                         parsed_json[field_name].pop(key)
                 output[field_name] = parsed_json[field_name]
 
@@ -280,7 +322,9 @@ class OutputFormatter:
             if UserConfig.is_sensitive():
                 ValidationUtils.raise_invalid_params_error("missing required fields.")
             else:
-                ValidationUtils.raise_invalid_params_error(f"missing required fields: {', '.join(missing_keys)}")
+                ValidationUtils.raise_invalid_params_error(
+                    f"missing required fields: {', '.join(missing_keys)}"
+                )
 
         return output
 
@@ -303,7 +347,7 @@ class LLMPromptFormatter:
         "Carefully consider the user's question to ensure your answer is logical and makes sense.\n"
         "- Make sure your explanation is concise and easy to understand, not verbose.\n"
         "- Strictly return the answer in valid JSON format only, and "
-        "\"DO NOT ADD ANY COMMENTS BEFORE OR AFTER IT\" to ensure it could be formatted "
+        '"DO NOT ADD ANY COMMENTS BEFORE OR AFTER IT" to ensure it could be formatted '
         "as a JSON instance that conforms to the JSON schema below.\n"
         "Here is the JSON schema: ${json_schema}.\n"
         "The question is: ${query}."
@@ -340,9 +384,9 @@ class LLMPromptFormatter:
 
     @staticmethod
     def format_prompt(
-            history: List[BaseMessage],
-            response_format: Dict[str, Any],
-            output_config: dict,
+        history: List[BaseMessage],
+        response_format: Dict[str, Any],
+        output_config: dict,
     ) -> List[BaseMessage]:
         res_type = response_format.get("type")
         if res_type == "text":
@@ -356,8 +400,8 @@ class LLMPromptFormatter:
 
         if res_type == "markdown":
             instruction = (
-                    response_format.get("markdownInstruction")
-                    or LLMPromptFormatter._DEFAULT_MARKDOWN_INSTRUCTION
+                response_format.get("markdownInstruction")
+                or LLMPromptFormatter._DEFAULT_MARKDOWN_INSTRUCTION
             )
             prompt = instruction.replace("${query}", query)
 
@@ -368,14 +412,12 @@ class LLMPromptFormatter:
             else:
                 json_schema = SchemaGenerator.generate_json_schema(output_config)
             instruction = (
-                    response_format.get("jsonInstruction")
-                    or LLMPromptFormatter._DEFAULT_JSON_INSTRUCTION
+                response_format.get("jsonInstruction")
+                or LLMPromptFormatter._DEFAULT_JSON_INSTRUCTION
             )
-            prompt = (
-                instruction
-                .replace("${json_schema}", json.dumps(json_schema, ensure_ascii=False))
-                .replace("${query}", query)
-            )
+            prompt = instruction.replace(
+                "${json_schema}", json.dumps(json_schema, ensure_ascii=False)
+            ).replace("${query}", query)
 
         history[last_user_idx].content = prompt
         return history
@@ -396,7 +438,7 @@ class LLMCompConfig(ComponentConfig):
 
 
 class ResponseFormatConfig(BaseModel):
-    response_type: str = Field(pattern=r'^(text|markdown|json)$', alias="type")
+    response_type: str = Field(pattern=r"^(text|markdown|json)$", alias="type")
 
 
 class OutputParamConfig(BaseModel):
@@ -407,25 +449,25 @@ class OutputParamConfig(BaseModel):
 
 class LLMExecutableState:
     """State maintained by LLMExecutable for caching stream results"""
-    
+
     def __init__(self):
         self.final_result: Dict[str, Any] = {}
         self._accumulated_content: str = ""
-    
+
     def accumulate_content(self, content: str):
         """Accumulate stream content chunks"""
         self._accumulated_content += content
-    
-    def build_final_result(self, response_format: Dict[str, Any], output_config: Dict[str, Any]) -> Dict[str, Any]:
+
+    def build_final_result(
+        self, response_format: Dict[str, Any], output_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Build final result from accumulated content"""
         if not self._accumulated_content:
             return {}
         return OutputFormatter.format_response(
-            self._accumulated_content,
-            response_format,
-            output_config
+            self._accumulated_content, response_format, output_config
         )
-    
+
     def clear(self):
         """Clear state"""
         self.final_result = {}
@@ -448,7 +490,9 @@ class LLMExecutable(ComponentExecutable):
         return self._config
 
     @staticmethod
-    def _validate_template(template_content, system_prompt_template, user_prompt_template):
+    def _validate_template(
+        template_content, system_prompt_template, user_prompt_template
+    ):
         if system_prompt_template or user_prompt_template or not template_content:
             return
         try:
@@ -459,7 +503,7 @@ class LLMExecutable(ComponentExecutable):
             raise build_error(
                 StatusCode.COMPONENT_LLM_TEMPLATE_CONFIG_ERROR,
                 error_msg="system message is invalid",
-                cause=e
+                cause=e,
             ) from e
 
         if_contain_user_message = False
@@ -471,12 +515,12 @@ class LLMExecutable(ComponentExecutable):
                 SystemMessage.model_validate(element)
                 raise build_error(
                     StatusCode.COMPONENT_LLM_TEMPLATE_CONFIG_ERROR,
-                    error_msg="system message must be before user message"
+                    error_msg="system message must be before user message",
                 )
         if not if_contain_user_message:
             raise build_error(
                 StatusCode.COMPONENT_LLM_TEMPLATE_CONFIG_ERROR,
-                error_msg="user message is required"
+                error_msg="user message is required",
             )
 
     @staticmethod
@@ -484,7 +528,7 @@ class LLMExecutable(ComponentExecutable):
         if not output_config:
             raise build_error(
                 StatusCode.COMPONENT_LLM_CONFIG_ERROR,
-                error_msg="output config is empty"
+                error_msg="output config is empty",
             )
         config_type = output_config.get("type")
         if isinstance(config_type, str) and config_type == "object":
@@ -493,7 +537,7 @@ class LLMExecutable(ComponentExecutable):
             if not param:
                 raise build_error(
                     StatusCode.COMPONENT_LLM_CONFIG_ERROR,
-                    error_msg=f"output config parameter {param} is empty"
+                    error_msg=f"output config parameter {param} is empty",
                 )
             try:
                 OutputParamConfig.model_validate(value)
@@ -502,34 +546,38 @@ class LLMExecutable(ComponentExecutable):
                     raise build_error(
                         StatusCode.COMPONENT_LLM_CONFIG_ERROR,
                         error_msg=f"output config parameter's config value is invalid",
-                        cause=e
+                        cause=e,
                     ) from e
                 else:
                     raise build_error(
                         StatusCode.COMPONENT_LLM_CONFIG_ERROR,
                         error_msg=f"output config parameter's config {value} is invalid",
-                        cause=e
+                        cause=e,
                     ) from e
 
     @staticmethod
     def _validate_response_format(response_format, output_config):
         response_type = ""
         try:
-            response_type = ResponseFormatConfig.model_validate(response_format).response_type
+            response_type = ResponseFormatConfig.model_validate(
+                response_format
+            ).response_type
         except ValidationError as e:
             raise build_error(
                 StatusCode.COMPONENT_LLM_RESPONSE_CONFIG_INVALID,
                 error_msg=f"response format {response_format} is invalid",
-                cause=e
+                cause=e,
             ) from e
 
         if response_type in ["text", "markdown"] and len(output_config) != 1:
             raise build_error(
                 StatusCode.COMPONENT_LLM_RESPONSE_CONFIG_INVALID,
-                error_msg="output config must contain exactly one parameter for text or markdown response type"
+                error_msg="output config must contain exactly one parameter for text or markdown response type",
             )
 
-    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
+    async def invoke(
+        self, inputs: Input, session: Session, context: ModelContext
+    ) -> Output:
         self._set_session(session)
         self._set_context(context)
         model_inputs = await self._prepare_model_inputs(inputs)
@@ -540,10 +588,14 @@ class LLMExecutable(ComponentExecutable):
             component_type_str="LLMComponent",
             session_id=self._session.get_session_id(),
             metadata={
-                "model_name": self._config.model_config.model_name if self._config.model_config else None,
+                "model_name": (
+                    self._config.model_config.model_name
+                    if self._config.model_config
+                    else None
+                ),
                 "has_inputs": bool(model_inputs),
-                "sensitive_mode": UserConfig.is_sensitive()
-            }
+                "sensitive_mode": UserConfig.is_sensitive(),
+            },
         )
         response = ""
         try:
@@ -554,13 +606,13 @@ class LLMExecutable(ComponentExecutable):
                 raise build_error(
                     StatusCode.COMPONENT_LLM_INVOKE_CALL_FAILED,
                     error_msg=f"invoke llm failed",
-                    cause=e
+                    cause=e,
                 ) from e
             else:
                 raise build_error(
                     StatusCode.COMPONENT_LLM_INVOKE_CALL_FAILED,
                     error_msg=str(e),
-                    cause=e
+                    cause=e,
                 ) from e
 
         workflow_logger.info(
@@ -572,12 +624,14 @@ class LLMExecutable(ComponentExecutable):
             metadata={
                 "has_response": bool(response),
                 "response_length": len(response) if response else 0,
-                "sensitive_mode": UserConfig.is_sensitive()
-            }
+                "sensitive_mode": UserConfig.is_sensitive(),
+            },
         )
         return self._create_output(response)
 
-    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
+    async def stream(
+        self, inputs: Input, session: Session, context: ModelContext
+    ) -> AsyncIterator[Output]:
         self._set_session(session)
         self._set_context(context)
         # Reset state for new stream
@@ -596,21 +650,20 @@ class LLMExecutable(ComponentExecutable):
                 raise build_error(
                     StatusCode.COMPONENT_LLM_INVOKE_CALL_FAILED,
                     error_msg="failed to stream",
-                    cause=e
+                    cause=e,
                 ) from e
             else:
                 raise build_error(
                     StatusCode.COMPONENT_LLM_INVOKE_CALL_FAILED,
                     error_msg=str(e),
-                    cause=e
+                    cause=e,
                 ) from e
 
     def get_stream_output(self) -> Optional[dict]:
         output = None
         if self._config.cache_stream and self._session:
             final_result = self._state.build_final_result(
-                self._config.response_format,
-                self._config.output_config
+                self._config.response_format, self._config.output_config
             )
             output = final_result if final_result else output
         return output
@@ -624,19 +677,23 @@ class LLMExecutable(ComponentExecutable):
                 raise build_error(
                     StatusCode.COMPONENT_LLM_INIT_FAILED,
                     error_msg="failed to initialize llm if needed",
-                    cause=e
+                    cause=e,
                 ) from e
 
     async def _create_llm_instance(self):
         if self._config.model_id is None:
-            if self._config.model_client_config is None or self._config.model_config is None:
+            if (
+                self._config.model_client_config is None
+                or self._config.model_config is None
+            ):
                 raise build_error(
                     StatusCode.COMPONENT_LLM_INVOKE_CALL_FAILED,
-                    error_msg="failed to create llm instance"
+                    error_msg="failed to create llm instance",
                 )
             return Model(self._config.model_client_config, self._config.model_config)
         else:
             from openjiuwen.core.runner import Runner
+
             return await Runner.resource_mgr.get_model(id=self._config.model_id)
 
     def _build_user_prompt_content(self, inputs: dict) -> list[BaseMessage]:
@@ -646,14 +703,19 @@ class LLMExecutable(ComponentExecutable):
         if system_prompt_template is not None or user_prompt_template is not None:
             if user_prompt_template is None:
                 return [UserMessage(content="")]
-            return PromptTemplate(content=[user_prompt_template]).format(inputs).to_messages()
+            return (
+                PromptTemplate(content=[user_prompt_template])
+                .format(inputs)
+                .to_messages()
+            )
 
         template_content = self._config.template_content
         if not template_content:
             return [UserMessage(content="")]
 
         user_prompt = [
-            element for element in template_content
+            element
+            for element in template_content
             if element.get(_ROLE, "") == MessageRole.USER.value
         ]
 
@@ -662,12 +724,18 @@ class LLMExecutable(ComponentExecutable):
     def _get_model_input(self, inputs: dict):
         system_prompt = self._build_system_prompt(inputs)
         user_prompt = self._build_user_prompt_content(inputs)
-        all_prompts = self._insert_history_to_system_and_user_prompt(system_prompt, user_prompt)
-        return LLMPromptFormatter.format_prompt(history=all_prompts,
-                                                response_format=self._config.response_format,
-                                                output_config=self._config.output_config)
+        all_prompts = self._insert_history_to_system_and_user_prompt(
+            system_prompt, user_prompt
+        )
+        return LLMPromptFormatter.format_prompt(
+            history=all_prompts,
+            response_format=self._config.response_format,
+            output_config=self._config.output_config,
+        )
 
-    def _insert_history_to_system_and_user_prompt(self, system_prompt: list, user_prompt: list):
+    def _insert_history_to_system_and_user_prompt(
+        self, system_prompt: list, user_prompt: list
+    ):
         original_history = system_prompt if isinstance(system_prompt, list) else []
         if self._config.enable_history and self._context:
             chat_history = self._context.get_messages()
@@ -686,16 +754,16 @@ class LLMExecutable(ComponentExecutable):
 
     def _create_output(self, llm_output) -> Output:
         try:
-            formatted_res = OutputFormatter.format_response(llm_output,
-                                                            self._config.response_format,
-                                                            self._config.output_config)
+            formatted_res = OutputFormatter.format_response(
+                llm_output, self._config.response_format, self._config.output_config
+            )
             return formatted_res
         except BaseError as e:
             if e.code == StatusCode.COMPONENT_LLM_CONFIG_INVALID.code:
                 raise build_error(
                     StatusCode.COMPONENT_LLM_EXECUTION_PROCESS_ERROR,
                     error_msg=e.message,
-                    cause=e
+                    cause=e,
                 ) from e
             else:
                 raise e
@@ -721,17 +789,19 @@ class LLMExecutable(ComponentExecutable):
             metadata={
                 "response_format": "json",
                 "has_inputs": bool(model_inputs),
-                "sensitive_mode": UserConfig.is_sensitive()
-            }
+                "sensitive_mode": UserConfig.is_sensitive(),
+            },
         )
-        llm_output = await self._llm.invoke(messages=model_inputs) # Add await if invoke is async
+        llm_output = await self._llm.invoke(
+            messages=model_inputs
+        )  # Add await if invoke is async
         llm_output_content = llm_output.content
 
         if self._config.cache_stream:
             self._state.accumulate_content(llm_output_content)
 
         output = self._create_output(llm_output_content)
-        
+
         yield output
 
     async def _stream_with_chunks(self, inputs: Input) -> AsyncIterator[Output]:
@@ -743,10 +813,12 @@ class LLMExecutable(ComponentExecutable):
                     # Accumulate content if cache_stream is enabled
                     if self._config.cache_stream:
                         self._state.accumulate_content(content)
-                    
-                    formatted_res = OutputFormatter.format_response(content,
-                                                                    self._config.response_format,
-                                                                    self._config.output_config)
+
+                    formatted_res = OutputFormatter.format_response(
+                        content,
+                        self._config.response_format,
+                        self._config.output_config,
+                    )
                     stream_out = formatted_res
                     yield stream_out
         except Exception:
@@ -762,7 +834,11 @@ class LLMExecutable(ComponentExecutable):
         if system_prompt_template is not None or user_prompt_template is not None:
             if system_prompt_template is None:
                 return []
-            return PromptTemplate(content=[system_prompt_template]).format(inputs).to_messages()
+            return (
+                PromptTemplate(content=[system_prompt_template])
+                .format(inputs)
+                .to_messages()
+            )
 
         system_prompt = []
         for element in self._config.template_content:
@@ -773,7 +849,11 @@ class LLMExecutable(ComponentExecutable):
         return PromptTemplate(content=system_prompt).format(inputs).to_messages()
 
     def _validate_config(self, config: LLMCompConfig):
-        self._validate_template(config.template_content, config.system_prompt_template, config.user_prompt_template)
+        self._validate_template(
+            config.template_content,
+            config.system_prompt_template,
+            config.user_prompt_template,
+        )
         self._validate_response_format(config.response_format, config.output_config)
         self._validate_output_config(config.output_config)
 

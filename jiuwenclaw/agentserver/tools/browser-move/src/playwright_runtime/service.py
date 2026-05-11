@@ -34,7 +34,10 @@ from openjiuwen.core.single_agent.middleware.base import (
 from playwright_runtime import REPO_ROOT
 from playwright_runtime.agents import build_browser_worker_agent
 from playwright_runtime.config import BrowserRunGuardrails, resolve_playwright_mcp_cwd
-from playwright_runtime.drivers.managed_browser import ManagedBrowserDriver, _default_chrome_user_data_dir
+from playwright_runtime.drivers.managed_browser import (
+    ManagedBrowserDriver,
+    _default_chrome_user_data_dir,
+)
 from playwright_runtime.hooks import BrowserCancellationMiddleware, BrowserRunCancelled
 from playwright_runtime.profiles import BrowserProfile, BrowserProfileStore
 
@@ -88,7 +91,7 @@ def extract_json_object(text: Any) -> Dict[str, Any]:
     first = raw.find("{")
     last = raw.rfind("}")
     if first >= 0 and last > first:
-        snippet = raw[first:last + 1]
+        snippet = raw[first : last + 1]
         try:
             parsed = json.loads(snippet)
             if isinstance(parsed, dict):
@@ -126,12 +129,16 @@ class BrowserService:
         self._sessions: set[str] = set()
         self._inflight_tasks: Dict[str, set[asyncio.Task[Any]]] = {}
         self._pending_middlewares: List[AgentMiddleware] = []
-        self._pending_callbacks: List[Tuple[AgentCallbackEvent, AnyAgentCallback, int]] = []
+        self._pending_callbacks: List[
+            Tuple[AgentCallbackEvent, AnyAgentCallback, int]
+        ] = []
         self._screenshot_subdir = "screenshots"
         self._mcp_cwd = self._resolve_mcp_cwd()
         self._screenshots_dir = self._mcp_cwd / self._screenshot_subdir
         self._profile_store = BrowserProfileStore(self._resolve_profile_store_path())
-        self._profile_name = (os.getenv("BROWSER_PROFILE_NAME") or "jiuwenclaw").strip() or "jiuwenclaw"
+        self._profile_name = (
+            os.getenv("BROWSER_PROFILE_NAME") or "jiuwenclaw"
+        ).strip() or "jiuwenclaw"
         self._driver_mode = self._resolve_driver_mode()
         self._active_profile: Optional[BrowserProfile] = None
         self._managed_driver: Optional[ManagedBrowserDriver] = None
@@ -161,12 +168,16 @@ class BrowserService:
         explicit = (os.getenv("BROWSER_DRIVER") or "").strip().lower()
         if explicit:
             if explicit not in {"remote", "managed", "extension"}:
-                raise ValueError("BROWSER_DRIVER must be one of: remote, managed, extension")
+                raise ValueError(
+                    "BROWSER_DRIVER must be one of: remote, managed, extension"
+                )
             return explicit
         return "remote"
 
     def _resolve_effective_timeout(self, timeout_s: Optional[int]) -> int:
-        effective_timeout = resolve_browser_task_timeout(timeout_s, self.guardrails.timeout_s)
+        effective_timeout = resolve_browser_task_timeout(
+            timeout_s, self.guardrails.timeout_s
+        )
         requested_timeout = None
         if timeout_s is not None:
             try:
@@ -198,13 +209,23 @@ class BrowserService:
         rid = (request_id or "").strip()
         return f"{session_id}:{rid}" if rid else session_id
 
-    def _register_inflight_task(self, session_id: str, request_id: str, task: asyncio.Task[Any]) -> None:
-        keys = (self._inflight_key(session_id), self._inflight_key(session_id, request_id))
+    def _register_inflight_task(
+        self, session_id: str, request_id: str, task: asyncio.Task[Any]
+    ) -> None:
+        keys = (
+            self._inflight_key(session_id),
+            self._inflight_key(session_id, request_id),
+        )
         for key in keys:
             self._inflight_tasks.setdefault(key, set()).add(task)
 
-    def _unregister_inflight_task(self, session_id: str, request_id: str, task: asyncio.Task[Any]) -> None:
-        keys = (self._inflight_key(session_id), self._inflight_key(session_id, request_id))
+    def _unregister_inflight_task(
+        self, session_id: str, request_id: str, task: asyncio.Task[Any]
+    ) -> None:
+        keys = (
+            self._inflight_key(session_id),
+            self._inflight_key(session_id, request_id),
+        )
         for key in keys:
             tasks = self._inflight_tasks.get(key)
             if not tasks:
@@ -230,15 +251,21 @@ class BrowserService:
         except ValueError as exc:
             raise ValueError(f"Invalid BROWSER_MANAGED_PORT: {port_raw}") from exc
 
-        kill_existing_raw = (os.getenv("BROWSER_MANAGED_KILL_EXISTING") or "").strip().lower()
+        kill_existing_raw = (
+            (os.getenv("BROWSER_MANAGED_KILL_EXISTING") or "").strip().lower()
+        )
         kill_existing = kill_existing_raw in {"1", "true", "yes", "on"}
-        explicit_user_data_dir = (os.getenv("BROWSER_MANAGED_USER_DATA_DIR") or "").strip()
+        explicit_user_data_dir = (
+            os.getenv("BROWSER_MANAGED_USER_DATA_DIR") or ""
+        ).strip()
         if explicit_user_data_dir:
             user_data_dir = explicit_user_data_dir
         elif kill_existing:
             user_data_dir = _default_chrome_user_data_dir()
         else:
-            user_data_dir = str(Path(REPO_ROOT).expanduser() / ".browser-profiles" / self._profile_name)
+            user_data_dir = str(
+                Path(REPO_ROOT).expanduser() / ".browser-profiles" / self._profile_name
+            )
         browser_binary = (os.getenv("BROWSER_MANAGED_BINARY") or "").strip()
         extra_args = self._parse_env_args(os.getenv("BROWSER_MANAGED_ARGS") or "")
         cdp_url = f"http://{host}:{port}"
@@ -282,7 +309,9 @@ class BrowserService:
         self._profile_store.upsert_profile(profile, select=True)
         self._active_profile = profile
 
-        kill_existing_raw = (os.getenv("BROWSER_MANAGED_KILL_EXISTING") or "").strip().lower()
+        kill_existing_raw = (
+            (os.getenv("BROWSER_MANAGED_KILL_EXISTING") or "").strip().lower()
+        )
         kill_existing = kill_existing_raw in {"1", "true", "yes", "on"}
 
         driver = ManagedBrowserDriver(profile=profile)
@@ -401,7 +430,9 @@ class BrowserService:
         )
         return any(marker in name or marker in text for marker in markers)
 
-    async def request_cancel(self, session_id: str, request_id: Optional[str] = None) -> None:
+    async def request_cancel(
+        self, session_id: str, request_id: Optional[str] = None
+    ) -> None:
         sid = (session_id or "").strip()
         if not sid:
             raise ValueError("session_id is required for cancellation")
@@ -418,7 +449,9 @@ class BrowserService:
                 if not task.done():
                     task.cancel()
 
-    async def clear_cancel(self, session_id: str, request_id: Optional[str] = None) -> None:
+    async def clear_cancel(
+        self, session_id: str, request_id: Optional[str] = None
+    ) -> None:
         sid = (session_id or "").strip()
         if not sid:
             return
@@ -427,7 +460,9 @@ class BrowserService:
             return
         await self._cancel_store.delete(self._cancel_key(sid, "*"))
 
-    async def is_cancelled(self, session_id: str, request_id: Optional[str] = None) -> bool:
+    async def is_cancelled(
+        self, session_id: str, request_id: Optional[str] = None
+    ) -> bool:
         sid = (session_id or "").strip()
         if not sid:
             return False
@@ -473,11 +508,18 @@ class BrowserService:
         self._ensure_screenshots_dir()
         await Runner.start()
 
-        register_result = await Runner.resource_mgr.add_mcp_server(self.mcp_cfg, tag="browser.service")
-        if register_result is not None and not getattr(register_result, "is_ok", lambda: False)():
+        register_result = await Runner.resource_mgr.add_mcp_server(
+            self.mcp_cfg, tag="browser.service"
+        )
+        if (
+            register_result is not None
+            and not getattr(register_result, "is_ok", lambda: False)()
+        ):
             error_value = getattr(register_result, "value", register_result)
             if "already exist" not in str(error_value):
-                raise RuntimeError(f"Failed to register Playwright MCP server: {error_value}")
+                raise RuntimeError(
+                    f"Failed to register Playwright MCP server: {error_value}"
+                )
 
         self._browser_agent = build_browser_worker_agent(
             provider=self.provider,
@@ -488,7 +530,9 @@ class BrowserService:
             max_steps=self.guardrails.max_steps,
             screenshot_subdir=self._screenshot_subdir,
         )
-        self._browser_agent.register_middleware(BrowserCancellationMiddleware(self.is_cancelled))
+        self._browser_agent.register_middleware(
+            BrowserCancellationMiddleware(self.is_cancelled)
+        )
         for middleware in self._pending_middlewares:
             self._browser_agent.register_middleware(middleware)
         self._pending_middlewares.clear()
@@ -500,9 +544,12 @@ class BrowserService:
     async def _restart(self) -> None:
         """Tear down and reinitialize the browser service (e.g. after stdio subprocess dies)."""
         from openjiuwen.core.common.logging import logger as _logger
+
         _logger.warning("BrowserService: restarting due to broken MCP connection")
         try:
-            server_resource_id = (self.mcp_cfg.server_id or "").strip() or self.mcp_cfg.server_name
+            server_resource_id = (
+                self.mcp_cfg.server_id or ""
+            ).strip() or self.mcp_cfg.server_name
             await Runner.resource_mgr.remove_tool_server(
                 server_resource_id, ignore_not_exist=True
             )
@@ -512,7 +559,9 @@ class BrowserService:
         self._browser_agent = None
         await self.ensure_started()
 
-    async def _run_task_once(self, task: str, session_id: str, request_id: str) -> Dict[str, Any]:
+    async def _run_task_once(
+        self, task: str, session_id: str, request_id: str
+    ) -> Dict[str, Any]:
         if self._browser_agent is None:
             raise RuntimeError("BrowserService is not started")
 
@@ -526,7 +575,11 @@ class BrowserService:
         )
         result = await Runner.run_agent(
             self._browser_agent,
-            {"query": task_prompt, "conversation_id": session_id, "request_id": request_id},
+            {
+                "query": task_prompt,
+                "conversation_id": session_id,
+                "request_id": request_id,
+            },
         )
         output_text = result.get("output") if isinstance(result, dict) else result
         parsed = extract_json_object(output_text)
@@ -682,16 +735,22 @@ class BrowserService:
                     }
                 last_error: Optional[str] = None
                 used_max_iteration_resume = False
-                next_task = self._build_task_with_failure_context(base_task, previous_failure_summary)
+                next_task = self._build_task_with_failure_context(
+                    base_task, previous_failure_summary
+                )
                 attempt_idx = 0
-                max_attempts = attempts + 1  # one extra continuation pass for max-iteration exhaustion
+                max_attempts = (
+                    attempts + 1
+                )  # one extra continuation pass for max-iteration exhaustion
                 last_failure_final = ""
                 last_failure_page: Dict[str, Any] = {}
                 last_failure_screenshot: Any = None
                 while attempt_idx < max_attempts:
                     try:
                         parsed = await asyncio.wait_for(
-                            self._run_task_once(task=next_task, session_id=sid, request_id=rid),
+                            self._run_task_once(
+                                task=next_task, session_id=sid, request_id=rid
+                            ),
                             timeout=float(effective_timeout),
                         )
                         attempt_idx += 1
@@ -699,7 +758,11 @@ class BrowserService:
                         if not parsed_ok:
                             last_error = str(parsed.get("error") or "")
                             last_failure_final = str(parsed.get("final", ""))
-                            last_failure_page = parsed.get("page") if isinstance(parsed.get("page"), dict) else {}
+                            last_failure_page = (
+                                parsed.get("page")
+                                if isinstance(parsed.get("page"), dict)
+                                else {}
+                            )
                             last_failure_screenshot = parsed.get("screenshot")
 
                         if (
@@ -708,12 +771,22 @@ class BrowserService:
                             and not used_max_iteration_resume
                         ):
                             used_max_iteration_resume = True
-                            next_task = self._build_resume_task(next_task, str(parsed.get("final", "")))
-                            last_error = str(parsed.get("error") or MAX_ITERATION_MESSAGE)
+                            next_task = self._build_resume_task(
+                                next_task, str(parsed.get("final", ""))
+                            )
+                            last_error = str(
+                                parsed.get("error") or MAX_ITERATION_MESSAGE
+                            )
                             continue
 
-                        page = parsed.get("page") if isinstance(parsed.get("page"), dict) else {}
-                        screenshot = self._normalize_screenshot_value(parsed.get("screenshot"))
+                        page = (
+                            parsed.get("page")
+                            if isinstance(parsed.get("page"), dict)
+                            else {}
+                        )
+                        screenshot = self._normalize_screenshot_value(
+                            parsed.get("screenshot")
+                        )
                         response = {
                             "ok": parsed_ok,
                             "session_id": sid,
@@ -793,8 +866,16 @@ class BrowserService:
 
                 await self.clear_cancel(sid, rid)
                 await self.clear_cancel(sid, None)
-                page_url = str(last_failure_page.get("url", "")) if isinstance(last_failure_page, dict) else ""
-                page_title = str(last_failure_page.get("title", "")) if isinstance(last_failure_page, dict) else ""
+                page_url = (
+                    str(last_failure_page.get("url", ""))
+                    if isinstance(last_failure_page, dict)
+                    else ""
+                )
+                page_title = (
+                    str(last_failure_page.get("title", ""))
+                    if isinstance(last_failure_page, dict)
+                    else ""
+                )
                 failure_summary = self._build_failure_summary(
                     task=base_task,
                     error=last_error or "unknown browser execution error",

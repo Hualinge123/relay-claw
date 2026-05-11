@@ -28,24 +28,28 @@ class StdioClient(McpClient):
         """Establish Stdio connection to the tool server"""
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
-        
+
         try:
             # server_path should be StdioServerParameters for stdio client
             valid_handlers = {"strict", "ignore", "replace"}
-            handler = self._params.get('encoding_error_handler', 'strict')
+            handler = self._params.get("encoding_error_handler", "strict")
             if handler not in valid_handlers:
-                handler = 'strict'
-            params = StdioServerParameters(command=self._params.get('command'),
-                                           args=self._params.get('args'),
-                                           env=self._params.get('env'),
-                                           cwd=self._params.get('cwd'),
-                                           encoding_error_handler=handler
-                                           )
+                handler = "strict"
+            params = StdioServerParameters(
+                command=self._params.get("command"),
+                args=self._params.get("args"),
+                env=self._params.get("env"),
+                cwd=self._params.get("cwd"),
+                encoding_error_handler=handler,
+            )
 
             self._client = stdio_client(params)
-            self._read, self._write = await self._exit_stack.enter_async_context(self._client)
+            self._read, self._write = await self._exit_stack.enter_async_context(
+                self._client
+            )
             self._session = await self._exit_stack.enter_async_context(
-                ClientSession(self._read, self._write, sampling_callback=None))
+                ClientSession(self._read, self._write, sampling_callback=None)
+            )
             await self._session.initialize()
             self._is_disconnected = False
             logger.info("Stdio client connected successfully")
@@ -102,13 +106,17 @@ class StdioClient(McpClient):
             logger.error(f"Failed to list tools via Stdio: {e}")
             raise
 
-    async def call_tool(self, tool_name: str, arguments: dict, *, timeout: float = NO_TIMEOUT) -> Any:
+    async def call_tool(
+        self, tool_name: str, arguments: dict, *, timeout: float = NO_TIMEOUT
+    ) -> Any:
         """Call tool via Stdio"""
         if not self._session:
             raise RuntimeError("Not connected to Stdio server")
 
         try:
-            logger.info(f"Calling tool '{tool_name}' via Stdio with arguments: {arguments}")
+            logger.info(
+                f"Calling tool '{tool_name}' via Stdio with arguments: {arguments}"
+            )
             tool_result = await self._session.call_tool(tool_name, arguments=arguments)
             result_content = None
             if tool_result.content and len(tool_result.content) > 0:
@@ -124,7 +132,9 @@ class StdioClient(McpClient):
             logger.error(f"Tool call failed via Stdio: {e!r}")
             raise
 
-    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[Any]:
+    async def get_tool_info(
+        self, tool_name: str, *, timeout: float = NO_TIMEOUT
+    ) -> Optional[Any]:
         """Get specific tool info via Stdio"""
         tools = await self.list_tools(timeout=timeout)
         for tool in tools:

@@ -65,8 +65,6 @@ def match_wildcard(value: str, pattern: str) -> bool:
         return False
 
 
-
-
 class PatternMatcher:
     """模式匹配器 - 仅支持 wildcard 模式 (*, ?)."""
 
@@ -193,9 +191,9 @@ def build_command_allow_pattern(cmd: str) -> str:
 
 
 def contains_path(parent: str | Path, child: str | Path) -> bool:
-    """子路径是否在父路径下（含路径穿越防护）.
-    """
+    """子路径是否在父路径下（含路径穿越防护）."""
     import os
+
     try:
         rel = os.path.relpath(Path(child).resolve(), Path(parent).resolve())
         return not rel.startswith("..") and rel != ".."
@@ -220,7 +218,9 @@ def persist_permission_allow_rule(tool_name: str, tool_args: dict | str) -> None
 
     logger.info(
         "[Persist] START tool_name=%s tool_args_type=%s tool_args=%s",
-        tool_name, type(tool_args).__name__, str(tool_args)[:200],
+        tool_name,
+        type(tool_args).__name__,
+        str(tool_args)[:200],
     )
 
     try:
@@ -318,12 +318,15 @@ def persist_external_directory_allow(paths: list[str]) -> None:
             parent = str(Path(path_norm).parent).replace("\\", "/")
             key = parent if parent and parent != "." else path_norm
             if key not in ext_cfg or ext_cfg[key] != "allow":
-                ext_cfg[DoubleQuotedScalarString(key)] = DoubleQuotedScalarString("allow")
+                ext_cfg[DoubleQuotedScalarString(key)] = DoubleQuotedScalarString(
+                    "allow"
+                )
                 logger.info("[Persist] Added external_directory[%s] = allow", key)
         _dump_yaml_round_trip(_CONFIG_YAML_PATH, data)
         engine = get_permission_engine()
         engine.update_config(data.get("permissions", {}))
         logger.info("[Persist] external_directory written, engine hot-reloaded")
     except Exception:
-        logger.error("[Persist] FAILED to persist external_directory allow", exc_info=True)
-
+        logger.error(
+            "[Persist] FAILED to persist external_directory allow", exc_info=True
+        )

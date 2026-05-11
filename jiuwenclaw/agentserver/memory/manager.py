@@ -12,12 +12,16 @@ from typing import List, Optional, Dict, Any, Set
 from dataclasses import dataclass
 from pathlib import Path
 
-from .types import (
-    MemorySearchResult, MemoryFileEntry, MemoryChunk, MemorySource
-)
+from .types import MemorySearchResult, MemoryFileEntry, MemoryChunk, MemorySource
 from .internal import (
-    ensure_dir, list_memory_files, build_file_entry, chunk_markdown,
-    hash_text, build_fts_query, bm25_rank_to_score, is_memory_path
+    ensure_dir,
+    list_memory_files,
+    build_file_entry,
+    chunk_markdown,
+    hash_text,
+    build_fts_query,
+    bm25_rank_to_score,
+    is_memory_path,
 )
 from .embeddings import EmbeddingProvider, create_embedding_provider
 from .config import MemorySettings
@@ -30,12 +34,13 @@ FTS_TABLE = "chunks_fts"
 EMBEDDING_CACHE_TABLE = "embedding_cache"
 SESSION_DIRTY_DEBOUNCE_MS = 5000
 
-INDEX_CACHE: Dict[str, 'MemoryIndexManager'] = {}
+INDEX_CACHE: Dict[str, "MemoryIndexManager"] = {}
 
 
 @dataclass
 class SessionDeltaState:
     """Tracks incremental changes to a session file."""
+
     last_size: int = 0
     pending_bytes: int = 0
     pending_messages: int = 0
@@ -43,24 +48,19 @@ class SessionDeltaState:
 
 def vector_to_blob(embedding: List[float]) -> bytes:
     """Convert vector to binary blob."""
-    return struct.pack(f'{len(embedding)}f', *embedding)
+    return struct.pack(f"{len(embedding)}f", *embedding)
 
 
 def blob_to_vector(blob: bytes) -> List[float]:
     """Convert binary blob to vector."""
     count = len(blob) // 4
-    return list(struct.unpack(f'{count}f', blob))
+    return list(struct.unpack(f"{count}f", blob))
 
 
 class MemoryIndexManager:
     """Manages memory indexing and search."""
 
-    def __init__(
-            self,
-            agent_id: str,
-            workspace_dir: str,
-            settings: MemorySettings
-    ):
+    def __init__(self, agent_id: str, workspace_dir: str, settings: MemorySettings):
         self.agent_id = agent_id
         self.workspace_dir = workspace_dir
         self.settings = settings
@@ -102,11 +102,11 @@ class MemoryIndexManager:
 
     @classmethod
     async def get(
-            cls,
-            agent_id: str,
-            workspace_dir: str,
-            settings: Optional[MemorySettings] = None
-    ) -> Optional['MemoryIndexManager']:
+        cls,
+        agent_id: str,
+        workspace_dir: str,
+        settings: Optional[MemorySettings] = None,
+    ) -> Optional["MemoryIndexManager"]:
         """Get or create memory index manager."""
         cache_key = f"{agent_id}:{workspace_dir}"
 
@@ -159,12 +159,16 @@ class MemoryIndexManager:
 
         # 如果 store_path 已经包含 workspace_dir 的部分路径，避免重复拼接
         workspace_name = os.path.basename(self.workspace_dir)
-        if store_path.startswith(f"{workspace_name}/") or store_path.startswith(f"{workspace_name}\\"):
+        if store_path.startswith(f"{workspace_name}/") or store_path.startswith(
+            f"{workspace_name}\\"
+        ):
             # 去除重复的 workspace 目录前缀
-            store_path = store_path[len(workspace_name) + 1:]
+            store_path = store_path[len(workspace_name) + 1 :]
 
         # 确保使用 memory 子目录，与 MEMORY.md 同目录
-        if not store_path.startswith("memory/") and not store_path.startswith("memory\\"):
+        if not store_path.startswith("memory/") and not store_path.startswith(
+            "memory\\"
+        ):
             store_path = os.path.join("memory", store_path)
 
         return os.path.join(self.workspace_dir, store_path)
@@ -281,10 +285,12 @@ class MemoryIndexManager:
             self.provider = await create_embedding_provider(
                 provider=self.settings.provider,
                 model=self.settings.model,
-                fallback=self.settings.fallback
+                fallback=self.settings.fallback,
             )
             self.provider_key = f"{self.provider.id}:{self.provider.model}"
-            logger.info(f"Embedding provider: {self.provider.id} / {self.provider.model}")
+            logger.info(
+                f"Embedding provider: {self.provider.id} / {self.provider.model}"
+            )
         except Exception as e:
             logger.error(f"Failed to initialize embedding provider: {e}")
             raise
@@ -296,6 +302,7 @@ class MemoryIndexManager:
 
         try:
             import sqlite_vec
+
             self.db.enable_load_extension(True)
             sqlite_vec.load(self.db)
             self.db.enable_load_extension(False)
@@ -343,7 +350,7 @@ class MemoryIndexManager:
             from watchdog.events import FileSystemEventHandler
 
             class MemoryFileHandler(FileSystemEventHandler):
-                def __init__(self, manager: 'MemoryIndexManager'):
+                def __init__(self, manager: "MemoryIndexManager"):
                     self.manager = manager
 
                 def on_modified(self, event):
@@ -392,7 +399,9 @@ class MemoryIndexManager:
                 else:
                     parent_dir = os.path.dirname(watch_path)
                     if parent_dir:
-                        self._file_observer.schedule(handler, parent_dir, recursive=False)
+                        self._file_observer.schedule(
+                            handler, parent_dir, recursive=False
+                        )
                 self._watcher_paths.add(watch_path)
 
             self._file_observer.start()
@@ -413,7 +422,9 @@ class MemoryIndexManager:
         self._watcher_initialized = True
         logger.debug("File watcher initialized")
 
-    def _schedule_watch_sync(self, path: Optional[str] = None, event_type: Optional[str] = None) -> None:
+    def _schedule_watch_sync(
+        self, path: Optional[str] = None, event_type: Optional[str] = None
+    ) -> None:
         """Schedule a sync after file change (debounced)."""
         self.dirty = True
 
@@ -467,11 +478,7 @@ class MemoryIndexManager:
         self._interval_timer = asyncio.create_task(interval_sync())
         logger.info(f"Interval sync enabled: every {minutes} minutes")
 
-    async def sync(
-            self,
-            reason: Optional[str] = None,
-            force: bool = False
-    ) -> None:
+    async def sync(self, reason: Optional[str] = None, force: bool = False) -> None:
         """Synchronize memory index."""
         if self.closed:
             return
@@ -496,8 +503,7 @@ class MemoryIndexManager:
         """Check if full reindex is needed."""
         try:
             cursor = self.db.execute(
-                "SELECT value FROM meta WHERE key = ?",
-                (META_KEY,)
+                "SELECT value FROM meta WHERE key = ?", (META_KEY,)
             )
             row = cursor.fetchone()
 
@@ -555,7 +561,7 @@ class MemoryIndexManager:
         """
         import re
 
-        match = re.match(r'^(\d{4}-\d{2}-\d{2})\.md$', filename)
+        match = re.match(r"^(\d{4}-\d{2}-\d{2})\.md$", filename)
         if not match:
             return False
 
@@ -589,7 +595,7 @@ class MemoryIndexManager:
 
             cursor = self.db.execute(
                 "SELECT hash FROM files WHERE path = ? AND source = ?",
-                (entry["path"], "memory")
+                (entry["path"], "memory"),
             )
             row = cursor.fetchone()
 
@@ -624,7 +630,7 @@ class MemoryIndexManager:
 
             cursor = self.db.execute(
                 "SELECT hash FROM files WHERE path = ? AND source = ?",
-                (entry["path"], "sessions")
+                (entry["path"], "sessions"),
             )
             row = cursor.fetchone()
 
@@ -633,7 +639,9 @@ class MemoryIndexManager:
 
             await self._index_file(entry, "sessions")
 
-        cursor = self.db.execute("SELECT path FROM files WHERE source = ?", ("sessions",))
+        cursor = self.db.execute(
+            "SELECT path FROM files WHERE source = ?", ("sessions",)
+        )
         for row in cursor.fetchall():
             if row["path"] not in active_paths:
                 self._remove_file_from_index(row["path"])
@@ -649,17 +657,22 @@ class MemoryIndexManager:
             self.db.execute("DELETE FROM chunks WHERE path = ?", (entry["path"],))
             if self.fts_available:
                 try:
-                    self.db.execute(f"DELETE FROM {FTS_TABLE} WHERE path = ?", (entry["path"],))
+                    self.db.execute(
+                        f"DELETE FROM {FTS_TABLE} WHERE path = ?", (entry["path"],)
+                    )
                 except:
                     pass
 
             for chunk in chunks:
                 await self._index_chunk(entry["path"], source, chunk)
 
-            self.db.execute("""
+            self.db.execute(
+                """
                 INSERT OR REPLACE INTO files (path, source, hash, mtime, size)
                 VALUES (?, ?, ?, ?, ?)
-            """, (entry["path"], source, entry["hash"], entry["mtimeMs"], entry["size"]))
+            """,
+                (entry["path"], source, entry["hash"], entry["mtimeMs"], entry["size"]),
+            )
 
             self.db.commit()
 
@@ -668,10 +681,7 @@ class MemoryIndexManager:
             self.db.rollback()
 
     async def _index_chunk(
-            self,
-            file_path: str,
-            source: str,
-            chunk: MemoryChunk
+        self, file_path: str, source: str, chunk: MemoryChunk
     ) -> None:
         """Index a single chunk."""
         chunk_id = f"{file_path}:{chunk.startLine}:{chunk.endLine}"
@@ -679,36 +689,51 @@ class MemoryIndexManager:
 
         embedding = await self._get_embedding(chunk.text)
 
-        cursor = self.db.execute("""
+        cursor = self.db.execute(
+            """
             INSERT OR REPLACE INTO chunks
             (id, path, source, start_line, end_line, hash, model, text, embedding, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING rowid
-        """, (
-            chunk_id, file_path, source, chunk.startLine, chunk.endLine,
-            chunk_hash, self.provider.model, chunk.text,
-            vector_to_blob(embedding) if embedding else None,
-            int(asyncio.get_event_loop().time()) if self._event_loop else 0
-        ))
+        """,
+            (
+                chunk_id,
+                file_path,
+                source,
+                chunk.startLine,
+                chunk.endLine,
+                chunk_hash,
+                self.provider.model,
+                chunk.text,
+                vector_to_blob(embedding) if embedding else None,
+                int(asyncio.get_event_loop().time()) if self._event_loop else 0,
+            ),
+        )
         row = cursor.fetchone()
         chunk_rowid = row["rowid"] if row else None
 
         if self.fts_available and chunk_rowid:
             try:
-                self.db.execute(f"""
+                self.db.execute(
+                    f"""
                     INSERT OR REPLACE INTO {FTS_TABLE} (rowid, id, path, source, text)
                     VALUES (?, ?, ?, ?, ?)
-                """, (chunk_rowid, chunk_id, file_path, source, chunk.text))
+                """,
+                    (chunk_rowid, chunk_id, file_path, source, chunk.text),
+                )
             except Exception as e:
                 logger.debug(f"Failed to insert into FTS: {e}")
 
         if self.vector_available and embedding and chunk_rowid:
             try:
                 if self._ensure_vector_table(len(embedding)):
-                    self.db.execute(f"""
+                    self.db.execute(
+                        f"""
                         INSERT OR REPLACE INTO {VECTOR_TABLE} (rowid, embedding)
                         VALUES (?, vec_f32(?))
-                    """, (chunk_rowid, vector_to_blob(embedding)))
+                    """,
+                        (chunk_rowid, vector_to_blob(embedding)),
+                    )
             except Exception as e:
                 logger.debug(f"Failed to insert into vector table: {e}")
 
@@ -721,15 +746,22 @@ class MemoryIndexManager:
                 )
                 for row in cursor.fetchall():
                     try:
-                        self.db.execute(f"DELETE FROM {VECTOR_TABLE} WHERE rowid = ?", (row["rowid"],))
+                        self.db.execute(
+                            f"DELETE FROM {VECTOR_TABLE} WHERE rowid = ?",
+                            (row["rowid"],),
+                        )
                     except:
                         pass
 
             if self.fts_available:
-                cursor = self.db.execute("SELECT rowid FROM chunks WHERE path = ?", (file_path,))
+                cursor = self.db.execute(
+                    "SELECT rowid FROM chunks WHERE path = ?", (file_path,)
+                )
                 for row in cursor.fetchall():
                     try:
-                        self.db.execute(f"DELETE FROM {FTS_TABLE} WHERE rowid = ?", (row["rowid"],))
+                        self.db.execute(
+                            f"DELETE FROM {FTS_TABLE} WHERE rowid = ?", (row["rowid"],)
+                        )
                     except:
                         pass
 
@@ -749,10 +781,13 @@ class MemoryIndexManager:
         text_hash = hash_text(text)
 
         if self.cache_enabled:
-            cursor = self.db.execute(f"""
+            cursor = self.db.execute(
+                f"""
                 SELECT embedding FROM {EMBEDDING_CACHE_TABLE}
                 WHERE provider = ? AND model = ? AND provider_key = ? AND hash = ?
-            """, (self.provider.id, self.provider.model, self.provider_key, text_hash))
+            """,
+                (self.provider.id, self.provider.model, self.provider_key, text_hash),
+            )
             row = cursor.fetchone()
             if row:
                 return blob_to_vector(row["embedding"])
@@ -761,15 +796,22 @@ class MemoryIndexManager:
             embedding = await self.provider.embed_query(text)
 
             if self.cache_enabled:
-                self.db.execute(f"""
+                self.db.execute(
+                    f"""
                     INSERT OR REPLACE INTO {EMBEDDING_CACHE_TABLE}
                     (provider, model, provider_key, hash, embedding, dims, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    self.provider.id, self.provider.model, self.provider_key,
-                    text_hash, vector_to_blob(embedding), len(embedding),
-                    int(asyncio.get_event_loop().time()) if self._event_loop else 0
-                ))
+                """,
+                    (
+                        self.provider.id,
+                        self.provider.model,
+                        self.provider_key,
+                        text_hash,
+                        vector_to_blob(embedding),
+                        len(embedding),
+                        int(asyncio.get_event_loop().time()) if self._event_loop else 0,
+                    ),
+                )
                 self.db.commit()
 
             return embedding
@@ -779,9 +821,7 @@ class MemoryIndexManager:
             return None
 
     async def search(
-            self,
-            query: str,
-            opts: Optional[Dict[str, Any]] = None
+        self, query: str, opts: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """Search memory for relevant content.
 
@@ -800,12 +840,21 @@ class MemoryIndexManager:
         if not cleaned:
             return []
 
-        min_score = opts.get("minScore") if opts and "minScore" in opts else self.settings.query.get("minScore", 0.7)
-        max_results = opts.get("maxResults") if opts and "maxResults" in opts else self.settings.query.get("maxResults",
-                                                                                                           10)
+        min_score = (
+            opts.get("minScore")
+            if opts and "minScore" in opts
+            else self.settings.query.get("minScore", 0.7)
+        )
+        max_results = (
+            opts.get("maxResults")
+            if opts and "maxResults" in opts
+            else self.settings.query.get("maxResults", 10)
+        )
         hybrid = self.settings.query.get("hybrid") or {}
 
-        candidates = min(200, max(1, int(max_results * (hybrid.get("candidateMultiplier") or 2.0))))
+        candidates = min(
+            200, max(1, int(max_results * (hybrid.get("candidateMultiplier") or 2.0)))
+        )
 
         keyword_results = []
         if hybrid.get("enabled", True) and self.fts_available:
@@ -825,24 +874,19 @@ class MemoryIndexManager:
                 logger.debug(f"Vector search failed: {e}")
 
         if not hybrid.get("enabled", True):
-            return [
-                r for r in vector_results
-                if r["score"] >= min_score
-            ][:max_results]
+            return [r for r in vector_results if r["score"] >= min_score][:max_results]
 
         merged = self._merge_hybrid_results(
             vector_results,
             keyword_results,
             hybrid.get("vectorWeight", 0.7),
-            hybrid.get("textWeight", 0.3)
+            hybrid.get("textWeight", 0.3),
         )
 
         return [r for r in merged if r["score"] >= min_score][:max_results]
 
     async def _search_vector(
-            self,
-            query_vec: List[float],
-            limit: int
+        self, query_vec: List[float], limit: int
     ) -> List[Dict[str, Any]]:
         """Search using vector similarity."""
         if not self.vector_enabled:
@@ -878,13 +922,14 @@ class MemoryIndexManager:
                     "source": str(row["source"]),
                     "startLine": int(row["start_line"]),
                     "endLine": int(row["end_line"]),
-                    "snippet": str(row["text"][:SNIPPET_MAX_CHARS])
+                    "snippet": str(row["text"][:SNIPPET_MAX_CHARS]),
                 }
 
             if not chunk_map:
                 return []
 
-            rows = self.db.execute(f"""
+            rows = self.db.execute(
+                f"""
                 SELECT 
                     rowid,
                     vec_distance_cosine(embedding, vec_f32(?)) as distance
@@ -892,7 +937,9 @@ class MemoryIndexManager:
                 WHERE rowid IN ({','.join('?' * len(chunk_map))})
                 ORDER BY distance
                 LIMIT ?
-            """, (query_blob, *chunk_map.keys(), limit))
+            """,
+                (query_blob, *chunk_map.keys(), limit),
+            )
 
             results = []
             for row in rows:
@@ -912,9 +959,7 @@ class MemoryIndexManager:
             return await self._search_vector_fallback(query_vec, limit)
 
     async def _search_vector_fallback(
-            self,
-            query_vec: List[float],
-            limit: int
+        self, query_vec: List[float], limit: int
     ) -> List[Dict[str, Any]]:
         """Fallback vector search using in-memory cosine similarity."""
         import math
@@ -948,24 +993,22 @@ class MemoryIndexManager:
 
             similarity = dot / vec_norm
 
-            results.append({
-                "id": str(row["id"]),
-                "path": str(row["path"]),
-                "source": str(row["source"]),
-                "startLine": int(row["start_line"]),
-                "endLine": int(row["end_line"]),
-                "snippet": str(row["text"][:SNIPPET_MAX_CHARS]),
-                "score": float(max(0, similarity))
-            })
+            results.append(
+                {
+                    "id": str(row["id"]),
+                    "path": str(row["path"]),
+                    "source": str(row["source"]),
+                    "startLine": int(row["start_line"]),
+                    "endLine": int(row["end_line"]),
+                    "snippet": str(row["text"][:SNIPPET_MAX_CHARS]),
+                    "score": float(max(0, similarity)),
+                }
+            )
 
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:limit]
 
-    async def _search_keyword(
-            self,
-            query: str,
-            limit: int
-    ) -> List[Dict[str, Any]]:
+    async def _search_keyword(self, query: str, limit: int) -> List[Dict[str, Any]]:
         """Search using keyword matching (FTS5)."""
         if not self.fts_available:
             return []
@@ -991,13 +1034,14 @@ class MemoryIndexManager:
                     "source": str(row["source"]),
                     "startLine": int(row["start_line"]),
                     "endLine": int(row["end_line"]),
-                    "snippet": str(row["text"][:SNIPPET_MAX_CHARS])
+                    "snippet": str(row["text"][:SNIPPET_MAX_CHARS]),
                 }
 
             if not chunk_map:
                 return []
 
-            rows = self.db.execute(f"""
+            rows = self.db.execute(
+                f"""
                 SELECT 
                     rowid,
                     rank
@@ -1005,7 +1049,9 @@ class MemoryIndexManager:
                 WHERE {FTS_TABLE} MATCH ?
                 ORDER BY rank
                 LIMIT ?
-            """, (fts_query, limit))
+            """,
+                (fts_query, limit),
+            )
 
             results = []
             for row in rows:
@@ -1035,11 +1081,11 @@ class MemoryIndexManager:
         return f"source IN ({', '.join(repr(s) for s in sources)})"
 
     def _merge_hybrid_results(
-            self,
-            vector_results: List[Dict[str, Any]],
-            keyword_results: List[Dict[str, Any]],
-            vector_weight: float,
-            text_weight: float
+        self,
+        vector_results: List[Dict[str, Any]],
+        keyword_results: List[Dict[str, Any]],
+        vector_weight: float,
+        text_weight: float,
     ) -> List[Dict[str, Any]]:
         """Merge and rerank hybrid search results."""
         by_id: Dict[str, Dict[str, Any]] = {}
@@ -1058,7 +1104,9 @@ class MemoryIndexManager:
                 by_id[r["id"]] = r
 
         for r in by_id.values():
-            r["score"] = vector_weight * r["_vector_score"] + text_weight * r["_text_score"]
+            r["score"] = (
+                vector_weight * r["_vector_score"] + text_weight * r["_text_score"]
+            )
             del r["_vector_score"]
             del r["_text_score"]
 
@@ -1072,8 +1120,7 @@ class MemoryIndexManager:
         try:
             timeout = 60.0
             return await asyncio.wait_for(
-                self.provider.embed_query(query),
-                timeout=timeout
+                self.provider.embed_query(query), timeout=timeout
             )
         except asyncio.TimeoutError:
             logger.warning("Embedding query timed out")
@@ -1083,10 +1130,10 @@ class MemoryIndexManager:
             return []
 
     async def read_file(
-            self,
-            rel_path: str,
-            from_line: Optional[int] = None,
-            lines: Optional[int] = None
+        self,
+        rel_path: str,
+        from_line: Optional[int] = None,
+        lines: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Read file content."""
         full_path = os.path.join(self.workspace_dir, rel_path)
@@ -1113,14 +1160,14 @@ class MemoryIndexManager:
             "text": "".join(content_lines),
             "totalLines": total_lines,
             "fromLine": from_line or 1,
-            "toLine": (from_line or 1) + len(content_lines) - 1
+            "toLine": (from_line or 1) + len(content_lines) - 1,
         }
 
     def _write_meta(self, meta: Dict[str, Any]) -> None:
         """Write metadata to database."""
         self.db.execute(
             "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-            (META_KEY, json.dumps(meta))
+            (META_KEY, json.dumps(meta)),
         )
         self.db.commit()
 
@@ -1156,32 +1203,32 @@ class MemoryIndexManager:
             "fts": {
                 "enabled": self.fts_enabled,
                 "available": self.fts_available,
-                "error": self.fts_error
+                "error": self.fts_error,
             },
             "vector": {
                 "enabled": self.vector_enabled,
                 "available": self.vector_available,
                 "error": self.vector_error,
-                "dims": self.vector_dims
+                "dims": self.vector_dims,
             },
             "cache": {
                 "enabled": self.cache_enabled,
-                "entries": int(self._get_cache_entry_count())
-            }
+                "entries": int(self._get_cache_entry_count()),
+            },
         }
 
     def _get_cache_entry_count(self) -> int:
         """Get number of cache entries."""
         try:
-            cursor = self.db.execute(f"SELECT COUNT(*) as count FROM {EMBEDDING_CACHE_TABLE}")
+            cursor = self.db.execute(
+                f"SELECT COUNT(*) as count FROM {EMBEDDING_CACHE_TABLE}"
+            )
             return cursor.fetchone()["count"]
         except:
             return 0
 
     async def compact_memory(
-            self,
-            messages: List[Dict[str, Any]],
-            prior_summary: str = ""
+        self, messages: List[Dict[str, Any]], prior_summary: str = ""
     ) -> str:
         """Compact messages into a summary.
 
@@ -1198,9 +1245,7 @@ class MemoryIndexManager:
         return await compactor.compact(messages, prior_summary)
 
     async def summary_memory(
-            self,
-            messages: List[Dict[str, Any]],
-            date: Optional[str] = None
+        self, messages: List[Dict[str, Any]], date: Optional[str] = None
     ) -> str:
         """Generate a session summary.
 
@@ -1218,7 +1263,9 @@ class MemoryIndexManager:
 
         if summary:
             today = date or datetime.datetime.now().strftime("%Y-%m-%d")
-            summary_file = os.path.join(self.workspace_dir, "memory", f"{today}-summary.md")
+            summary_file = os.path.join(
+                self.workspace_dir, "memory", f"{today}-summary.md"
+            )
 
             os.makedirs(os.path.dirname(summary_file), exist_ok=True)
             with open(summary_file, "w", encoding="utf-8") as f:
@@ -1229,9 +1276,7 @@ class MemoryIndexManager:
         return summary
 
     def add_async_summary_task(
-            self,
-            messages: List[Dict[str, Any]],
-            date: Optional[str] = None
+        self, messages: List[Dict[str, Any]], date: Optional[str] = None
     ):
         """Add an async task to generate session summary.
 
@@ -1255,7 +1300,9 @@ class MemoryIndexManager:
 
         task = asyncio.create_task(_run_summary())
         self._summary_tasks.append(task)
-        logger.debug(f"Added summary task for {date or 'today'}, total tasks: {len(self._summary_tasks)}")
+        logger.debug(
+            f"Added summary task for {date or 'today'}, total tasks: {len(self._summary_tasks)}"
+        )
 
     def _cleanup_summary_tasks(self) -> None:
         """Clean up completed summary tasks.
@@ -1308,12 +1355,11 @@ class MemoryIndexManager:
 
         self._cleanup_summary_tasks()
         if self._summary_tasks:
-            logger.info(f"Waiting for {len(self._summary_tasks)} pending summary tasks...")
+            logger.info(
+                f"Waiting for {len(self._summary_tasks)} pending summary tasks..."
+            )
             try:
-                done, pending = await asyncio.wait(
-                    self._summary_tasks,
-                    timeout=30.0
-                )
+                done, pending = await asyncio.wait(self._summary_tasks, timeout=30.0)
                 if pending:
                     logger.warning(f"Cancelling {len(pending)} pending summary tasks")
                     for task in pending:
@@ -1344,9 +1390,9 @@ def clear_memory_manager_cache() -> None:
 
 
 async def get_memory_manager(
-        agent_id: str = "default",
-        workspace_dir: str = ".",
-        settings: Optional[MemorySettings] = None
+    agent_id: str = "default",
+    workspace_dir: str = ".",
+    settings: Optional[MemorySettings] = None,
 ) -> Optional[MemoryIndexManager]:
     """Get or create memory manager."""
     settings = settings or MemorySettings()

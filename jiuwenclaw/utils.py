@@ -26,8 +26,6 @@ from typing import Any, Literal, Optional
 from logging.handlers import RotatingFileHandler
 from ruamel.yaml import YAML
 
-
-
 # User home directory
 USER_HOME = Path.home()
 USER_WORKSPACE_DIR = USER_HOME / ".jiuwenclaw"
@@ -57,7 +55,10 @@ def _detect_installation_mode() -> bool:
     # Check if module file is in any site-packages directory
     for path in sys.path:
         site_packages = Path(path)
-        if "site-packages" in str(site_packages) and site_packages in module_file.parents:
+        if (
+            "site-packages" in str(site_packages)
+            and site_packages in module_file.parents
+        ):
             _is_package = True
             return True
 
@@ -90,9 +91,7 @@ def _find_package_root() -> Path | None:
     return current
 
 
-def _resolve_preferred_language(
-    config_yaml_dest: Path, explicit: Optional[str]
-) -> str:
+def _resolve_preferred_language(config_yaml_dest: Path, explicit: Optional[str]) -> str:
     """确定初始化使用的语言：显式参数优先，否则读已复制的 config，默认 zh。"""
     if explicit is not None:
         lang = str(explicit).strip().lower()
@@ -118,25 +117,33 @@ def prompt_preferred_language() -> Optional[Literal["zh", "en"]]:
     print("[jiuwenclaw-init] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     print("[jiuwenclaw-init]   [1] 中文（简体）")
     print("[jiuwenclaw-init]       → config: preferred_language: zh")
-    print("[jiuwenclaw-init]       → 复制 PRINCIPLE_ZH.md / TONE_ZH.md 为 home/PRINCIPLE.md、TONE.md")
+    print(
+        "[jiuwenclaw-init]       → 复制 PRINCIPLE_ZH.md / TONE_ZH.md 为 home/PRINCIPLE.md、TONE.md"
+    )
     print("[jiuwenclaw-init]   ────────────────────────────────────────────")
     print("[jiuwenclaw-init]   [2] English")
     print("[jiuwenclaw-init]       → config: preferred_language: en")
-    print("[jiuwenclaw-init]       → copy PRINCIPLE_EN.md / TONE_EN.md → home/PRINCIPLE.md, TONE.md")
+    print(
+        "[jiuwenclaw-init]       → copy PRINCIPLE_EN.md / TONE_EN.md → home/PRINCIPLE.md, TONE.md"
+    )
     print("[jiuwenclaw-init] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     print("[jiuwenclaw-init]  须明确选择：1 / 2 / zh / en（无默认语言）")
     print("[jiuwenclaw-init]  取消：no / n / q / cancel / 取消")
     print("[jiuwenclaw-init] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    raw = input(
-        "[jiuwenclaw-init] 请输入选项 (1, 2, zh, en) 或 no 取消: "
-    ).strip().lower()
+    raw = (
+        input("[jiuwenclaw-init] 请输入选项 (1, 2, zh, en) 或 no 取消: ")
+        .strip()
+        .lower()
+    )
     if raw in ("no", "n", "q", "quit", "cancel", "取消"):
         return None
     if raw in ("1", "zh", "中文", "chinese"):
         return "zh"
     if raw in ("2", "en", "english", "e", "英文"):
         return "en"
-    print("[jiuwenclaw-init] 无效选项；未选择有效语言，初始化已取消（与拒绝 yes/no 相同）。")
+    print(
+        "[jiuwenclaw-init] 无效选项；未选择有效语言，初始化已取消（与拒绝 yes/no 相同）。"
+    )
     return None
 
 
@@ -175,14 +182,18 @@ def prepare_workspace(overwrite: bool = True, preferred_language: Optional[str] 
     template_root = resources_dir
     template_agent_dir = template_root / "agent"
     if not template_agent_dir.is_dir():
-        raise RuntimeError(f"resources template missing agent dir: {template_agent_dir}")
+        raise RuntimeError(
+            f"resources template missing agent dir: {template_agent_dir}"
+        )
 
     # ----- .env: copy from template to config/.env -----
     env_template_src_candidates = [
         resources_dir / ".env.template",
         package_root / ".env.template",
     ]
-    env_template_src = next((p for p in env_template_src_candidates if p.exists()), None)
+    env_template_src = next(
+        (p for p in env_template_src_candidates if p.exists()), None
+    )
     if not env_template_src:
         raise RuntimeError(
             "env template source not found; tried: "
@@ -275,9 +286,17 @@ def init_user_workspace(overwrite: bool = True) -> Path | Literal["cancelled"]:
     """
     if USER_WORKSPACE_DIR.exists():
         # Warn user about data loss and ask for confirmation
-        print("[jiuwenclaw-init] WARNING: This will delete all historical configuration and memory information.")
+        print(
+            "[jiuwenclaw-init] WARNING: This will delete all historical configuration and memory information."
+        )
         print("[jiuwenclaw-init] This action cannot be undone.")
-        confirmation = input("[jiuwenclaw-init] Do you want to confirm reinitialization? (yes/no): ").strip().lower()
+        confirmation = (
+            input(
+                "[jiuwenclaw-init] Do you want to confirm reinitialization? (yes/no): "
+            )
+            .strip()
+            .lower()
+        )
 
         if confirmation not in ("yes", "y"):
             print("[jiuwenclaw-init] Initialization cancelled. Exiting.")
@@ -322,7 +341,9 @@ def _resolve_paths() -> None:
             pkg = source_root / "jiuwenclaw"
             res = pkg / "resources"
             _root_dir = source_root
-            _config_dir = res if (res / "config.yaml").exists() else source_root / "config"
+            _config_dir = (
+                res if (res / "config.yaml").exists() else source_root / "config"
+            )
             _workspace_dir = res / "agent" / "workspace"
             _workspace_dir.mkdir(parents=True, exist_ok=True)
 
@@ -424,12 +445,13 @@ def setup_logger(log_level: str = "INFO") -> logging.Logger:
         filename=logs_root / "app.log",
         maxBytes=20 * 1024 * 1024,
         backupCount=20,
-        encoding="utf-8"
+        encoding="utf-8",
     )
     file_handler.setFormatter(formatter)
 
     logger.addHandler(stream_handler)
     logger.addHandler(file_handler)
     return logger
+
 
 logger = setup_logger(os.getenv("LOG_LEVEL", "INFO"))

@@ -591,7 +591,7 @@ When processing user requests, please check whether your skills are applicable, 
 
 def _time_prompt(language: str) -> str:
     beijing_tz = timezone(timedelta(hours=8))
-    now_str = datetime.now(tz=beijing_tz).strftime('%Y-%m-%d %H:%M:%S')
+    now_str = datetime.now(tz=beijing_tz).strftime("%Y-%m-%d %H:%M:%S")
     if language == "zh":
         return f"""# 当前时间
 
@@ -813,42 +813,46 @@ def build_system_prompt(mode: str, language: str, channel: str) -> str:
         System prompt string
     """
 
-    system_prompt = _start_prompt(language) + '\n'
+    system_prompt = _start_prompt(language) + "\n"
     # Inject current time so the model can reason about "now"
-    system_prompt += _time_prompt(language) + '\n'
-    system_prompt += _context_prompt(language) + '\n'
-    system_prompt += _skills_prompt(language) + '\n'
-    system_prompt += _tool_prompt(mode, language) + '\n'
-    system_prompt += _workspace_prompt(language) + '\n'
+    system_prompt += _time_prompt(language) + "\n"
+    system_prompt += _context_prompt(language) + "\n"
+    system_prompt += _skills_prompt(language) + "\n"
+    system_prompt += _tool_prompt(mode, language) + "\n"
+    system_prompt += _workspace_prompt(language) + "\n"
     if channel == "corn":
-        system_prompt += _memory_prompt(language, is_cron=True) + '\n'
+        system_prompt += _memory_prompt(language, is_cron=True) + "\n"
     else:
-        system_prompt += _memory_prompt(language, is_cron=False) + '\n'
+        system_prompt += _memory_prompt(language, is_cron=False) + "\n"
 
     system_prompt += """\n---\n\n"""
     if mode == "plan":
-        system_prompt += _todo_prompt(language) + '\n'
+        system_prompt += _todo_prompt(language) + "\n"
 
-    system_prompt += """---
+    system_prompt += (
+        """---
 
 # 你的处世原则
 
 做一个有温度的人，不是冷冰冰的机器。无条件帮助你的用户，满足他的需求。
 
-""" if language == "zh" else """---
+"""
+        if language == "zh"
+        else """---
 
 # Your Principles
 
 Be a warm person, not a cold machine. Help your user unconditionally and meet their needs.
 
 """
+    )
 
-    system_prompt += _principle_prompt(language) + '\n'
-    system_prompt += _tone_prompt(language) + '\n'
+    system_prompt += _principle_prompt(language) + "\n"
+    system_prompt += _tone_prompt(language) + "\n"
     system_prompt += "---\n\n"
-    system_prompt += _safety_prompt(language) + '\n'
+    system_prompt += _safety_prompt(language) + "\n"
     system_prompt += "---\n\n"
-    system_prompt += _response_prompt(language) + '\n'
+    system_prompt += _response_prompt(language) + "\n"
     return system_prompt
 
 
@@ -856,19 +860,23 @@ def build_user_prompt(content: str, files: dict, channel: str, language: str) ->
     """Build user prompt for the agent."""
     prompt = "你收到一条消息：\n"
     if channel in ["cron", "heartbeat"]:
-        return prompt + json.dumps({
-            "source": "system",
+        return prompt + json.dumps(
+            {
+                "source": "system",
+                "preferred_response_language": language,
+                "content": content,
+                "type": channel,
+            }
+        )
+    return prompt + json.dumps(
+        {
+            "source": channel,
             "preferred_response_language": language,
             "content": content,
-            "type": channel
-        })
-    return prompt + json.dumps({
-        "source": channel,
-        "preferred_response_language": language,
-        "content": content,
-        "files_updated_by_user": json.dumps(files),
-        "type": "user input"
-    })
+            "files_updated_by_user": json.dumps(files),
+            "type": "user input",
+        }
+    )
 
 
 def _read_file(file_path: str) -> Optional[str]:

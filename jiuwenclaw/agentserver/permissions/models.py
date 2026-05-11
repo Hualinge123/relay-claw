@@ -15,6 +15,7 @@ class PermissionLevel(str, Enum):
     - ASK:   弹出确认框，用户决定
     - DENY:  拒绝执行，返回错误
     """
+
     ALLOW = "allow"
     ASK = "ask"
     DENY = "deny"
@@ -23,6 +24,7 @@ class PermissionLevel(str, Enum):
 @dataclass
 class PermissionResult:
     """权限检查结果."""
+
     permission: PermissionLevel
     matched_rule: str | None = None
     reason: str | None = None
@@ -44,8 +46,8 @@ class PermissionResult:
 @dataclass
 class PatternRule:
     """模式匹配规则."""
+
     pattern: str
     permission: PermissionLevel
     description: str = ""
     rule_id: str = ""
-

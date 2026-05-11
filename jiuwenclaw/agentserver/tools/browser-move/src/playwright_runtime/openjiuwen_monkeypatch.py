@@ -54,7 +54,9 @@ class _OpenJiuwenPatchFinder(importlib.abc.MetaPathFinder):
             return None
 
         if file_path.name == "__init__.py":
-            search_locations = self._package_search_locations(fullname, file_path.parent)
+            search_locations = self._package_search_locations(
+                fullname, file_path.parent
+            )
             return importlib.util.spec_from_file_location(
                 fullname,
                 str(file_path),
@@ -97,12 +99,20 @@ def _install_openjiuwen_import_hook() -> None:
 
 
 def _patch_default_inner_config(constant_mod: Any, log_config_mod: Any) -> None:
-    shared_log_file = (os.getenv("PLAYWRIGHT_RUNTIME_SHARED_LOG_FILE") or "").strip().lower()
+    shared_log_file = (
+        (os.getenv("PLAYWRIGHT_RUNTIME_SHARED_LOG_FILE") or "").strip().lower()
+    )
     use_pid_log_pattern = shared_log_file not in {"1", "true", "yes", "on"}
 
-    constant_mod.DEFAULT_INNER_LOG_CONFIG.setdefault("tool_log_file", _TOOL_LOG_FILE_DEFAULT)
-    if use_pid_log_pattern and not constant_mod.DEFAULT_INNER_LOG_CONFIG.get("log_file_pattern"):
-        constant_mod.DEFAULT_INNER_LOG_CONFIG["log_file_pattern"] = _LOG_FILE_PATTERN_DEFAULT
+    constant_mod.DEFAULT_INNER_LOG_CONFIG.setdefault(
+        "tool_log_file", _TOOL_LOG_FILE_DEFAULT
+    )
+    if use_pid_log_pattern and not constant_mod.DEFAULT_INNER_LOG_CONFIG.get(
+        "log_file_pattern"
+    ):
+        constant_mod.DEFAULT_INNER_LOG_CONFIG["log_file_pattern"] = (
+            _LOG_FILE_PATTERN_DEFAULT
+        )
 
     module_default = getattr(log_config_mod, "DEFAULT_INNER_LOG_CONFIG", None)
     if isinstance(module_default, dict):
@@ -129,7 +139,9 @@ def _patch_log_config(log_config_mod: Any) -> None:
         config = original_load_config(config_path)
         if isinstance(config, dict):
             config.setdefault("tool_log_file", _TOOL_LOG_FILE_DEFAULT)
-            shared_log_file = (os.getenv("PLAYWRIGHT_RUNTIME_SHARED_LOG_FILE") or "").strip().lower()
+            shared_log_file = (
+                (os.getenv("PLAYWRIGHT_RUNTIME_SHARED_LOG_FILE") or "").strip().lower()
+            )
             use_pid_log_pattern = shared_log_file not in {"1", "true", "yes", "on"}
             if use_pid_log_pattern and not config.get("log_file_pattern"):
                 config["log_file_pattern"] = _LOG_FILE_PATTERN_DEFAULT
@@ -151,7 +163,9 @@ def _patch_log_config(log_config_mod: Any) -> None:
     log_config_mod.LogConfig._browser_move_tool_patch = True
 
 
-def _install_tool_file_handler(default_impl_mod: Any, tool_only_filter_cls: type, logger_obj: Any) -> None:
+def _install_tool_file_handler(
+    default_impl_mod: Any, tool_only_filter_cls: type, logger_obj: Any
+) -> None:
     output = logger_obj.config.get("output", ["console"])
     if "file" not in output:
         return
@@ -189,7 +203,9 @@ def _install_tool_file_handler(default_impl_mod: Any, tool_only_filter_cls: type
             ) from error
 
     backup_count = logger_obj.config.get("backup_count", 20)
-    max_bytes = default_impl_mod.get_log_max_bytes(logger_obj.config.get("max_bytes", 20 * 1024 * 1024))
+    max_bytes = default_impl_mod.get_log_max_bytes(
+        logger_obj.config.get("max_bytes", 20 * 1024 * 1024)
+    )
     log_file_pattern = logger_obj.config.get("log_file_pattern", None)
     backup_file_pattern = logger_obj.config.get("backup_file_pattern", None)
 
@@ -369,7 +385,9 @@ def _patch_base_model_client(base_model_client_mod: Any) -> None:
         best_by_name: Dict[str, Dict[str, Any]] = {}
         best_score: Dict[str, int] = {}
         for tool_dict in tool_dicts:
-            function = tool_dict.get("function", {}) if isinstance(tool_dict, dict) else {}
+            function = (
+                tool_dict.get("function", {}) if isinstance(tool_dict, dict) else {}
+            )
             name = str(function.get("name", "")).strip()
             if not name:
                 continue
@@ -398,13 +416,23 @@ def apply_openjiuwen_monkeypatch() -> None:
     _install_openjiuwen_import_hook()
 
     try:
-        constant_mod = importlib.import_module("openjiuwen.core.common.logging.default.constant")
-        default_impl_mod = importlib.import_module("openjiuwen.core.common.logging.default.default_impl")
-        log_config_mod = importlib.import_module("openjiuwen.core.common.logging.default.log_config")
+        constant_mod = importlib.import_module(
+            "openjiuwen.core.common.logging.default.constant"
+        )
+        default_impl_mod = importlib.import_module(
+            "openjiuwen.core.common.logging.default.default_impl"
+        )
+        log_config_mod = importlib.import_module(
+            "openjiuwen.core.common.logging.default.log_config"
+        )
         manager_mod = importlib.import_module("openjiuwen.core.common.logging.manager")
         model_mod = importlib.import_module("openjiuwen.core.foundation.llm.model")
-        ability_manager_mod = importlib.import_module("openjiuwen.core.single_agent.ability_manager")
-        base_model_client_mod = importlib.import_module("openjiuwen.core.foundation.llm.model_clients.base_model_client")
+        ability_manager_mod = importlib.import_module(
+            "openjiuwen.core.single_agent.ability_manager"
+        )
+        base_model_client_mod = importlib.import_module(
+            "openjiuwen.core.foundation.llm.model_clients.base_model_client"
+        )
     except Exception:
         return
 

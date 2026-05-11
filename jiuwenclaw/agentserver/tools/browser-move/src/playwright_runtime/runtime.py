@@ -69,9 +69,13 @@ class BrowserAgentRuntime:
         callback: AnyAgentCallback,
         priority: int = 100,
     ) -> None:
-        self._service.add_browser_callback(event=event, callback=callback, priority=priority)
+        self._service.add_browser_callback(
+            event=event, callback=callback, priority=priority
+        )
 
-    async def cancel_run(self, session_id: str, request_id: Optional[str] = None) -> Dict[str, Any]:
+    async def cancel_run(
+        self, session_id: str, request_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         await self._service.request_cancel(session_id=session_id, request_id=request_id)
         return {
             "ok": True,
@@ -80,7 +84,9 @@ class BrowserAgentRuntime:
             "error": None,
         }
 
-    async def clear_cancel(self, session_id: str, request_id: Optional[str] = None) -> Dict[str, Any]:
+    async def clear_cancel(
+        self, session_id: str, request_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         await self._service.clear_cancel(session_id=session_id, request_id=request_id)
         return {
             "ok": True,
@@ -101,10 +107,14 @@ class BrowserAgentRuntime:
             summary = str(spec.get("summary", "")).strip() or "No summary."
             when_to_use = str(spec.get("when_to_use", "")).strip()
             if when_to_use:
-                action_summary_lines.append(f"- {action_name}: {summary} Use when: {when_to_use}")
+                action_summary_lines.append(
+                    f"- {action_name}: {summary} Use when: {when_to_use}"
+                )
             else:
                 action_summary_lines.append(f"- {action_name}: {summary}")
-        action_summary_text = "\n".join(action_summary_lines) if action_summary_lines else "- (none)"
+        action_summary_text = (
+            "\n".join(action_summary_lines) if action_summary_lines else "- (none)"
+        )
 
         @tool(
             name="browser_run_task",
@@ -122,9 +132,15 @@ class BrowserAgentRuntime:
             request_id: str = "",
             timeout_s: int = 180,
         ) -> Dict[str, Any]:
-            effective_session_id = (session_id or "").strip() or _ctx_parent_session_id.get()
-            effective_request_id = (request_id or "").strip() or _ctx_parent_request_id.get()
-            effective_timeout = resolve_browser_task_timeout(timeout_s, self._service.guardrails.timeout_s)
+            effective_session_id = (
+                session_id or ""
+            ).strip() or _ctx_parent_session_id.get()
+            effective_request_id = (
+                request_id or ""
+            ).strip() or _ctx_parent_request_id.get()
+            effective_timeout = resolve_browser_task_timeout(
+                timeout_s, self._service.guardrails.timeout_s
+            )
             return await self._service.run_task(
                 task=task,
                 session_id=effective_session_id,
@@ -152,8 +168,12 @@ class BrowserAgentRuntime:
             request_id: str = "",
             params: Optional[Dict[str, Any]] = None,
         ) -> Dict[str, Any]:
-            effective_session_id = (session_id or "").strip() or _ctx_parent_session_id.get()
-            effective_request_id = (request_id or "").strip() or _ctx_parent_request_id.get()
+            effective_session_id = (
+                session_id or ""
+            ).strip() or _ctx_parent_session_id.get()
+            effective_request_id = (
+                request_id or ""
+            ).strip() or _ctx_parent_request_id.get()
             self._controller.bind_runtime(self)
             return await self._controller.run_action(
                 action=action,
@@ -179,11 +199,15 @@ class BrowserAgentRuntime:
         self._browser_tool = browser_run_task
         self._browser_custom_action_tool = browser_custom_action
         self._browser_list_actions_tool = browser_list_custom_actions
-        add_result = Runner.resource_mgr.add_tool(self._browser_tool, tag="agent.playwright.main_runtime")
+        add_result = Runner.resource_mgr.add_tool(
+            self._browser_tool, tag="agent.playwright.main_runtime"
+        )
         if add_result is not None and not getattr(add_result, "is_ok", lambda: False)():
             error_value = getattr(add_result, "value", add_result)
             if "already exist" not in str(error_value):
-                raise RuntimeError(f"Failed to register browser_run_task tool: {error_value}")
+                raise RuntimeError(
+                    f"Failed to register browser_run_task tool: {error_value}"
+                )
         add_result = Runner.resource_mgr.add_tool(
             self._browser_custom_action_tool,
             tag="agent.playwright.main_runtime",
@@ -191,7 +215,9 @@ class BrowserAgentRuntime:
         if add_result is not None and not getattr(add_result, "is_ok", lambda: False)():
             error_value = getattr(add_result, "value", add_result)
             if "already exist" not in str(error_value):
-                raise RuntimeError(f"Failed to register browser_custom_action tool: {error_value}")
+                raise RuntimeError(
+                    f"Failed to register browser_custom_action tool: {error_value}"
+                )
         add_result = Runner.resource_mgr.add_tool(
             self._browser_list_actions_tool,
             tag="agent.playwright.main_runtime",
@@ -199,7 +225,9 @@ class BrowserAgentRuntime:
         if add_result is not None and not getattr(add_result, "is_ok", lambda: False)():
             error_value = getattr(add_result, "value", add_result)
             if "already exist" not in str(error_value):
-                raise RuntimeError(f"Failed to register browser_list_custom_actions tool: {error_value}")
+                raise RuntimeError(
+                    f"Failed to register browser_list_custom_actions tool: {error_value}"
+                )
 
         self._main_agent = build_main_agent(
             provider=self._service.provider,

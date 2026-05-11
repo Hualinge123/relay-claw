@@ -36,7 +36,9 @@ from playwright_runtime.openjiuwen_monkeypatch import apply_openjiuwen_monkeypat
 apply_openjiuwen_monkeypatch()
 import openjiuwen.core.runner.resources_manager.tool_manager as _tool_mgr_mod
 from playwright_runtime.clients.stdio_client import BrowserMoveStdioClient
-from playwright_runtime.clients.streamable_http_client import BrowserMoveStreamableHttpClient
+from playwright_runtime.clients.streamable_http_client import (
+    BrowserMoveStreamableHttpClient,
+)
 from playwright_runtime.config import (
     BrowserRunGuardrails,
     build_playwright_mcp_config,
@@ -175,7 +177,9 @@ async def browser_run_task(
     runtime = await _get_runtime()
     effective_timeout = None
     if timeout_s > 0:
-        effective_timeout = resolve_browser_task_timeout(timeout_s, runtime._service.guardrails.timeout_s)
+        effective_timeout = resolve_browser_task_timeout(
+            timeout_s, runtime._service.guardrails.timeout_s
+        )
     effective_session_id = _resolve_session_id(session_id, ctx)
     effective_request_id = _resolve_request_id(request_id, ctx)
     return await runtime.run_browser_task(
@@ -200,7 +204,9 @@ async def browser_cancel_task(
     if not effective_session_id:
         raise ValueError("session_id is required for cancellation")
     effective_request_id = _resolve_request_id(request_id, ctx)
-    return await runtime.cancel_run(session_id=effective_session_id, request_id=effective_request_id or None)
+    return await runtime.cancel_run(
+        session_id=effective_session_id, request_id=effective_request_id or None
+    )
 
 
 @mcp.tool(
@@ -217,7 +223,9 @@ async def browser_clear_cancel(
     if not effective_session_id:
         raise ValueError("session_id is required to clear cancellation")
     effective_request_id = _resolve_request_id(request_id, ctx)
-    return await runtime.clear_cancel(session_id=effective_session_id, request_id=effective_request_id or None)
+    return await runtime.clear_cancel(
+        session_id=effective_session_id, request_id=effective_request_id or None
+    )
 
 
 @mcp.tool(
@@ -249,7 +257,9 @@ async def browser_custom_action(
         request_id=effective_request_id,
         **(params or {}),
     )
-    if isinstance(result, dict) and str(result.get("error", "")).startswith("runtime_not_bound:"):
+    if isinstance(result, dict) and str(result.get("error", "")).startswith(
+        "runtime_not_bound:"
+    ):
         runtime = await _get_runtime()
         bind_runtime(runtime)
         result = await run_action(
@@ -290,7 +300,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--transport",
         choices=["stdio", "sse", "streamable-http", "http"],
-        default=(os.getenv("PLAYWRIGHT_RUNTIME_MCP_TRANSPORT") or "stdio").strip().lower(),
+        default=(os.getenv("PLAYWRIGHT_RUNTIME_MCP_TRANSPORT") or "stdio")
+        .strip()
+        .lower(),
         help="MCP transport mode. Use stdio for agent-launched server; sse/http for standalone server.",
     )
     parser.add_argument(
@@ -333,7 +345,9 @@ def parse_args() -> argparse.Namespace:
 def _apply_timeout_defaults(transport: str) -> None:
     """Set runtime timeout defaults based on transport when not explicitly provided."""
     os.environ.setdefault("BROWSER_TIMEOUT_S", "180")
-    os.environ.setdefault("PLAYWRIGHT_TOOL_TIMEOUT_S", os.getenv("BROWSER_TIMEOUT_S", "180"))
+    os.environ.setdefault(
+        "PLAYWRIGHT_TOOL_TIMEOUT_S", os.getenv("BROWSER_TIMEOUT_S", "180")
+    )
 
 
 def _resolve_stateless_http(args: argparse.Namespace) -> bool:

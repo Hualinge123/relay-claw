@@ -45,7 +45,11 @@ def _format_tool_names(tool_call: Any) -> str:
 
 
 def _build_main_agent_system_prompt(default_timeout_s: float) -> str:
-    timeout_text = f"{int(default_timeout_s)}" if default_timeout_s.is_integer() else f"{default_timeout_s:.1f}"
+    timeout_text = (
+        f"{int(default_timeout_s)}"
+        if default_timeout_s.is_integer()
+        else f"{default_timeout_s:.1f}"
+    )
     return (
         "You are the main orchestration agent.\n"
         "For browser tasks, prefer browser_run_task.\n"
@@ -110,9 +114,9 @@ def build_browser_worker_agent(
     max_steps: int,
     screenshot_subdir: str = "screenshots",
 ) -> ReActAgent:
-    screenshot_subdir = (
-        (screenshot_subdir or "screenshots").strip().replace("\\", "/").strip("/") or "screenshots"
-    )
+    screenshot_subdir = (screenshot_subdir or "screenshots").strip().replace(
+        "\\", "/"
+    ).strip("/") or "screenshots"
     card = AgentCard(
         id="agent.playwright.browser_worker",
         name="playwright_browser_worker",

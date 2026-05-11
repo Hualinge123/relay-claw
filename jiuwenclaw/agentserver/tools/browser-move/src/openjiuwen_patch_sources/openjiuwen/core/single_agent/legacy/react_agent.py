@@ -34,8 +34,14 @@ from openjiuwen.core.single_agent.legacy.config import (
 )
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.foundation.llm import AssistantMessage, ToolMessage, ModelConfig, ModelClientConfig, \
-    ModelRequestConfig, Model
+from openjiuwen.core.foundation.llm import (
+    AssistantMessage,
+    ToolMessage,
+    ModelConfig,
+    ModelClientConfig,
+    ModelRequestConfig,
+    Model,
+)
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.tool import Tool
 
@@ -44,10 +50,19 @@ class TaskSession(StateSession):
     """
     deprecated
     """
-    def __init__(self, session_id: str = None, config: Config = None, resource_mgr=None, card=None):
+
+    def __init__(
+        self,
+        session_id: str = None,
+        config: Config = None,
+        resource_mgr=None,
+        card=None,
+    ):
         if config is None:
             config = Config()
-        super().__init__(InternalAgentSession(session_id, config, resource_mgr, card=card))
+        super().__init__(
+            InternalAgentSession(session_id, config, resource_mgr, card=card)
+        )
         self._interaction = None
 
     async def trace(self, data: dict):
@@ -109,20 +124,20 @@ class AgentSession:
 
 class LegacyReActAgent(BaseAgent):
     """Legacy ReAct Agent for backward compatibility
-    
+
     For new code, use openjiuwen.core.single_agent.agents.react_agent.ReActAgent
-    
+
     Will be removed in v1.0.0
     """
 
     def __init__(
-            self,
-            agent_config: LegacyReActAgentConfig,
-            workflows: List[Workflow] = None,
-            tools: List[Tool] = None
+        self,
+        agent_config: LegacyReActAgentConfig,
+        workflows: List[Workflow] = None,
+        tools: List[Tool] = None,
     ):
         """Initialize Legacy ReActAgent
-        
+
         Args:
             agent_config: ReAct config
             workflows: Workflow list
@@ -144,7 +159,7 @@ class LegacyReActAgent(BaseAgent):
             model_id = generate_key(
                 self.agent_config.model.model_info.api_key,
                 self.agent_config.model.model_info.api_base,
-                self.agent_config.model.model_provider
+                self.agent_config.model.model_provider,
             )
 
             model_client_config = ModelClientConfig(
@@ -159,50 +174,54 @@ class LegacyReActAgent(BaseAgent):
                 model=self.agent_config.model.model_info.model_name,
                 temperature=self.agent_config.model.model_info.temperature,
                 top_p=self.agent_config.model.model_info.top_p,
-                **(self.agent_config.model.model_info.model_extra or {})
+                **(self.agent_config.model.model_info.model_extra or {}),
             )
-            self._llm = Model(model_client_config=model_client_config, model_config=model_request_config)
+            self._llm = Model(
+                model_client_config=model_client_config,
+                model_config=model_request_config,
+            )
 
         return self._llm
 
-    async def call_model(self, user_input: str, session: Session, is_first_call: bool = False):
+    async def call_model(
+        self, user_input: str, session: Session, is_first_call: bool = False
+    ):
         """Call LLM for reasoning"""
         if is_first_call:
-            await MessageUtils.add_user_message(user_input, self.context_engine, session)
+            await MessageUtils.add_user_message(
+                user_input, self.context_engine, session
+            )
 
         chat_history = MessageUtils.get_chat_history(
-            self.context_engine, session,
-            self.agent_config
+            self.context_engine, session, self.agent_config
         )
 
         messages = []
         try:
-            system_prompt = PromptTemplate(content=self.agent_config.prompt_template).to_messages()
+            system_prompt = PromptTemplate(
+                content=self.agent_config.prompt_template
+            ).to_messages()
             for prompt in system_prompt:
                 prompt_dict = prompt.model_dump(exclude_none=True)
                 messages.append(prompt_dict)
         except ValidationError as e:
             raise build_error(
-                StatusCode.AGENT_PROMPT_PARAM_ERROR,
-                error_msg=str(e),
-                cause=e
+                StatusCode.AGENT_PROMPT_PARAM_ERROR, error_msg=str(e), cause=e
             ) from e
 
         for msg in chat_history:
             msg_dict = msg.model_dump(exclude_none=True)
             messages.append(msg_dict)
         from openjiuwen.core.runner import Runner
+
         tools = await Runner.resource_mgr.get_tool_infos(tag=self.agent_config.id)
         llm = self._get_llm()
         llm_output = await llm.invoke(
-            messages,
-            tools=tools,
-            model=self.agent_config.model.model_info.model_name
+            messages, tools=tools, model=self.agent_config.model.model_info.model_name
         )
 
         ai_message = AssistantMessage(
-            content=llm_output.content,
-            tool_calls=llm_output.tool_calls
+            content=llm_output.content, tool_calls=llm_output.tool_calls
         )
         await MessageUtils.add_ai_message(ai_message, self.context_engine, session)
         return llm_output
@@ -211,20 +230,22 @@ class LegacyReActAgent(BaseAgent):
         """Execute single tool call"""
         tool_name = tool_call.name
         try:
-            tool_args = json.loads(tool_call.arguments) if isinstance(tool_call.arguments, str) else tool_call.arguments
+            tool_args = (
+                json.loads(tool_call.arguments)
+                if isinstance(tool_call.arguments, str)
+                else tool_call.arguments
+            )
         except (json.JSONDecodeError, AttributeError):
             tool_args = {}
         from openjiuwen.core.runner import Runner
+
         tool = Runner.resource_mgr.get_tool(tool_id=tool_name, tag=self.agent_config.id)
         if not tool:
             raise ValueError(f"Tool not found: {tool_name}")
 
         result = await tool.invoke(tool_args)
 
-        tool_message = ToolMessage(
-            content=str(result),
-            tool_call_id=tool_call.id
-        )
+        tool_message = ToolMessage(content=str(result), tool_call_id=tool_call.id)
         await MessageUtils.add_tool_message(tool_message, self.context_engine, session)
         return result
 
@@ -251,18 +272,13 @@ class LegacyReActAgent(BaseAgent):
                 logger.info(f"ReAct iteration {iteration}")
 
                 llm_output = await self.call_model(
-                    user_input,
-                    session,
-                    is_first_call=is_first_call
+                    user_input, session, is_first_call=is_first_call
                 )
                 is_first_call = False
 
                 if not llm_output.tool_calls:
                     logger.info("No tool calls, task completed")
-                    return {
-                        "output": llm_output.content,
-                        "result_type": "answer"
-                    }
+                    return {"output": llm_output.content, "result_type": "answer"}
 
                 for tool_call in llm_output.tool_calls:
                     tool_name = tool_call.name
@@ -271,10 +287,7 @@ class LegacyReActAgent(BaseAgent):
                     logger.info(f"Tool {tool_name} completed with result: {result}")
 
             logger.warning(f"Exceeded max iteration {max_iteration}")
-            return {
-                "output": "Exceeded max iteration",
-                "result_type": "error"
-            }
+            return {"output": "Exceeded max iteration", "result_type": "error"}
         finally:
             if session_created:
                 await session.post_run()
@@ -293,9 +306,12 @@ class LegacyReActAgent(BaseAgent):
             need_cleanup = False
             own_stream = False
             from openjiuwen.core.runner import Runner
-            if hasattr(self, '_tools') and self._tools:
+
+            if hasattr(self, "_tools") and self._tools:
                 tools_to_add = [(tool.card.name, tool) for tool in self._tools]
-                Runner.resource_mgr.add_tool(tool=tools_to_add, tag=self.agent_config.id)
+                Runner.resource_mgr.add_tool(
+                    tool=tools_to_add, tag=self.agent_config.id
+                )
         await self.context_engine.create_context(session=agent_session)
 
         final_result_holder = {"result": None}
@@ -304,11 +320,13 @@ class LegacyReActAgent(BaseAgent):
             try:
                 final_result = await self.invoke(inputs, agent_session)
                 final_result_holder["result"] = final_result
-                await agent_session.write_stream(OutputSchema(
-                    type="answer",
-                    index=0,
-                    payload={"output": final_result, "result_type": "answer"}
-                ))
+                await agent_session.write_stream(
+                    OutputSchema(
+                        type="answer",
+                        index=0,
+                        payload={"output": final_result, "result_type": "answer"},
+                    )
+                )
             except Exception as e:
                 logger.error(f"ReActAgent stream error: {e}")
             finally:
@@ -328,11 +346,11 @@ class LegacyReActAgent(BaseAgent):
 
 
 def create_react_agent_config(
-        agent_id: str,
-        agent_version: str,
-        description: str,
-        model: ModelConfig,
-        prompt_template: List[Dict]
+    agent_id: str,
+    agent_version: str,
+    description: str,
+    model: ModelConfig,
+    prompt_template: List[Dict],
 ) -> LegacyReActAgentConfig:
     """Create ReAct Agent config
 
@@ -345,22 +363,23 @@ def create_react_agent_config(
 
     Returns:
         LegacyReActAgentConfig instance
-    
+
     Deprecated:
         This function is deprecated and will be removed in v1.0.0.
         Use ReActAgentConfig directly instead.
     """
     import warnings
+
     warnings.warn(
         "create_react_agent_config() is deprecated and will be removed "
         "in the future. Please use ReActAgentConfig() constructor instead.",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
     return LegacyReActAgentConfig(
         id=agent_id,
         version=agent_version,
         description=description,
         model=model,
-        prompt_template=prompt_template
+        prompt_template=prompt_template,
     )

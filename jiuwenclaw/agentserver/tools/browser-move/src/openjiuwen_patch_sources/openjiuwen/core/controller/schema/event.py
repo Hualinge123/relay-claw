@@ -8,7 +8,11 @@ from enum import Enum
 from typing import List, Optional, Union, Dict, Any, TYPE_CHECKING
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.controller.schema.dataframe import DataFrame, TextDataFrame, JsonDataFrame
+from openjiuwen.core.controller.schema.dataframe import (
+    DataFrame,
+    TextDataFrame,
+    JsonDataFrame,
+)
 
 if TYPE_CHECKING:
     from openjiuwen.core.controller.schema.task import Task
@@ -23,9 +27,10 @@ class EventType(str, Enum):
     - TASK_COMPLETION: Task completion event
     - TASK_FAILED: Task failed event
     """
+
     INPUT = "input"
-    TASK_INTERACTION = "task_interaction",
-    TASK_COMPLETION = "task_completion",
+    TASK_INTERACTION = ("task_interaction",)
+    TASK_COMPLETION = ("task_completion",)
     TASK_FAILED = "task_failed"
 
 
@@ -34,6 +39,7 @@ class Event(BaseModel):
 
     Base class for all events, containing event type, event ID, and metadata.
     """
+
     event_type: EventType
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     metadata: Optional[Dict[str, Any]] = None
@@ -57,11 +63,14 @@ class InputEvent(Event):
         event_type: Event type, fixed as EventType.INPUT
         input_data: Input data list, supports text, file, and JSON formats
     """
+
     event_type: EventType = EventType.INPUT
     input_data: List[DataFrame] = Field(default_factory=list)
 
     @classmethod
-    def from_user_input(cls, user_input: Union[str, dict, 'InputEvent']) -> "InputEvent":
+    def from_user_input(
+        cls, user_input: Union[str, dict, "InputEvent"]
+    ) -> "InputEvent":
         """Create input event from user input
 
         Convenience method to convert user input to InputEvent.
@@ -77,16 +86,16 @@ class InputEvent(Event):
 
         if isinstance(user_input, str):
             return cls(
-                event_type=EventType.INPUT,
-                input_data=[TextDataFrame(text=user_input)]
+                event_type=EventType.INPUT, input_data=[TextDataFrame(text=user_input)]
             )
         if isinstance(user_input, dict):
             return cls(
-                event_type=EventType.INPUT,
-                input_data=[JsonDataFrame(data=user_input)]
+                event_type=EventType.INPUT, input_data=[JsonDataFrame(data=user_input)]
             )
 
-        raise TypeError(f"Unsupported user input type: {type(user_input)}. Must be str, dict, or InputEvent.")
+        raise TypeError(
+            f"Unsupported user input type: {type(user_input)}. Must be str, dict, or InputEvent."
+        )
 
 
 class TaskInteractionEvent(Event):
@@ -100,6 +109,7 @@ class TaskInteractionEvent(Event):
         interaction: Interaction content list, containing information that requires user interaction
         task: Associated task object
     """
+
     event_type: EventType = EventType.TASK_INTERACTION
     interaction: List[DataFrame] = Field(default_factory=list)
     task: Optional[Task] = None
@@ -116,6 +126,7 @@ class TaskCompletionEvent(Event):
         task_result: Task result list, containing the task's output data
         task: Associated task object
     """
+
     event_type: EventType = EventType.TASK_COMPLETION
     task_result: List[DataFrame] = Field(default_factory=list)
     task: Optional[Task] = None
@@ -132,6 +143,7 @@ class TaskFailedEvent(Event):
         error_message: Error message describing the reason for task failure
         task: Associated task object
     """
+
     event_type: EventType = EventType.TASK_FAILED
     error_message: Optional[str] = None
     task: Optional[Task] = None

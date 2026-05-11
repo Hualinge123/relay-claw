@@ -27,10 +27,14 @@ def _default_chrome_user_data_dir() -> str:
     stores its default profile on the current OS.
     """
     if os.name == "nt":
-        local_app_data = os.getenv("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+        local_app_data = os.getenv("LOCALAPPDATA") or str(
+            Path.home() / "AppData" / "Local"
+        )
         return str(Path(local_app_data) / "Google" / "Chrome" / "User Data")
     if sys.platform == "darwin":
-        return str(Path.home() / "Library" / "Application Support" / "Google" / "Chrome")
+        return str(
+            Path.home() / "Library" / "Application Support" / "Google" / "Chrome"
+        )
     return str(Path.home() / ".config" / "google-chrome")
 
 
@@ -40,7 +44,9 @@ def _kill_chrome_by_user_data_dir(user_data_dir: str) -> int:
     Returns the number of PIDs sent a kill signal. Failures are silently
     swallowed so a misconfigured environment never blocks startup.
     """
-    normalized = str(Path(user_data_dir).expanduser().resolve()).lower().replace("\\", "/")
+    normalized = (
+        str(Path(user_data_dir).expanduser().resolve()).lower().replace("\\", "/")
+    )
     killed = 0
 
     if os.name == "nt":
@@ -61,7 +67,9 @@ def _kill_chrome_by_user_data_dir(user_data_dir: str) -> int:
                 if isinstance(items, dict):
                     items = [items]
                 for item in items or []:
-                    cmdline = str(item.get("CommandLine") or "").lower().replace("\\", "/")
+                    cmdline = (
+                        str(item.get("CommandLine") or "").lower().replace("\\", "/")
+                    )
                     pid = item.get("ProcessId")
                     if not pid or normalized not in cmdline:
                         continue
@@ -85,7 +93,9 @@ def _kill_chrome_by_user_data_dir(user_data_dir: str) -> int:
                 for line in result.stdout.strip().splitlines():
                     pid_str = line.strip()
                     if pid_str.isdigit():
-                        subprocess.run(["kill", "-9", pid_str], capture_output=True, timeout=5)
+                        subprocess.run(
+                            ["kill", "-9", pid_str], capture_output=True, timeout=5
+                        )
                         killed += 1
         except Exception:  # noqa: BLE001
             pass
@@ -126,11 +136,16 @@ def _candidate_chrome_binaries() -> list[str]:
         for root in windows_roots:
             if not root:
                 continue
-            install_paths.append(str(Path(root) / "Google" / "Chrome" / "Application" / "chrome.exe"))
+            install_paths.append(
+                str(Path(root) / "Google" / "Chrome" / "Application" / "chrome.exe")
+            )
     elif sys.platform == "darwin":
         install_paths = [
             "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-            str(Path.home() / "Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+            str(
+                Path.home()
+                / "Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+            ),
         ]
     else:
         install_paths = [
@@ -177,7 +192,9 @@ class ManagedBrowserDriver:
         explicit = (self.profile.browser_binary or "").strip()
         if explicit:
             if not _is_chrome_identifier(explicit):
-                raise RuntimeError("Managed mode supports Chrome only. Set BROWSER_MANAGED_BINARY to a Chrome executable.")
+                raise RuntimeError(
+                    "Managed mode supports Chrome only. Set BROWSER_MANAGED_BINARY to a Chrome executable."
+                )
             candidate = Path(explicit).expanduser()
             if candidate.exists():
                 return str(candidate)
@@ -202,7 +219,9 @@ class ManagedBrowserDriver:
         host = (self.profile.host or "127.0.0.1").strip() or "127.0.0.1"
         port = int(self.profile.debug_port)
         if port <= 0:
-            raise RuntimeError(f"Invalid debug port for managed browser profile: {port}")
+            raise RuntimeError(
+                f"Invalid debug port for managed browser profile: {port}"
+            )
 
         args = [
             binary,
@@ -222,7 +241,9 @@ class ManagedBrowserDriver:
             with urlopen(endpoint, timeout=1.5) as response:  # nosec B310
                 payload = json.loads(response.read().decode("utf-8", errors="ignore"))
                 if isinstance(payload, dict):
-                    return bool(payload.get("webSocketDebuggerUrl") or payload.get("Browser"))
+                    return bool(
+                        payload.get("webSocketDebuggerUrl") or payload.get("Browser")
+                    )
         except (URLError, TimeoutError, OSError, ValueError):
             return False
         return False
@@ -245,7 +266,11 @@ class ManagedBrowserDriver:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
-            creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0,
+            creationflags=(
+                getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                if os.name == "nt"
+                else 0
+            ),
         )
 
         deadline = time.time() + max(1.0, float(timeout_s))
@@ -258,7 +283,9 @@ class ManagedBrowserDriver:
                 return self.cdp_endpoint
             time.sleep(0.25)
 
-        raise RuntimeError(f"Managed browser CDP endpoint not ready after {timeout_s:.1f}s: {self.cdp_endpoint}")
+        raise RuntimeError(
+            f"Managed browser CDP endpoint not ready after {timeout_s:.1f}s: {self.cdp_endpoint}"
+        )
 
     def stop(self, wait_timeout_s: float = 5.0) -> None:
         process = self._process

@@ -15,12 +15,20 @@ from openjiuwen.core.common.logging import workflow_logger, LogEventType
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.workflow.components.base import ComponentConfig
-from openjiuwen.core.workflow.components.component import ComponentComposable, ComponentExecutable
+from openjiuwen.core.workflow.components.component import (
+    ComponentComposable,
+    ComponentExecutable,
+)
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session.node import Session
 from openjiuwen.core.foundation.llm import (
-    BaseMessage, UserMessage, SystemMessage, ModelRequestConfig, ModelClientConfig, Model
+    BaseMessage,
+    UserMessage,
+    SystemMessage,
+    ModelRequestConfig,
+    ModelClientConfig,
+    Model,
 )
 from openjiuwen.core.foundation.prompt import PromptTemplate
 
@@ -28,7 +36,7 @@ START_STR = "start"
 END_STR = "end"
 USER_INTERACT_STR = "user_interact"
 
-SUB_PLACEHOLDER_PATTERN = r'\{\{([^}]*)\}\}'
+SUB_PLACEHOLDER_PATTERN = r"\{\{([^}]*)\}\}"
 CONTINUE_ASK_STATEMENT = "请您提供{non_extracted_key_fields_names}相关的信息"
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"
 TEMPLATE_NAME = "questioner"
@@ -111,11 +119,13 @@ class QuestionerConfig(ComponentConfig):
 
 @dataclass
 class QuestionerDefaultConfig:
-    prompt_template: List[BaseMessage] = field(default_factory=questioner_default_template)
+    prompt_template: List[BaseMessage] = field(
+        default_factory=questioner_default_template
+    )
 
 
 class QuestionerInput(BaseModel):
-    model_config = ConfigDict(extra='allow')   # Allow any extra fields
+    model_config = ConfigDict(extra="allow")  # Allow any extra fields
     query: Union[str, dict, None] = Field(default="")
 
 
@@ -128,7 +138,7 @@ class OutputCache(BaseModel):
 class QuestionerOutput(BaseModel):
     user_response: Union[str, dict] = Field(default="")
     question: str = Field(default="")
-    model_config = ConfigDict(extra='allow')  # Allow any extra fields
+    model_config = ConfigDict(extra="allow")  # Allow any extra fields
 
 
 class QuestionerState(BaseModel):
@@ -165,11 +175,13 @@ class QuestionerState(BaseModel):
 class QuestionerStartState(QuestionerState):
     @classmethod
     def from_state(cls, questioner_state: QuestionerState):
-        return cls(response_num=questioner_state.response_num,
-                   user_response=questioner_state.user_response,
-                   question=questioner_state.question,
-                   extracted_key_fields=questioner_state.extracted_key_fields,
-                   status=ExecutionStatus.START)
+        return cls(
+            response_num=questioner_state.response_num,
+            user_response=questioner_state.user_response,
+            question=questioner_state.question,
+            extracted_key_fields=questioner_state.extracted_key_fields,
+            status=ExecutionStatus.START,
+        )
 
     def handle_event(self, event: QuestionerEvent):
         if event == QuestionerEvent.USER_INTERACT_EVENT:
@@ -184,11 +196,13 @@ class QuestionerInteractState(QuestionerState):
 
     @classmethod
     def from_state(cls, questioner_state: QuestionerState):
-        return cls(response_num=questioner_state.response_num,
-                   user_response=questioner_state.user_response,
-                   question=questioner_state.question,
-                   extracted_key_fields=questioner_state.extracted_key_fields,
-                   status=ExecutionStatus.USER_INTERACT)
+        return cls(
+            response_num=questioner_state.response_num,
+            user_response=questioner_state.user_response,
+            question=questioner_state.question,
+            extracted_key_fields=questioner_state.extracted_key_fields,
+            status=ExecutionStatus.USER_INTERACT,
+        )
 
     def handle_event(self, event: QuestionerEvent):
         if event == QuestionerEvent.END_EVENT:
@@ -201,11 +215,13 @@ class QuestionerEndState(QuestionerState):
 
     @classmethod
     def from_state(cls, questioner_state: QuestionerState):
-        return cls(response_num=questioner_state.response_num,
-                   user_response=questioner_state.user_response,
-                   question=questioner_state.question,
-                   extracted_key_fields=questioner_state.extracted_key_fields,
-                   status=ExecutionStatus.END)
+        return cls(
+            response_num=questioner_state.response_num,
+            user_response=questioner_state.user_response,
+            question=questioner_state.question,
+            extracted_key_fields=questioner_state.extracted_key_fields,
+            status=ExecutionStatus.END,
+        )
 
     def handle_event(self, event: QuestionerEvent):
         if event == QuestionerEvent.START_EVENT:
@@ -228,13 +244,15 @@ class QuestionerUtils:
 
     @staticmethod
     def get_latest_k_rounds_chat(chat_messages, rounds):
-        return chat_messages[-rounds * 2 - 1:]
+        return chat_messages[-rounds * 2 - 1 :]
 
     @staticmethod
     def format_continue_ask_question(non_extracted_key_fields: List[FieldInfo]):
         non_extracted_key_fields_names = list()
         for param in non_extracted_key_fields:
-            non_extracted_key_fields_names.append(param.cn_field_name or param.description)
+            non_extracted_key_fields_names.append(
+                param.cn_field_name or param.description
+            )
         result = ", ".join(non_extracted_key_fields_names)
         return CONTINUE_ASK_STATEMENT.format(non_extracted_key_fields_names=result)
 
@@ -253,7 +271,7 @@ class QuestionerUtils:
             raise build_error(
                 StatusCode.COMPONENT_QUESTIONER_INPUT_PARAM_ERROR,
                 error_msg=ExceptionUtils.format_validation_error(e),
-                cause=e
+                cause=e,
             ) from e
 
     @staticmethod
@@ -271,11 +289,11 @@ class QuestionerUtils:
     def validate_and_convert_type(value: Any, expected_type: str) -> Tuple[Any, bool]:
         """
         Validate and convert a value to the expected type.
-        
+
         Args:
             value: The value to validate and convert
             expected_type: One of "string", "integer", "number", "boolean"
-            
+
         Returns:
             Tuple of (converted_value, is_valid)
             - If conversion succeeds: (converted_value, True)
@@ -381,22 +399,30 @@ class QuestionerDirectReplyHandler:
         self._query = questioner_input.query or ""
         chat_history = self._get_latest_chat_history(context)
         if self._is_set_question_content():
-            user_fields = questioner_input.model_dump(exclude={'query'})
-            output.question = QuestionerUtils.format_template(self._config.question_content, user_fields)
+            user_fields = questioner_input.model_dump(exclude={"query"})
+            output.question = QuestionerUtils.format_template(
+                self._config.question_content, user_fields
+            )
             self._update_questioner_states_question(output.question)
             self._state = self._state.handle_event(QuestionerEvent.USER_INTERACT_EVENT)
             return QuestionerUtils.format_questioner_output(output)
 
         if self._need_extract_fields():
-            is_continue_ask = await self._initial_extract_from_chat_history(chat_history, output)
-            event = QuestionerEvent.USER_INTERACT_EVENT if is_continue_ask else QuestionerEvent.END_EVENT
+            is_continue_ask = await self._initial_extract_from_chat_history(
+                chat_history, output
+            )
+            event = (
+                QuestionerEvent.USER_INTERACT_EVENT
+                if is_continue_ask
+                else QuestionerEvent.END_EVENT
+            )
             if is_continue_ask:
                 self._update_questioner_states_question(output.question)
             self._state = self._state.handle_event(event)
         else:
             raise build_error(
                 StatusCode.COMPONENT_QUESTIONER_INPUT_INVALID,
-                error_msg="question_content is empty and no extractable fields are configured"
+                error_msg="question_content is empty and no extractable fields are configured",
             )
         return QuestionerUtils.format_questioner_output(output)
 
@@ -413,15 +439,21 @@ class QuestionerDirectReplyHandler:
             return QuestionerUtils.format_questioner_output(output)
 
         if self._need_extract_fields():
-            is_continue_ask = await self._repeat_extract_from_chat_history(chat_history, output)
-            event = QuestionerEvent.USER_INTERACT_EVENT if is_continue_ask else QuestionerEvent.END_EVENT
+            is_continue_ask = await self._repeat_extract_from_chat_history(
+                chat_history, output
+            )
+            event = (
+                QuestionerEvent.USER_INTERACT_EVENT
+                if is_continue_ask
+                else QuestionerEvent.END_EVENT
+            )
             if is_continue_ask:
                 self._update_questioner_states_question(output.question)
             self._state = self._state.handle_event(event)
         else:
             raise build_error(
                 StatusCode.COMPONENT_QUESTIONER_INPUT_INVALID,
-                error_msg="question_content is empty and no extractable fields are configured"
+                error_msg="question_content is empty and no extractable fields are configured",
             )
         return QuestionerUtils.format_questioner_output(output)
 
@@ -432,13 +464,19 @@ class QuestionerDirectReplyHandler:
         return output.model_dump(exclude_defaults=True)
 
     def _is_set_question_content(self):
-        return isinstance(self._config.question_content, str) and len(self._config.question_content) > 0
+        return (
+            isinstance(self._config.question_content, str)
+            and len(self._config.question_content) > 0
+        )
 
     def _need_extract_fields(self):
-        return (self._config.extract_fields_from_response and
-                len(self._config.field_names) > len(self._state.extracted_key_fields))
+        return self._config.extract_fields_from_response and len(
+            self._config.field_names
+        ) > len(self._state.extracted_key_fields)
 
-    async def _initial_extract_from_chat_history(self, chat_history, output: OutputCache) -> bool:
+    async def _initial_extract_from_chat_history(
+        self, chat_history, output: OutputCache
+    ) -> bool:
         await self._invoke_llm_and_parse_result(chat_history, output)
 
         self._update_param_default_value(output)
@@ -446,7 +484,9 @@ class QuestionerDirectReplyHandler:
 
         return self._check_if_continue_ask(output)
 
-    async def _repeat_extract_from_chat_history(self, chat_history, output: OutputCache) -> bool:
+    async def _repeat_extract_from_chat_history(
+        self, chat_history, output: OutputCache
+    ) -> bool:
         await self._invoke_llm_and_parse_result(chat_history, output)
 
         self._update_param_default_value(output)
@@ -459,8 +499,9 @@ class QuestionerDirectReplyHandler:
         if self._config.with_chat_history and context:
             raw_chat_history = context.get_messages()
             if raw_chat_history:
-                result = QuestionerUtils.get_latest_k_rounds_chat(raw_chat_history,
-                                                                  self._config.chat_history_max_rounds)
+                result = QuestionerUtils.get_latest_k_rounds_chat(
+                    raw_chat_history, self._config.chat_history_max_rounds
+                )
         if not result or result[-1].role in ["assistant"]:
             # make sure content is Union[str, List[Union[str, Dict]]]
             content = self._query
@@ -480,13 +521,21 @@ class QuestionerDirectReplyHandler:
             params_list.append(f"{param.field_name}: {param.description}")
             if param.required:
                 required_name_list.append(param.cn_field_name or param.description)
-        required_name_str = "、".join(required_name_list) + f"{len(required_name_list)}个必要信息"
+        required_name_str = (
+            "、".join(required_name_list) + f"{len(required_name_list)}个必要信息"
+        )
         all_param_str = "\n".join(params_list)
-        dialogue_history_str = "\n".join([f"{_.role}：{_.content}" for _ in chat_history])
+        dialogue_history_str = "\n".join(
+            [f"{_.role}：{_.content}" for _ in chat_history]
+        )
 
-        return dict(required_name=required_name_str, required_params_list=all_param_str,
-                    extra_info=self._config.extra_prompt_for_fields_extraction, example=self._config.example_content,
-                    dialogue_history=dialogue_history_str)
+        return dict(
+            required_name=required_name_str,
+            required_params_list=all_param_str,
+            extra_info=self._config.extra_prompt_for_fields_extraction,
+            example=self._config.example_content,
+            dialogue_history=dialogue_history_str,
+        )
 
     async def _invoke_llm_for_extraction(self, llm_inputs: List[BaseMessage]):
         response = ""
@@ -498,8 +547,8 @@ class QuestionerDirectReplyHandler:
             metadata={
                 "has_inputs": bool(llm_inputs),
                 "input_count": len(llm_inputs) if llm_inputs else 0,
-                "sensitive_mode": UserConfig.is_sensitive()
-            }
+                "sensitive_mode": UserConfig.is_sensitive(),
+            },
         )
 
         try:
@@ -508,7 +557,7 @@ class QuestionerDirectReplyHandler:
             raise build_error(
                 StatusCode.COMPONENT_QUESTIONER_INVOKE_CALL_FAILED,
                 error_msg="failed to invoke llm for extraction",
-                cause=e
+                cause=e,
             ) from e
 
         workflow_logger.info(
@@ -518,31 +567,35 @@ class QuestionerDirectReplyHandler:
             metadata={
                 "has_response": bool(response),
                 "response_length": len(response) if response else 0,
-                "sensitive_mode": UserConfig.is_sensitive()
-            }
+                "sensitive_mode": UserConfig.is_sensitive(),
+            },
         )
 
         result = dict()
         try:
-            cleaned = re.sub(r'^\s*```json\s*|\s*```\s*$', '', response.strip(), flags=re.IGNORECASE)
-            cleaned = re.sub(r"^\s*'''json\s*|\s*'''\s*$", '', cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(
+                r"^\s*```json\s*|\s*```\s*$", "", response.strip(), flags=re.IGNORECASE
+            )
+            cleaned = re.sub(
+                r"^\s*'''json\s*|\s*'''\s*$", "", cleaned, flags=re.IGNORECASE
+            )
             result = json.loads(cleaned, strict=False)
         except json.JSONDecodeError as _:
             workflow_logger.error(
                 "Questioner JSON parse failed",
                 event_type=LogEventType.WORKFLOW_COMPONENT_ERROR,
                 component_type_str="QuestionerComponent",
-                metadata={"error": "Failed to parse JSON from LLM response"}
+                metadata={"error": "Failed to parse JSON from LLM response"},
             )
             return result
 
         if not isinstance(result, dict):
             raise build_error(
                 StatusCode.COMPONENT_QUESTIONER_EXECUTION_PROCESS_ERROR,
-                error_msg="failed to parse json from llm response"
+                error_msg="failed to parse json from llm response",
             )
         result = {k: v for k, v in result.items() if QuestionerUtils.is_valid_value(v)}
-        
+
         # Validate and convert field types based on FieldInfo.type
         result = self._validate_and_convert_fields(result)
         return result
@@ -550,26 +603,28 @@ class QuestionerDirectReplyHandler:
     def _validate_and_convert_fields(self, extracted_result: dict) -> dict:
         """
         Validate and convert extracted field values based on FieldInfo.type definitions.
-        
+
         If validation fails, attempts type conversion. If conversion also fails,
         the field is treated as not extracted (removed from result).
-        
+
         Args:
             extracted_result: Dict of field_name -> extracted_value from LLM
-            
+
         Returns:
             Dict with validated and type-converted values. Invalid fields are removed.
         """
         # Build field_name -> expected_type mapping
         field_type_map = {f.field_name: f.type for f in self._config.field_names}
-        
+
         validated_result = {}
         for field_name, value in extracted_result.items():
             # Get expected type, default to "string" for backward compatibility
             expected_type = field_type_map.get(field_name, "string")
-            
-            converted_value, is_valid = QuestionerUtils.validate_and_convert_type(value, expected_type)
-            
+
+            converted_value, is_valid = QuestionerUtils.validate_and_convert_type(
+                value, expected_type
+            )
+
             if is_valid:
                 validated_result[field_name] = converted_value
             else:
@@ -581,16 +636,19 @@ class QuestionerDirectReplyHandler:
                     metadata={
                         "field_name": field_name,
                         "value": str(value) if not UserConfig.is_sensitive() else None,
-                        "expected_type": expected_type
-                    }
+                        "expected_type": expected_type,
+                    },
                 )
-        
+
         return validated_result
 
     def _filter_non_extracted_key_fields(self) -> List[FieldInfo]:
         result = []
         for item in self._config.field_names:
-            if item.required and item.field_name not in self._state.extracted_key_fields:
+            if (
+                item.required
+                and item.field_name not in self._state.extracted_key_fields
+            ):
                 result.append(item)
         return result
 
@@ -617,15 +675,19 @@ class QuestionerDirectReplyHandler:
 
     def _check_if_continue_ask(self, output: OutputCache):
         is_continue_ask = False
-        non_extracted_key_fields: List[FieldInfo] = self._filter_non_extracted_key_fields()
+        non_extracted_key_fields: List[FieldInfo] = (
+            self._filter_non_extracted_key_fields()
+        )
         if non_extracted_key_fields:
             if not self._exceed_max_response():
-                output.question = QuestionerUtils.format_continue_ask_question(non_extracted_key_fields)
+                output.question = QuestionerUtils.format_continue_ask_question(
+                    non_extracted_key_fields
+                )
                 is_continue_ask = True
             else:
                 raise build_error(
                     StatusCode.COMPONENT_QUESTIONER_RUNTIME_ERROR,
-                    error_msg=" max_response reached before all required fields were extracted"
+                    error_msg=" max_response reached before all required fields were extracted",
                 )
         if is_continue_ask:
             output.key_fields.clear()
@@ -644,7 +706,9 @@ class QuestionerDirectReplyHandler:
 
     async def _get_latest_human_feedback(self, session):
         for _ in range(self._state.response_num + 1):
-            self._query = await session.interact(self._state.question)  # keep the last question, in case of no feedback
+            self._query = await session.interact(
+                self._state.question
+            )  # keep the last question, in case of no feedback
         self._increment_state_of_response_num()
 
     def _update_questioner_states_question(self, question):
@@ -665,7 +729,11 @@ class QuestionerExecutable(ComponentExecutable):
     @staticmethod
     def _load_state_from_session(session: Session) -> QuestionerState:
         questioner_state = session.get_state()
-        state_dict = questioner_state.get(QUESTIONER_STATE_KEY) if isinstance(questioner_state, dict) else None
+        state_dict = (
+            questioner_state.get(QUESTIONER_STATE_KEY)
+            if isinstance(questioner_state, dict)
+            else None
+        )
         if state_dict:
             return QuestionerState.deserialize(state_dict)
         return QuestionerState()
@@ -680,21 +748,23 @@ class QuestionerExecutable(ComponentExecutable):
         if max_response_num <= 0:
             raise build_error(
                 StatusCode.COMPONENT_QUESTIONER_CONFIG_ERROR,
-                error_msg="max response must be greater than 0"
+                error_msg="max response must be greater than 0",
             )
 
     @staticmethod
-    def _validate_extract_key_fields_config(if_extract: bool, extract_key_fields: List[FieldInfo]):
+    def _validate_extract_key_fields_config(
+        if_extract: bool, extract_key_fields: List[FieldInfo]
+    ):
         if if_extract and not extract_key_fields:
             raise build_error(
                 StatusCode.COMPONENT_QUESTIONER_CONFIG_ERROR,
-                error_msg="extracted key fields cannot be empty"
+                error_msg="extracted key fields cannot be empty",
             )
         for item in extract_key_fields:
             if not item.field_name:
                 raise build_error(
                     StatusCode.COMPONENT_QUESTIONER_CONFIG_ERROR,
-                    error_msg="extracted key field name cannot be empty"
+                    error_msg="extracted key field name cannot be empty",
                 )
 
     @staticmethod
@@ -703,14 +773,16 @@ class QuestionerExecutable(ComponentExecutable):
         if response_type not in response_type_values:
             raise build_error(
                 StatusCode.COMPONENT_QUESTIONER_CONFIG_ERROR,
-                error_msg=f"response type {response_type} is invalid"
+                error_msg=f"response type {response_type} is invalid",
             )
 
     def state(self, state: QuestionerState):
         self._state = state
         return self
 
-    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
+    async def invoke(
+        self, inputs: Input, session: Session, context: ModelContext
+    ) -> Output:
         state_from_session = self._load_state_from_session(session)
         if state_from_session.is_undergoing_interaction():
             current_state = state_from_session  # recover state from session
@@ -725,7 +797,7 @@ class QuestionerExecutable(ComponentExecutable):
                 inputs, session, context, current_state
             )
             # handler might update state
-            current_state = invoke_result.pop('_state', current_state)
+            current_state = invoke_result.pop("_state", current_state)
 
         self._store_state_to_session(current_state, session)
 
@@ -736,14 +808,18 @@ class QuestionerExecutable(ComponentExecutable):
 
     async def _create_llm_instance(self) -> Model:
         if self._config.model_id is None:
-            if self._config.model_client_config is None or self._config.model_config is None:
+            if (
+                self._config.model_client_config is None
+                or self._config.model_config is None
+            ):
                 raise build_error(
                     StatusCode.COMPONENT_QUESTIONER_INVOKE_CALL_FAILED,
-                    error_msg="failed to create llm instance"
+                    error_msg="failed to create llm instance",
                 )
             return Model(self._config.model_client_config, self._config.model_config)
         else:
             from openjiuwen.core.runner import Runner
+
             return await Runner.resource_mgr.get_model(id=self._config.model_id)
 
     async def _initialize_if_needed(self):
@@ -755,32 +831,46 @@ class QuestionerExecutable(ComponentExecutable):
                 raise build_error(
                     StatusCode.COMPONENT_QUESTIONER_INVOKE_CALL_FAILED,
                     error_msg="failed to initialize llm if needed",
-                    cause=e
+                    cause=e,
                 ) from e
 
     def _init_prompt(self) -> PromptTemplate:
         return PromptTemplate(content=self._default_config.prompt_template)
 
-    async def _handle_questioner_direct_reply(self, inputs: Input, session: Session, context):
-        handler = (QuestionerDirectReplyHandler()
-                   .config(self._config).model(self._llm).state(self._state).prompt(self._prompt))
+    async def _handle_questioner_direct_reply(
+        self, inputs: Input, session: Session, context
+    ):
+        handler = (
+            QuestionerDirectReplyHandler()
+            .config(self._config)
+            .model(self._llm)
+            .state(self._state)
+            .prompt(self._prompt)
+        )
         result = await handler.handle(inputs, session, context)
         self._state = handler.get_state()
         return result
 
     async def _handle_questioner_direct_reply_safe(
-            self, inputs: Input, session: Session, context, current_state: QuestionerState
+        self, inputs: Input, session: Session, context, current_state: QuestionerState
     ):
-        handler = (QuestionerDirectReplyHandler()
-                   .config(self._config).model(self._llm).state(current_state).prompt(self._prompt))
+        handler = (
+            QuestionerDirectReplyHandler()
+            .config(self._config)
+            .model(self._llm)
+            .state(current_state)
+            .prompt(self._prompt)
+        )
         result = await handler.handle(inputs, session, context)
         # return updated state, let caller manage
-        result['_state'] = handler.get_state()
+        result["_state"] = handler.get_state()
         return result
 
     def _validate_config(self, config: QuestionerConfig):
         self._validate_response_type_config(config.response_type)
-        self._validate_extract_key_fields_config(config.extract_fields_from_response, config.field_names)
+        self._validate_extract_key_fields_config(
+            config.extract_fields_from_response, config.field_names
+        )
         self._validate_max_response_num_config(config.max_response)
 
 

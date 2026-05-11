@@ -141,11 +141,62 @@ class WorkAnalyzer:
 
     # 停用词列表
     STOPWORDS = {
-        "的", "了", "是", "在", "我", "有", "和", "就", "不", "人", "都", "一", "一个",
-        "上", "也", "很", "到", "说", "要", "去", "你", "会", "着", "没有", "看", "好",
-        "自己", "这", "那", "什么", "这个", "那个", "可以", "然后", "还是", "但是",
-        "如果", "因为", "所以", "或者", "而且", "已经", "可能", "应该", "需要", "今天",
-        "昨天", "明天", "进行", "完成", "工作", "任务", "今天", "功能", "代码", "文件",
+        "的",
+        "了",
+        "是",
+        "在",
+        "我",
+        "有",
+        "和",
+        "就",
+        "不",
+        "人",
+        "都",
+        "一",
+        "一个",
+        "上",
+        "也",
+        "很",
+        "到",
+        "说",
+        "要",
+        "去",
+        "你",
+        "会",
+        "着",
+        "没有",
+        "看",
+        "好",
+        "自己",
+        "这",
+        "那",
+        "什么",
+        "这个",
+        "那个",
+        "可以",
+        "然后",
+        "还是",
+        "但是",
+        "如果",
+        "因为",
+        "所以",
+        "或者",
+        "而且",
+        "已经",
+        "可能",
+        "应该",
+        "需要",
+        "今天",
+        "昨天",
+        "明天",
+        "进行",
+        "完成",
+        "工作",
+        "任务",
+        "今天",
+        "功能",
+        "代码",
+        "文件",
     }
 
     def __init__(self):
@@ -170,7 +221,8 @@ class WorkAnalyzer:
             words = re.findall(r"[\u4e00-\u9fa5]{2,}", text)
             word_freq = Counter(words)
             keywords = [
-                w for w, _ in word_freq.most_common(top_k * 2)
+                w
+                for w, _ in word_freq.most_common(top_k * 2)
                 if w not in self.STOPWORDS
             ]
             return keywords[:top_k]
@@ -236,7 +288,7 @@ class WorkAnalyzer:
             score += 10
 
         return min(score, 100.0)
-        
+
     @staticmethod
     def _calculate_focus_score(metrics: EfficiencyMetrics) -> float:
         """计算专注度得分"""
@@ -313,13 +365,16 @@ class WorkAnalyzer:
             "tasks_completed": {
                 "current": current_metrics.tasks_completed,
                 "previous": previous_metrics.tasks_completed,
-                "change": current_metrics.tasks_completed - previous_metrics.tasks_completed,
+                "change": current_metrics.tasks_completed
+                - previous_metrics.tasks_completed,
             },
             "productivity_score": {
                 "current": current_metrics.productivity_score,
                 "previous": previous_metrics.productivity_score,
                 "change": round(
-                    current_metrics.productivity_score - previous_metrics.productivity_score, 2
+                    current_metrics.productivity_score
+                    - previous_metrics.productivity_score,
+                    2,
                 ),
             },
             "net_lines": {
@@ -329,19 +384,23 @@ class WorkAnalyzer:
             },
         }
 
-    def _generate_weekly_trend(self, end_date: datetime, historical_data: dict) -> list[dict]:
+    def _generate_weekly_trend(
+        self, end_date: datetime, historical_data: dict
+    ) -> list[dict]:
         """生成周趋势数据"""
         trend = []
         for i in range(6, -1, -1):
             date = (end_date - timedelta(days=i)).strftime("%Y-%m-%d")
             if date in historical_data:
                 metrics = self.calculate_metrics(historical_data[date])
-                trend.append({
-                    "date": date,
-                    "commits": metrics.commit_count,
-                    "tasks_completed": metrics.tasks_completed,
-                    "productivity_score": metrics.productivity_score,
-                })
+                trend.append(
+                    {
+                        "date": date,
+                        "commits": metrics.commit_count,
+                        "tasks_completed": metrics.tasks_completed,
+                        "productivity_score": metrics.productivity_score,
+                    }
+                )
         return trend
 
     def analyze(
@@ -408,11 +467,15 @@ class WorkAnalyzer:
         # 任务完成
         if metrics.tasks_completed > 0:
             rate = metrics.task_completion_rate * 100
-            parts.append(f"完成 {metrics.tasks_completed}/{metrics.tasks_total} 个任务（{rate:.0f}%）")
+            parts.append(
+                f"完成 {metrics.tasks_completed}/{metrics.tasks_total} 个任务（{rate:.0f}%）"
+            )
 
         # 邮件沟通
         if metrics.emails_sent > 0 or metrics.emails_received > 0:
-            parts.append(f"处理邮件 {metrics.emails_received} 封，发送 {metrics.emails_sent} 封")
+            parts.append(
+                f"处理邮件 {metrics.emails_received} 封，发送 {metrics.emails_sent} 封"
+            )
 
         if not parts:
             return "今日暂无工作记录"
@@ -440,7 +503,9 @@ class WorkAnalyzer:
 
         # 基于趋势对比
         if trends.vs_yesterday:
-            productivity_change = trends.vs_yesterday.get("productivity_score", {}).get("change", 0)
+            productivity_change = trends.vs_yesterday.get("productivity_score", {}).get(
+                "change", 0
+            )
             if productivity_change < -10:
                 suggestions.append("今日效率较昨日有所下降，注意调整状态")
             elif productivity_change > 10:

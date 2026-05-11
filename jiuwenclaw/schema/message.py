@@ -25,9 +25,9 @@ class ReqMethod(Enum):
     PATH_SET = "path.set"
 
     BROWSER_START = "browser.start"
-    
+
     MEMORY_COMPUTE = "memory.compute"
-    
+
     FILES_LIST = "files.list"
     FILES_GET = "files.get"
     TTS_SYNTHESIZE = "tts.synthesize"
@@ -69,6 +69,7 @@ class ReqMethod(Enum):
     UPDATER_GET_CONF = "updater.get_conf"
     UPDATER_SET_CONF = "updater.set_conf"
 
+
 class EventType(Enum):
     CONNECTION_ACK = "connection.ack"
     HELLO = "hello"
@@ -97,6 +98,7 @@ class Mode(Enum):
 @dataclass
 class Message:
     """统一消息结构."""
+
     id: str
     type: Literal["req", "res", "event"]
     channel_id: str

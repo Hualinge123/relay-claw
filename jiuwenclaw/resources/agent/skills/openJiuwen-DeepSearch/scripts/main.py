@@ -8,6 +8,7 @@ openJiuwen-DeepSearch 主脚本
     - openjiuwen-deepsearch==0.1.1
     - python-dotenv
 """
+
 import argparse
 import asyncio
 import datetime
@@ -24,7 +25,9 @@ from openjiuwen_deepsearch.config.config import Config
 from openjiuwen_deepsearch.config.method import ExecutionMethod
 from openjiuwen_deepsearch.framework.openjiuwen.agent.agent_factory import AgentFactory
 from openjiuwen_deepsearch.utils.debug_utils.result_exporter import ResultExporter
-from openjiuwen_deepsearch.framework.openjiuwen.agent.workflow import parse_endnode_content
+from openjiuwen_deepsearch.framework.openjiuwen.agent.workflow import (
+    parse_endnode_content,
+)
 from openjiuwen_deepsearch.utils.log_utils.log_manager import LogManager
 
 # 获取技能根目录，优先使用 SKILL_ROOT 环境变量，否则自动检测
@@ -44,14 +47,12 @@ LogManager.init(
     max_bytes=100 * 1024 * 1024,
     backup_count=20,
     level="DEBUG",
-    is_sensitive=False
+    is_sensitive=False,
 )
 
 # 初始化结果导出器
 results_dir = SKILL_ROOT / "output" / "results"
-ResultExporter.init(
-    results_dir=str(results_dir)
-)
+ResultExporter.init(results_dir=str(results_dir))
 
 logger = logging.getLogger(__name__)
 
@@ -73,11 +74,11 @@ async def run_jiuwen_workflow(query: str, agent_config: dict):
     full_report = ""
 
     async for chunk in agent.run(
-            message=query,
-            conversation_id=str(uuid.uuid4()),
-            report_template="",
-            interrupt_feedback="",
-            agent_config=agent_config
+        message=query,
+        conversation_id=str(uuid.uuid4()),
+        report_template="",
+        interrupt_feedback="",
+        agent_config=agent_config,
     ):
         logger.debug("[Stream message from node: %s]", chunk)
         chunk_content = json.loads(chunk)
@@ -120,7 +121,8 @@ def load_agent_config() -> dict:
 
     # 检查必需的环境变量
     missing_vars = [
-        var_name for var_name, desc in required_env_vars.items()
+        var_name
+        for var_name, desc in required_env_vars.items()
         if not os.getenv(var_name)
     ]
 
@@ -144,7 +146,9 @@ def load_agent_config() -> dict:
     # 搜索引擎配置
     config["web_search_engine_config"] = {
         "search_engine_name": os.getenv("WEB_SEARCH_ENGINE_NAME"),
-        "search_api_key": bytearray(os.getenv("WEB_SEARCH_API_KEY", ""), encoding="utf-8"),
+        "search_api_key": bytearray(
+            os.getenv("WEB_SEARCH_API_KEY", ""), encoding="utf-8"
+        ),
         "search_url": os.getenv("WEB_SEARCH_URL"),
         "max_web_search_results": int(os.getenv("MAX_WEB_SEARCH_RESULTS", "5")),
     }
@@ -224,7 +228,7 @@ def run_background():
             [python_executable, str(script_path)] + cmd_args,
             creationflags=detached_process,
             cwd=str(cwd),
-            env=env
+            env=env,
         )
     else:
         # Linux/macOS: 使用 start_new_session 创建新会话
@@ -234,10 +238,14 @@ def run_background():
             stderr=subprocess.DEVNULL,
             start_new_session=True,
             cwd=str(cwd),
-            env=env
+            env=env,
         )
 
-    query_text = ' '.join(cmd_args[cmd_args.index('--query') + 1:]) if '--query' in cmd_args else 'default'
+    query_text = (
+        " ".join(cmd_args[cmd_args.index("--query") + 1 :])
+        if "--query" in cmd_args
+        else "default"
+    )
     logger.info("任务已在后台启动，查询: %s", query_text)
     logger.info("日志位置: output/logs/")
     logger.info("结果位置: 技能文件夹根目录")
@@ -253,24 +261,15 @@ def main():
         "--mode",
         default="query",
         choices=["query"],
-        help="运行模式（当前仅支持 query）"
+        help="运行模式（当前仅支持 query）",
     )
     parser.add_argument(
-        "--query",
-        nargs="*",
-        default=["AI手机研究报告"],
-        help="研究题目（支持空格）"
+        "--query", nargs="*", default=["AI手机研究报告"], help="研究题目（支持空格）"
     )
     parser.add_argument(
-        "--background",
-        action="store_true",
-        help="在后台运行（默认行为）"
+        "--background", action="store_true", help="在后台运行（默认行为）"
     )
-    parser.add_argument(
-        "--foreground",
-        action="store_true",
-        help="在前台运行"
-    )
+    parser.add_argument("--foreground", action="store_true", help="在前台运行")
 
     args = parser.parse_args()
 

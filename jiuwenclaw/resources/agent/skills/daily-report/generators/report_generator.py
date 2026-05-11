@@ -59,7 +59,9 @@ class ReportGenerator:
         self.work_analyzer = work_analyzer or WorkAnalyzer()
         self.ai_analyzer = ai_analyzer
 
-    def generate_daily(self, date: Optional[str] = None, config: Optional[ReportConfig] = None) -> str:
+    def generate_daily(
+        self, date: Optional[str] = None, config: Optional[ReportConfig] = None
+    ) -> str:
         """
         生成日报
 
@@ -77,7 +79,9 @@ class ReportGenerator:
             config = ReportConfig(report_type="daily", date=date)
 
         # 采集数据
-        data = self.data_aggregator.collect(date, include_comparison=config.include_trends)
+        data = self.data_aggregator.collect(
+            date, include_comparison=config.include_trends
+        )
 
         # 分析数据
         analysis = self.work_analyzer.analyze(data.to_dict())
@@ -90,7 +94,9 @@ class ReportGenerator:
         # 生成报告
         return self._render_daily_report(data, analysis, config, ai_result)
 
-    def _run_ai_analysis(self, data: CollectedData, config: ReportConfig) -> Optional[AIAnalysisResult]:
+    def _run_ai_analysis(
+        self, data: CollectedData, config: ReportConfig
+    ) -> Optional[AIAnalysisResult]:
         """运行 AI 分析"""
         if self.ai_analyzer is None:
             try:
@@ -104,7 +110,9 @@ class ReportGenerator:
             pattern_data = self.data_aggregator.collect_for_pattern_analysis(days=7)
 
             # 运行完整分析
-            return asyncio.run(self.ai_analyzer.analyze_full(data.to_dict(), pattern_data))
+            return asyncio.run(
+                self.ai_analyzer.analyze_full(data.to_dict(), pattern_data)
+            )
         except Exception as e:
             print(f"[ReportGenerator] AI 分析失败: {e}")
             return None
@@ -122,7 +130,9 @@ class ReportGenerator:
         if end_date is None:
             end_date = datetime.now(_REPORT_TZ)
         else:
-            end_date = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=_REPORT_TZ)
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                tzinfo=_REPORT_TZ
+            )
 
         # 计算本周日期范围
         start_date = end_date - timedelta(days=6)
@@ -138,7 +148,9 @@ class ReportGenerator:
         # 生成周报
         return self._render_weekly_report(aggregated, start_str, end_str)
 
-    def generate_monthly(self, year: Optional[int] = None, month: Optional[int] = None) -> str:
+    def generate_monthly(
+        self, year: Optional[int] = None, month: Optional[int] = None
+    ) -> str:
         """
         生成月报
 
@@ -212,8 +224,10 @@ class ReportGenerator:
 
     @staticmethod
     def _render_daily_report(
-         data: CollectedData, analysis: AnalysisResult, config: ReportConfig,
-        ai_result: Optional[AIAnalysisResult] = None
+        data: CollectedData,
+        analysis: AnalysisResult,
+        config: ReportConfig,
+        ai_result: Optional[AIAnalysisResult] = None,
     ) -> str:
         """渲染日报"""
         lines = [
@@ -223,34 +237,40 @@ class ReportGenerator:
 
         # AI 智能摘要（放在开头）
         if ai_result and ai_result.summary:
-            lines.extend([
-                "## 🤖 AI 智能摘要",
-                "",
-                f"> {ai_result.summary}",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## 🤖 AI 智能摘要",
+                    "",
+                    f"> {ai_result.summary}",
+                    "",
+                ]
+            )
 
         # 效率概览
-        lines.extend([
-            "## 📊 今日概览",
-            "",
-            "| 指标 | 数值 |",
-            "|------|------|",
-            f"| 提交次数 | {analysis.metrics.commit_count} |",
-            f"| 任务完成 | {analysis.metrics.tasks_completed}/{analysis.metrics.tasks_total} |",
-            f"| 代码变更 | +{analysis.metrics.lines_added}/-{analysis.metrics.lines_deleted} |",
-            f"| 邮件处理 | 收 {analysis.metrics.emails_received} / 发 {analysis.metrics.emails_sent} |",
-            f"| 生产力得分 | {analysis.metrics.productivity_score:.1f} |",
-            "",
-        ])
+        lines.extend(
+            [
+                "## 📊 今日概览",
+                "",
+                "| 指标 | 数值 |",
+                "|------|------|",
+                f"| 提交次数 | {analysis.metrics.commit_count} |",
+                f"| 任务完成 | {analysis.metrics.tasks_completed}/{analysis.metrics.tasks_total} |",
+                f"| 代码变更 | +{analysis.metrics.lines_added}/-{analysis.metrics.lines_deleted} |",
+                f"| 邮件处理 | 收 {analysis.metrics.emails_received} / 发 {analysis.metrics.emails_sent} |",
+                f"| 生产力得分 | {analysis.metrics.productivity_score:.1f} |",
+                "",
+            ]
+        )
 
         # 已完成任务
         completed_tasks = [t for t in data.todo.tasks if t.status == "completed"]
         if completed_tasks:
-            lines.extend([
-                "## ✅ 已完成任务",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## ✅ 已完成任务",
+                    "",
+                ]
+            )
             for task in completed_tasks[:10]:
                 lines.append(f"- {task.content}")
             lines.append("")
@@ -258,22 +278,26 @@ class ReportGenerator:
         # 进行中任务
         running_tasks = [t for t in data.todo.tasks if t.status == "running"]
         if running_tasks:
-            lines.extend([
-                "## 🔄 进行中任务",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## 🔄 进行中任务",
+                    "",
+                ]
+            )
             for task in running_tasks[:5]:
                 lines.append(f"- {task.content}")
             lines.append("")
 
         # Git 提交记录
         if data.git.commits:
-            lines.extend([
-                "## 💻 代码提交",
-                "",
-                "| 时间 | 提交信息 | 变更 |",
-                "|------|----------|------|",
-            ])
+            lines.extend(
+                [
+                    "## 💻 代码提交",
+                    "",
+                    "| 时间 | 提交信息 | 变更 |",
+                    "|------|----------|------|",
+                ]
+            )
             for commit in data.git.commits[:10]:
                 time_str = commit.date.strftime("%H:%M") if commit.date else "-"
                 lines.append(
@@ -284,24 +308,28 @@ class ReportGenerator:
 
         # 今日工作记录
         if data.memory.work_summaries:
-            lines.extend([
-                "## 📝 今日工作记录",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## 📝 今日工作记录",
+                    "",
+                ]
+            )
             for summary in data.memory.work_summaries[:10]:
                 lines.append(f"- {summary}")
             lines.append("")
 
         # 邮件概况
         if data.email.received_today > 0 or data.email.sent_today > 0:
-            lines.extend([
-                "## 📧 邮件概况",
-                "",
-                f"- 今日收件: {data.email.received_today} 封",
-                f"- 今日发件: {data.email.sent_today} 封",
-                f"- 未读邮件: {data.email.unread} 封",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## 📧 邮件概况",
+                    "",
+                    f"- 今日收件: {data.email.received_today} 封",
+                    f"- 今日发件: {data.email.sent_today} 封",
+                    f"- 未读邮件: {data.email.unread} 封",
+                    "",
+                ]
+            )
 
             # 未读邮件
             if data.email.important_emails:
@@ -313,10 +341,12 @@ class ReportGenerator:
 
         # 趋势对比
         if config.include_trends and analysis.trends.vs_yesterday:
-            lines.extend([
-                "## 📈 趋势对比",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## 📈 趋势对比",
+                    "",
+                ]
+            )
             vs_y = analysis.trends.vs_yesterday
             if "commits" in vs_y:
                 change = vs_y["commits"]["change"]
@@ -329,10 +359,12 @@ class ReportGenerator:
             lines.append("")
 
         # 工作建议与明日计划
-        lines.extend([
-            "## 💡 工作建议与明日计划",
-            "",
-        ])
+        lines.extend(
+            [
+                "## 💡 工作建议与明日计划",
+                "",
+            ]
+        )
 
         # 原有建议
         if config.include_suggestions and analysis.suggestions:
@@ -360,18 +392,26 @@ class ReportGenerator:
             lines.append("")
 
         # 工作模式分析
-        if ai_result and ai_result.work_pattern and ai_result.work_pattern.get("description"):
-            lines.extend([
-                "## 📊 工作模式分析（近7天）",
-                "",
-                ai_result.work_pattern.get("description", ""),
-                "",
-            ])
+        if (
+            ai_result
+            and ai_result.work_pattern
+            and ai_result.work_pattern.get("description")
+        ):
+            lines.extend(
+                [
+                    "## 📊 工作模式分析（近7天）",
+                    "",
+                    ai_result.work_pattern.get("description", ""),
+                    "",
+                ]
+            )
 
             # 高峰时段
             peak_hours = ai_result.work_pattern.get("peak_hours", [])
             if peak_hours:
-                lines.append(f"- **效率高峰时段**: {', '.join([f'{h}:00' for h in peak_hours])}")
+                lines.append(
+                    f"- **效率高峰时段**: {', '.join([f'{h}:00' for h in peak_hours])}"
+                )
 
             # 平均提交
             avg_commits = ai_result.work_pattern.get("avg_commits_per_day", 0)
@@ -391,48 +431,58 @@ class ReportGenerator:
         ]
 
         # 本周概览
-        lines.extend([
-            "## 📊 本周概览",
-            "",
-            "| 指标 | 数值 |",
-            "|------|------|",
-            f"| 活跃天数 | {data['active_days']}/7 天 |",
-            f"| 提交次数 | {data['total_commits']} 次 |",
-            f"| 任务完成 | {data['total_tasks_completed']} 个 |",
-            f"| 代码变更 | +{data['total_insertions']}/-{data['total_deletions']} |",
-            f"| 邮件处理 | 收 {data['total_emails_received']} / 发 {data['total_emails_sent']} |",
-            "",
-        ])
+        lines.extend(
+            [
+                "## 📊 本周概览",
+                "",
+                "| 指标 | 数值 |",
+                "|------|------|",
+                f"| 活跃天数 | {data['active_days']}/7 天 |",
+                f"| 提交次数 | {data['total_commits']} 次 |",
+                f"| 任务完成 | {data['total_tasks_completed']} 个 |",
+                f"| 代码变更 | +{data['total_insertions']}/-{data['total_deletions']} |",
+                f"| 邮件处理 | 收 {data['total_emails_received']} / 发 {data['total_emails_sent']} |",
+                "",
+            ]
+        )
 
         # 每日数据
         if data["daily_data"]:
-            lines.extend([
-                "## 📅 每日统计",
-                "",
-                "| 日期 | 提交 | 任务完成 |",
-                "|------|------|----------|",
-            ])
+            lines.extend(
+                [
+                    "## 📅 每日统计",
+                    "",
+                    "| 日期 | 提交 | 任务完成 |",
+                    "|------|------|----------|",
+                ]
+            )
             for day in data["daily_data"]:
-                lines.append(f"| {day['date']} | {day['commits']} | {day['tasks_completed']} |")
+                lines.append(
+                    f"| {day['date']} | {day['commits']} | {day['tasks_completed']} |"
+                )
             lines.append("")
 
         # 本周亮点
-        lines.extend([
-            "## ⭐ 本周亮点",
-            "",
-            "- 本周完成多次代码提交",
-            "- 保持了稳定的工作节奏",
-            "",
-        ])
+        lines.extend(
+            [
+                "## ⭐ 本周亮点",
+                "",
+                "- 本周完成多次代码提交",
+                "- 保持了稳定的工作节奏",
+                "",
+            ]
+        )
 
         # 下周计划
-        lines.extend([
-            "## 🔜 下周计划",
-            "",
-            "- 继续完善当前功能",
-            "- 处理待办事项",
-            "",
-        ])
+        lines.extend(
+            [
+                "## 🔜 下周计划",
+                "",
+                "- 继续完善当前功能",
+                "- 处理待办事项",
+                "",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -445,37 +495,43 @@ class ReportGenerator:
         ]
 
         # 本月概览
-        lines.extend([
-            "## 📊 本月概览",
-            "",
-            "| 指标 | 数值 |",
-            "|------|------|",
-            f"| 活跃天数 | {data['active_days']}/{data['total_days']} 天 |",
-            f"| 提交次数 | {data['total_commits']} 次 |",
-            f"| 任务完成 | {data['total_tasks_completed']} 个 |",
-            f"| 代码变更 | +{data['total_insertions']}/-{data['total_deletions']} |",
-            "",
-        ])
+        lines.extend(
+            [
+                "## 📊 本月概览",
+                "",
+                "| 指标 | 数值 |",
+                "|------|------|",
+                f"| 活跃天数 | {data['active_days']}/{data['total_days']} 天 |",
+                f"| 提交次数 | {data['total_commits']} 次 |",
+                f"| 任务完成 | {data['total_tasks_completed']} 个 |",
+                f"| 代码变更 | +{data['total_insertions']}/-{data['total_deletions']} |",
+                "",
+            ]
+        )
 
         # 工作总结
-        lines.extend([
-            "## 📝 工作总结",
-            "",
-            "本月工作主要包括：",
-            "- 日报生成器功能开发",
-            "- 进阶版数据采集模块",
-            "- 多报告类型支持",
-            "",
-        ])
+        lines.extend(
+            [
+                "## 📝 工作总结",
+                "",
+                "本月工作主要包括：",
+                "- 日报生成器功能开发",
+                "- 进阶版数据采集模块",
+                "- 多报告类型支持",
+                "",
+            ]
+        )
 
         # 下月计划
-        lines.extend([
-            "## 🔜 下月计划",
-            "",
-            "- 继续优化报告生成功能",
-            "- 添加更多数据源支持",
-            "",
-        ])
+        lines.extend(
+            [
+                "## 🔜 下月计划",
+                "",
+                "- 继续优化报告生成功能",
+                "- 添加更多数据源支持",
+                "",
+            ]
+        )
 
         return "\n".join(lines)
 

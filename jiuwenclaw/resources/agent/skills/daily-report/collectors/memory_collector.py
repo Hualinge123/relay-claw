@@ -129,12 +129,16 @@ class MemoryCollector:
 
         return data
 
-    def get_week_memories(self, end_date: Optional[str] = None) -> dict[str, MemoryData]:
+    def get_week_memories(
+        self, end_date: Optional[str] = None
+    ) -> dict[str, MemoryData]:
         """获取一周的记忆数据"""
         if end_date is None:
             end_date = datetime.now(_REPORT_TZ)
         else:
-            end_date = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=_REPORT_TZ)
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                tzinfo=_REPORT_TZ
+            )
 
         result = {}
         for i in range(7):

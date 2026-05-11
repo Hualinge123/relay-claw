@@ -24,7 +24,9 @@ class BrowserMoveStdioClient(StdioClient):
     # Helpers
     # ------------------------------------------------------------------
 
-    def _resolve_timeout(self, timeout: float = NO_TIMEOUT, *, default_s: float = 60.0) -> float:
+    def _resolve_timeout(
+        self, timeout: float = NO_TIMEOUT, *, default_s: float = 60.0
+    ) -> float:
         """Return an effective timeout in seconds for MCP operations."""
         try:
             configured = float(self._params.get("timeout_s", default_s))
@@ -90,7 +92,9 @@ class BrowserMoveStdioClient(StdioClient):
             )
             self._exit_stack = AsyncExitStack()
             self._client = stdio_client(params)
-            self._read, self._write = await self._exit_stack.enter_async_context(self._client)
+            self._read, self._write = await self._exit_stack.enter_async_context(
+                self._client
+            )
             self._session = await self._exit_stack.enter_async_context(
                 ClientSession(self._read, self._write, sampling_callback=None)
             )
@@ -166,7 +170,9 @@ class BrowserMoveStdioClient(StdioClient):
                     connected = await self._reconnect(timeout=effective_timeout)
                     if connected:
                         continue
-                logger.error(f"Stdio list_tools timed out after {effective_timeout:.1f}s")
+                logger.error(
+                    f"Stdio list_tools timed out after {effective_timeout:.1f}s"
+                )
                 raise RuntimeError(
                     f"Stdio list_tools timed out after {effective_timeout:.1f}s"
                 ) from e
@@ -181,7 +187,9 @@ class BrowserMoveStdioClient(StdioClient):
                 logger.error(f"Failed to list tools via Stdio: {e}")
                 raise
 
-    async def call_tool(self, tool_name: str, arguments: dict, *, timeout: float = NO_TIMEOUT) -> Any:
+    async def call_tool(
+        self, tool_name: str, arguments: dict, *, timeout: float = NO_TIMEOUT
+    ) -> Any:
         """Call tool via Stdio, with auto-reconnect, timeout, and multi-content extraction."""
         if not self._session:
             connected = await self._reconnect(timeout=timeout)
@@ -191,7 +199,9 @@ class BrowserMoveStdioClient(StdioClient):
         effective_timeout = self._resolve_timeout(timeout)
         for attempt in range(2):
             try:
-                logger.info(f"Calling tool '{tool_name}' via Stdio with arguments: {arguments}")
+                logger.info(
+                    f"Calling tool '{tool_name}' via Stdio with arguments: {arguments}"
+                )
                 tool_result = await asyncio.wait_for(
                     self._session.call_tool(tool_name, arguments=arguments),
                     timeout=effective_timeout,
@@ -256,7 +266,9 @@ class BrowserMoveStdioClient(StdioClient):
                     f"Stdio tool call failed for '{tool_name}': {type(e).__name__}: {e!r}"
                 ) from e
 
-    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[Any]:
+    async def get_tool_info(
+        self, tool_name: str, *, timeout: float = NO_TIMEOUT
+    ) -> Optional[Any]:
         """Get specific tool info via Stdio."""
         tools = await self.list_tools(timeout=timeout)
         for tool in tools:

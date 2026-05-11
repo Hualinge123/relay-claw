@@ -20,6 +20,7 @@ PUSH_URL = "https://hag.cloud.huawei.com/open-ability-agent/v1/agent-webhook"
 @dataclass
 class PushConfig:
     """Push 消息配置."""
+
     mode: str = ""
     api_id: str = ""
     push_id: str = ""
@@ -35,6 +36,7 @@ class XiaoYiPushService:
     华为小艺主动推送服务.
     通过 HTTP Webhook API 向用户设备发送推送通知.
     """
+
     def __init__(self, config: PushConfig):
         self.config = config
 
@@ -77,15 +79,19 @@ class XiaoYiPushService:
                     "pushId": self.config.push_id,
                     "pushText": push_text,
                     "kind": "task",
-                    "artifacts": [{
-                        "artifactId": self._generate_uuid(),
-                        "parts": [{
-                            "kind": "text",
-                            "text": text,
-                        }]
-                    }],
-                    "status": {"state": "completed"}
-                }
+                    "artifacts": [
+                        {
+                            "artifactId": self._generate_uuid(),
+                            "parts": [
+                                {
+                                    "kind": "text",
+                                    "text": text,
+                                }
+                            ],
+                        }
+                    ],
+                    "status": {"state": "completed"},
+                },
             }
 
             logger.info(f"[PUSH] Sending push notification: {push_text}")
@@ -96,8 +102,8 @@ class XiaoYiPushService:
                     "x-hag-trace-id": self._generate_uuid(),
                     "x-uid": self.config.uid,
                     "x-api-key": self.config.api_key,
-                    "x-request-from": "openclaw"
-                } 
+                    "x-request-from": "openclaw",
+                }
             else:
                 signature = self._generate_signature(timestamp)
                 headers = {

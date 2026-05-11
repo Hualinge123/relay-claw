@@ -62,27 +62,29 @@ def _generate_signature(sk: str, timestamp: str) -> str:
 
 class XYFileUploadService:
     def __init__(self, base_url: str, api_key: str, uid: str):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.uid = uid
         self.session = None
-    
+
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.session.close()
-    
-    async def upload_file(self, file_path: str, object_type: str = "TEMPORARY_MATERIAL_DOC") -> Optional[str]:
+
+    async def upload_file(
+        self, file_path: str, object_type: str = "TEMPORARY_MATERIAL_DOC"
+    ) -> Optional[str]:
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 file_content = f.read()
-            
+
             file_name = os.path.basename(file_path)
             file_size = len(file_content)
             file_sha256 = hashlib.sha256(file_content).hexdigest()
-            
+
             prepare_url = f"{self.base_url}/osms/v1/file/manager/prepare"
             prepare_data = {
                 "objectType": object_type,
@@ -95,59 +97,64 @@ class XYFileUploadService:
                 },
                 "useEdge": True,
             }
-            
+
             headers = {
                 "Content-Type": "application/json",
                 "x-uid": self.uid,
                 "x-api-key": self.api_key,
                 "x-request-from": "openclaw",
             }
-            
-            async with self.session.post(prepare_url, json=prepare_data, headers=headers) as resp:
+
+            async with self.session.post(
+                prepare_url, json=prepare_data, headers=headers
+            ) as resp:
                 if not resp.ok:
                     raise Exception(f"Prepare failed: HTTP {resp.status}")
-                
+
                 prepare_resp = await resp.json()
                 if prepare_resp.get("code") != "0":
-                    raise Exception(f"Prepare failed: {prepare_resp.get('desc', 'Unknown error')}")
-            
+                    raise Exception(
+                        f"Prepare failed: {prepare_resp.get('desc', 'Unknown error')}"
+                    )
+
             object_id = prepare_resp.get("objectId")
             draft_id = prepare_resp.get("draftId")
             upload_infos = prepare_resp.get("uploadInfos", [])
-            
+
             if not upload_infos:
                 raise Exception("No upload information returned")
-            
+
             upload_info = upload_infos[0]
             upload_url = upload_info.get("url")
             upload_method = upload_info.get("method", "PUT")
             upload_headers = upload_info.get("headers", {})
-            
+
             async with self.session.request(
-                upload_method, 
-                upload_url, 
-                data=file_content, 
-                headers=upload_headers
+                upload_method, upload_url, data=file_content, headers=upload_headers
             ) as resp:
                 if not resp.ok:
                     raise Exception(f"Upload failed: HTTP {resp.status}")
-            
+
             complete_url = f"{self.base_url}/osms/v1/file/manager/complete"
             complete_data = {
                 "objectId": object_id,
                 "draftId": draft_id,
             }
-            
-            async with self.session.post(complete_url, json=complete_data, headers=headers) as resp:
+
+            async with self.session.post(
+                complete_url, json=complete_data, headers=headers
+            ) as resp:
                 if not resp.ok:
                     raise Exception(f"Complete failed: HTTP {resp.status}")
-                
+
                 complete_resp = await resp.json()
                 if complete_resp.get("code") != "0":
-                    raise Exception(f"Complete failed: {complete_resp.get('desc', 'Unknown error')}")
-            
+                    raise Exception(
+                        f"Complete failed: {complete_resp.get('desc', 'Unknown error')}"
+                    )
+
             return object_id
-            
+
         except Exception as e:
             logger.error(f"[XY File Upload] Error: {e}")
             return None
@@ -160,7 +167,7 @@ def _generate_auth_headers(config: XiaoyiChannelConfig) -> dict[str, str]:
             "x-uid": config.uid,
             "x-api-key": config.api_key,
             "x-agent-id": config.agent_id,
-            "x-request-from": "openclaw"
+            "x-request-from": "openclaw",
         }
     timestamp = str(int(time.time() * 1000))
     signature = _generate_signature(config.sk, timestamp)
@@ -168,7 +175,7 @@ def _generate_auth_headers(config: XiaoyiChannelConfig) -> dict[str, str]:
         "x-access-key": config.ak,
         "x-sign": signature,
         "x-ts": timestamp,
-        "x-agent-id": config.agent_id
+        "x-agent-id": config.agent_id,
     }
 
 
@@ -184,21 +191,37 @@ class XiaoyiChannel(BaseChannel):
         self._ws_connections: dict[str, Any] = {}  # Dual channel connections
         self._send_locks: dict[str, asyncio.Lock] = {}
         self._running = False
-        self._heartbeat_tasks: dict[str, asyncio.Task] = {}  # Heartbeat tasks for each channel
-        self._connect_tasks: dict[str, asyncio.Task] = {}  # Connection tasks for each channel
+        self._heartbeat_tasks: dict[str, asyncio.Task] = (
+            {}
+        )  # Heartbeat tasks for each channel
+        self._connect_tasks: dict[str, asyncio.Task] = (
+            {}
+        )  # Connection tasks for each channel
         self._session_task_map: dict[str, str] = {}
-        self._session_heartbeat_tasks: dict[str, asyncio.Task] = {}  # Response heartbeat tasks for each session
+        self._session_heartbeat_tasks: dict[str, asyncio.Task] = (
+            {}
+        )  # Response heartbeat tasks for each session
         self._stream_text_buffers: dict[str, str] = {}
         self._task_keepalive_tasks: dict[str, asyncio.Task] = {}
         self._task_last_activity: dict[str, float] = {}
         self._on_message_cb: Callable[[Message], Any] | None = None
         # Task timeout management
-        self._session_active: set[str] = set()  # Active sessions (concurrent request detection)
-        self._task_timeout_tasks: dict[str, asyncio.Task] = {}  # 1-hour task timeout tasks
-        self._session_timeout_tasks: dict[str, asyncio.Task] = {}  # 60-second periodic timeout tasks
-        self._sessions_waiting_for_push: dict[str, str] = {}  # {session: task} waiting for push
+        self._session_active: set[str] = (
+            set()
+        )  # Active sessions (concurrent request detection)
+        self._task_timeout_tasks: dict[str, asyncio.Task] = (
+            {}
+        )  # 1-hour task timeout tasks
+        self._session_timeout_tasks: dict[str, asyncio.Task] = (
+            {}
+        )  # 60-second periodic timeout tasks
+        self._sessions_waiting_for_push: dict[str, str] = (
+            {}
+        )  # {session: task} waiting for push
         # Session cleanup management
-        self._sessions_marked_for_cleanup: dict[str, dict[str, Any]] = {}  # Session cleanup state
+        self._sessions_marked_for_cleanup: dict[str, dict[str, Any]] = (
+            {}
+        )  # Session cleanup state
         # File upload service configuration
         self.file_upload_config = {
             "baseUrl": config.file_upload_url,
@@ -208,7 +231,9 @@ class XiaoyiChannel(BaseChannel):
         # Save additional configuration fields
         self.api_id = config.api_id
         self.push_id = config.push_id
-        self._accumulated_texts: dict[str, str] = {}  # Accumulated text per session for push notification
+        self._accumulated_texts: dict[str, str] = (
+            {}
+        )  # Accumulated text per session for push notification
 
     @property
     def channel_id(self) -> str:
@@ -235,9 +260,14 @@ class XiaoyiChannel(BaseChannel):
 
         self._running = True
         # Start dual channel connections
-        for url_key, url in [("ws_url1", self.config.ws_url1), ("ws_url2", self.config.ws_url2)]:
+        for url_key, url in [
+            ("ws_url1", self.config.ws_url1),
+            ("ws_url2", self.config.ws_url2),
+        ]:
             if url:
-                self._connect_tasks[url_key] = asyncio.create_task(self._reconnect_loop(url_key, url))
+                self._connect_tasks[url_key] = asyncio.create_task(
+                    self._reconnect_loop(url_key, url)
+                )
         logger.info("XiaoyiChannel 已启动（客户端模式，双通道）")
 
     async def stop(self) -> None:
@@ -312,7 +342,9 @@ class XiaoyiChannel(BaseChannel):
         session_id, task_id = self._extract_platform_receive_info(msg)
         # Handle chat.file event
         if self.config.mode == "xiaoyi_claw" and msg.event_type == EventType.CHAT_FILE:
-            files = msg.payload.get("files", []) if isinstance(msg.payload, dict) else []
+            files = (
+                msg.payload.get("files", []) if isinstance(msg.payload, dict) else []
+            )
             if files:
                 for file_info in files:
                     # Convert file path to file info dict if it's a string
@@ -322,16 +354,20 @@ class XiaoyiChannel(BaseChannel):
                             "result_type": "file_created",
                             "fullPath": file_info,
                             "path": os.path.basename(file_info),
-                            "fileName": os.path.basename(file_info)
+                            "fileName": os.path.basename(file_info),
                         }
-                    
+
                     # Send file response
                     for url_key, ws in self._ws_connections.items():
                         if ws:
                             try:
-                                await self._send_file_response(session_id, task_id, file_info, url_key)
+                                await self._send_file_response(
+                                    session_id, task_id, file_info, url_key
+                                )
                             except Exception as e:
-                                logger.warning(f"XiaoyiChannel 发送文件响应失败 ({url_key}): {e}")
+                                logger.warning(
+                                    f"XiaoyiChannel 发送文件响应失败 ({url_key}): {e}"
+                                )
             return
 
         content = ""
@@ -344,7 +380,7 @@ class XiaoyiChannel(BaseChannel):
             cron_job_name = msg.payload.get("cron", {}).get("job_name", "")
         elif msg.payload:
             content = str(msg.payload)
-        
+
         # 推送消息发送
         if msg.id.startswith("cron-push"):
             await self._send_push_notification(cron_job_name, content)
@@ -371,7 +407,7 @@ class XiaoyiChannel(BaseChannel):
 
             # 计算增量文本
             if is_delta:
-                incremental_text = content[len(previous_text):]
+                incremental_text = content[len(previous_text) :]
             else:
                 incremental_text = content
 
@@ -396,7 +432,7 @@ class XiaoyiChannel(BaseChannel):
                         url_key,
                         append=append,
                         last_chunk=last_chunk,
-                        is_final=final
+                        is_final=final,
                     )
                 except Exception as e:
                     logger.warning(f"XiaoyiChannel 发送消息失败 ({url_key}): {e}")
@@ -409,9 +445,18 @@ class XiaoyiChannel(BaseChannel):
             self._mark_session_completed(session_id)
 
             # Check if session was waiting for push and send notification
-            if self._is_session_waiting_for_push(session_id, task_id) and accumulated_text:
-                summary = accumulated_text[:30] + "..." if len(accumulated_text) > 30 else accumulated_text
-                await self._send_push_notification(summary, "后台任务已完成：" + summary)
+            if (
+                self._is_session_waiting_for_push(session_id, task_id)
+                and accumulated_text
+            ):
+                summary = (
+                    accumulated_text[:30] + "..."
+                    if len(accumulated_text) > 30
+                    else accumulated_text
+                )
+                await self._send_push_notification(
+                    summary, "后台任务已完成：" + summary
+                )
                 self._clear_session_waiting_for_push(session_id, task_id)
 
             # Clear accumulated text
@@ -473,7 +518,9 @@ class XiaoyiChannel(BaseChannel):
             await self._send_init_message(url_key)
 
             # 启动心跳
-            self._heartbeat_tasks[url_key] = asyncio.create_task(self._heartbeat_loop(url_key))
+            self._heartbeat_tasks[url_key] = asyncio.create_task(
+                self._heartbeat_loop(url_key)
+            )
 
             try:
                 async for raw in ws:
@@ -491,6 +538,7 @@ class XiaoyiChannel(BaseChannel):
                 logger.info(
                     f"XiaoyiChannel 连接关闭 {url_key}: {url} (code={close_code}, reason={close_reason})"
                 )
+
     async def _send_init_message(self, url_key: str) -> None:
         """发送初始化消息 (clawd_bot_init) 到指定通道."""
         ws = self._ws_connections.get(url_key)
@@ -550,8 +598,15 @@ class XiaoyiChannel(BaseChannel):
 
     async def _handle_message_stream(self, message: dict[str, Any]) -> None:
         """处理 message/stream 消息，转换为 JiuwenClaw Message."""
-        session_id = message.get("sessionId") or message.get("params", {}).get("sessionId", "")
-        task_id = message.get("params", {}).get("id",) or ""
+        session_id = message.get("sessionId") or message.get("params", {}).get(
+            "sessionId", ""
+        )
+        task_id = (
+            message.get("params", {}).get(
+                "id",
+            )
+            or ""
+        )
         user_message = message.get("params", {}).get("message", {})
         parts = user_message.get("parts", [])
 
@@ -579,18 +634,30 @@ class XiaoyiChannel(BaseChannel):
                     continue
 
                 try:
-                    media_files.append({"uri": uri, "mime_type": mime_type, "name": name})
+                    media_files.append(
+                        {"uri": uri, "mime_type": mime_type, "name": name}
+                    )
 
                     # For text-based files, extract content inline
-                    from jiuwenclaw.channel.xiaoyi_utils.media import is_text_mime_type, extract_text_from_url
+                    from jiuwenclaw.channel.xiaoyi_utils.media import (
+                        is_text_mime_type,
+                        extract_text_from_url,
+                    )
+
                     if is_text_mime_type(mime_type):
                         try:
-                            text_content = await extract_text_from_url(uri, 5_000_000, 30_000)
+                            text_content = await extract_text_from_url(
+                                uri, 5_000_000, 30_000
+                            )
                             text += f"\n\n[文件内容: {name}]\n{text_content}"
                             file_attachments.append(f"[文件: {name}]")
-                            logger.info(f"XiaoYi: Successfully extracted text from: {name}")
+                            logger.info(
+                                f"XiaoYi: Successfully extracted text from: {name}"
+                            )
                         except Exception:
-                            logger.warning(f"XiaoYi: Text extraction failed for {name}, will download as binary")
+                            logger.warning(
+                                f"XiaoYi: Text extraction failed for {name}, will download as binary"
+                            )
                             file_attachments.append(f"[文件: {name}]")
                     else:
                         file_attachments.append(f"[文件: {name}]")
@@ -600,13 +667,19 @@ class XiaoyiChannel(BaseChannel):
             elif kind == "data":
                 data = part.get("data", {})
                 if isinstance(data, dict):
-                    push_id = data.get("variables", {}).get("systemVariables", {}).get("push_id", "")
+                    push_id = (
+                        data.get("variables", {})
+                        .get("systemVariables", {})
+                        .get("push_id", "")
+                    )
                     self.config.push_id = push_id if push_id else self.config.push_id
         # =================================================================
 
         # Log summary of processed attachments
         if file_attachments:
-            logger.info(f"XiaoYi: Processed {len(file_attachments)} file(s): {', '.join(file_attachments)}")
+            logger.info(
+                f"XiaoYi: Processed {len(file_attachments)} file(s): {', '.join(file_attachments)}"
+            )
 
         # ==================== DOWNLOAD AND SAVE MEDIA FILES ====================
         media_payload: dict[str, Any] = {}
@@ -618,13 +691,18 @@ class XiaoyiChannel(BaseChannel):
                 download_and_save_media_list,
                 build_xiaoyi_media_payload,
             )
+
             files_to_download = [
                 MediaFile(uri=f["uri"], mime_type=f["mime_type"], name=f["name"])
                 for f in media_files
             ]
             options = MediaDownloadOptions(max_bytes=30_000_000, timeout_ms=60_000)
-            downloaded_media = await download_and_save_media_list(files_to_download, options)
-            logger.info(f"XiaoYi: Successfully downloaded {len(downloaded_media)}/{len(media_files)} file(s)")
+            downloaded_media = await download_and_save_media_list(
+                files_to_download, options
+            )
+            logger.info(
+                f"XiaoYi: Successfully downloaded {len(downloaded_media)}/{len(media_files)} file(s)"
+            )
             media_payload = build_xiaoyi_media_payload(downloaded_media)
         # =================================================================
 
@@ -670,22 +748,34 @@ class XiaoyiChannel(BaseChannel):
         # ==================== START TASK TIMEOUT PROTECTION ====================
         # Start 1-hour task timeout timer
         task_timeout_ms = self.config.task_timeout_ms
-        logger.info(f"[TASK TIMEOUT] Starting {task_timeout_ms}ms task timeout protection for session {session_id}")
+        logger.info(
+            f"[TASK TIMEOUT] Starting {task_timeout_ms}ms task timeout protection for session {session_id}"
+        )
 
         async def task_timeout_handler():
             """1-hour task timeout handler."""
             try:
                 await asyncio.sleep(task_timeout_ms / 1000)
-                logger.info(f"[TASK TIMEOUT] 1-hour timeout triggered for session {session_id}")
+                logger.info(
+                    f"[TASK TIMEOUT] 1-hour timeout triggered for session {session_id}"
+                )
                 # Send default message with is_final=true
                 for url_key in list(self._ws_connections.keys()):
-                    await self._send_text_response(session_id, task_id, "任务还在处理中，完成后将提醒您~", url_key, is_final=True)
+                    await self._send_text_response(
+                        session_id,
+                        task_id,
+                        "任务还在处理中，完成后将提醒您~",
+                        url_key,
+                        is_final=True,
+                    )
                 # Mark session as waiting for push state
                 self._mark_session_waiting_for_push(session_id, task_id)
             except asyncio.CancelledError:
                 pass
 
-        self._task_timeout_tasks[session_id] = asyncio.create_task(task_timeout_handler())
+        self._task_timeout_tasks[session_id] = asyncio.create_task(
+            task_timeout_handler()
+        )
 
         # Start 60-second periodic timeout for status updates
         async def periodic_timeout_handler():
@@ -697,11 +787,15 @@ class XiaoyiChannel(BaseChannel):
                     if self._is_session_waiting_for_push(session_id, task_id):
                         break
                     # Send status update
-                    await self._send_status_update(task_id, session_id, "任务正在处理中，请稍后")
+                    await self._send_status_update(
+                        task_id, session_id, "任务正在处理中，请稍后"
+                    )
             except asyncio.CancelledError:
                 pass
 
-        self._session_timeout_tasks[session_id] = asyncio.create_task(periodic_timeout_handler())
+        self._session_timeout_tasks[session_id] = asyncio.create_task(
+            periodic_timeout_handler()
+        )
         # =================================================================
 
         handled = False
@@ -739,13 +833,17 @@ class XiaoyiChannel(BaseChannel):
                                     is_final=False,
                                 )
                             except Exception as e:
-                                logger.warning(f"XiaoyiChannel 发送心跳消息失败 ({url_key}): {e}")
+                                logger.warning(
+                                    f"XiaoyiChannel 发送心跳消息失败 ({url_key}): {e}"
+                                )
             except asyncio.CancelledError:
                 logger.info(f"XiaoyiChannel 会话心跳已停止: {session_id}")
             except Exception as e:
                 logger.warning(f"XiaoyiChannel 会话心跳异常 ({session_id}): {e}")
 
-        self._session_heartbeat_tasks[session_id] = asyncio.create_task(heartbeat_loop())
+        self._session_heartbeat_tasks[session_id] = asyncio.create_task(
+            heartbeat_loop()
+        )
         logger.info(f"XiaoyiChannel 会话心跳已启动: {session_id}")
 
     async def _stop_session_heartbeat(self, session_id: str) -> None:
@@ -761,7 +859,9 @@ class XiaoyiChannel(BaseChannel):
             self._session_heartbeat_tasks.pop(session_id, None)
             logger.info(f"XiaoyiChannel 会话心跳已停止: {session_id}")
 
-    async def _send_status_update(self, task_id: str, session_id: str, message: str) -> None:
+    async def _send_status_update(
+        self, task_id: str, session_id: str, message: str
+    ) -> None:
         """发送状态更新消息（A2A 格式）."""
         response = {
             "jsonrpc": "2.0",
@@ -812,7 +912,9 @@ class XiaoyiChannel(BaseChannel):
         """检查会话是否待清理."""
         return session_id in self._sessions_marked_for_cleanup
 
-    def _mark_session_for_cleanup(self, session_id: str, reason: str = "unknown") -> None:
+    def _mark_session_for_cleanup(
+        self, session_id: str, reason: str = "unknown"
+    ) -> None:
         """标记会话待清理."""
         self._sessions_marked_for_cleanup[session_id] = {
             "reason": reason,
@@ -831,11 +933,15 @@ class XiaoyiChannel(BaseChannel):
 
         # Check if there's an active task for this session
         if self._is_session_active(session_id):
-            logger.info(f"[CLEAR] Active task exists for session {session_id}, will continue in background")
+            logger.info(
+                f"[CLEAR] Active task exists for session {session_id}, will continue in background"
+            )
             # Mark session for cleanup (delayed cleanup)
             self._mark_session_for_cleanup(session_id, "user_cleared")
         else:
-            logger.info(f"[CLEAR] No active task for session {session_id}, clean up immediately")
+            logger.info(
+                f"[CLEAR] No active task for session {session_id}, clean up immediately"
+            )
             self._force_cleanup_session(session_id)
 
         response = {
@@ -904,7 +1010,9 @@ class XiaoyiChannel(BaseChannel):
         }
         await self._send_agent_response(session_id, task_id, response, url_key)
 
-    async def _send_agent_response(self, session_id: str, task_id: str, response: dict[str, Any], url_key: str) -> None:
+    async def _send_agent_response(
+        self, session_id: str, task_id: str, response: dict[str, Any], url_key: str
+    ) -> None:
         """发送 agent_response 包装的消息（A2A 格式）到指定通道."""
         wrapper = {
             "msgType": "agent_response",
@@ -918,17 +1026,21 @@ class XiaoyiChannel(BaseChannel):
         except Exception as e:
             logger.warning(f"XiaoyiChannel 发送响应失败 ({url_key}): {e}")
 
-    async def _send_file_response_base64(self, session_id: str, task_id: str, file_info: dict, url_key: str) -> None:
+    async def _send_file_response_base64(
+        self, session_id: str, task_id: str, file_info: dict, url_key: str
+    ) -> None:
         """发送文件响应（Base64 格式）到指定通道."""
         try:
-            file_name = file_info.get("fileName", os.path.basename(file_info.get("path", "file.txt")))
+            file_name = file_info.get(
+                "fileName", os.path.basename(file_info.get("path", "file.txt"))
+            )
             file_path = file_info.get("fullPath", file_info.get("path", file_name))
-            
+
             # Check if file exists
             if not os.path.exists(file_path):
                 logger.error(f"XiaoyiChannel 文件不存在: {file_path}")
                 return
-            
+
             # Check file size (limit to 20MB for Base64)
             file_size = os.path.getsize(file_path)
             if file_size > 20 * 1024 * 1024:  # 20MB limit
@@ -937,11 +1049,11 @@ class XiaoyiChannel(BaseChannel):
             base_url = self.file_upload_config.get("baseUrl")
             api_key = self.file_upload_config.get("apiKey")
             uid = self.file_upload_config.get("uid")
-            
+
             if not all([base_url, api_key, uid]):
                 logger.error("XiaoyiChannel OSMS配置不完整，无法上传大文件")
                 return
-            
+
             object_id = ""
             async with XYFileUploadService(base_url, api_key, uid) as upload_service:
                 object_id = await upload_service.upload_file(file_path)
@@ -965,8 +1077,8 @@ class XiaoyiChannel(BaseChannel):
                                         "file": {
                                             "fieldId": object_id,
                                             "name": file_name,
-                                            "mimeType": file_name.split(".")[-1]
-                                        }
+                                            "mimeType": file_name.split(".")[-1],
+                                        },
                                     }
                                 ],
                             },
@@ -977,19 +1089,23 @@ class XiaoyiChannel(BaseChannel):
                         "agentId": self.config.agent_id,
                         "session_id": session_id,
                         "task_id": task_id,
-                        "msgDetail": json.dumps(payload)
-                        }
+                        "msgDetail": json.dumps(payload),
+                    }
                     await self._safe_ws_send(url_key, response)
             return object_id
         except Exception as e:
             logger.error(f"XiaoyiChannel 发送文件响应失败: {e}")
 
-    async def _send_file_response(self, session_id: str, task_id: str, file_info: dict, url_key: str) -> None:
+    async def _send_file_response(
+        self, session_id: str, task_id: str, file_info: dict, url_key: str
+    ) -> None:
         """发送文件响应到指定通道."""
-        try:            
+        try:
             # If file is available locally, send as Base64
             if file_info.get("fullPath") or file_info.get("path"):
-                await self._send_file_response_base64(session_id, task_id, file_info, url_key)
+                await self._send_file_response_base64(
+                    session_id, task_id, file_info, url_key
+                )
                 return
         except Exception as e:
             logger.error(f"XiaoyiChannel 发送文件响应失败: {e}")
@@ -1037,7 +1153,7 @@ class XiaoyiChannel(BaseChannel):
                 ak=self.config.ak,
                 sk=self.config.sk,
                 uid=self.config.uid,
-                api_key=self.config.api_key
+                api_key=self.config.api_key,
             )
             push_service = XiaoYiPushService(push_config)
             result = await push_service.send_push(text, push_text)

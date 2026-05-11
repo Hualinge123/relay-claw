@@ -1,8 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-"""LLM-based memory compression and summarization for JiuWenClaw.
-
-"""
+"""LLM-based memory compression and summarization for JiuWenClaw."""
 
 import os
 import datetime
@@ -10,16 +8,19 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 
 from openjiuwen.core.foundation.llm import Model
-from openjiuwen.core.foundation.llm.schema.config import ModelRequestConfig, ModelClientConfig
+from openjiuwen.core.foundation.llm.schema.config import (
+    ModelRequestConfig,
+    ModelClientConfig,
+)
 
 from jiuwenclaw.utils import logger
 from jiuwenclaw.config import get_config
 
 
 def format_messages_for_summary(
-        messages: List[Dict[str, Any]],
-        include_timestamp: bool = False,
-        max_content_length: int = 1000
+    messages: List[Dict[str, Any]],
+    include_timestamp: bool = False,
+    max_content_length: int = 1000,
 ) -> str:
     """Format messages into conversation string for summarization.
 
@@ -45,7 +46,9 @@ def format_messages_for_summary(
                     elif block.get("type") == "tool_use":
                         text_parts.append(f"[Tool: {block.get('name', 'unknown')}]")
                     elif block.get("type") == "tool_result":
-                        text_parts.append(f"[Tool Result: {str(block.get('output', ''))[:200]}]")
+                        text_parts.append(
+                            f"[Tool Result: {str(block.get('output', ''))[:200]}]"
+                        )
                 else:
                     text_parts.append(str(block))
             content = " ".join(text_parts)
@@ -93,7 +96,9 @@ class LLMClient:
         if self.base_url.endswith("/chat/completions"):
             self.base_url = self.base_url.rsplit("/chat/completions", 1)[0]
 
-    async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.3) -> str:
+    async def chat(
+        self, messages: List[Dict[str, str]], temperature: float = 0.3
+    ) -> str:
         """Call LLM with messages using openJiuwen's Model.
 
         Args:
@@ -108,8 +113,7 @@ class LLMClient:
             raise ValueError("LLM API key not configured")
 
         model_config = ModelRequestConfig(
-            model=self.model_name,
-            temperature=temperature
+            model=self.model_name, temperature=temperature
         )
 
         model_client_config = ModelClientConfig(
@@ -117,24 +121,21 @@ class LLMClient:
             client_provider=self.model_provider,
             api_key=self.api_key,
             api_base=self.base_url,
-            verify_ssl=self.verify_ssl
+            verify_ssl=self.verify_ssl,
         )
 
         llm = Model(model_config=model_config, model_client_config=model_client_config)
 
         formatted_messages = []
         for msg in messages:
-            formatted_messages.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
+            formatted_messages.append({"role": msg["role"], "content": msg["content"]})
 
         response = await llm.invoke(formatted_messages)
 
-        if hasattr(response, 'content'):
+        if hasattr(response, "content"):
             return response.content
         elif isinstance(response, dict):
-            return response.get('content', str(response))
+            return response.get("content", str(response))
         else:
             return str(response)
 
@@ -160,9 +161,7 @@ class ConversationCompactor:
         self.llm = llm_client or LLMClient()
 
     async def compact(
-            self,
-            messages: List[Dict[str, Any]],
-            prior_summary: str = ""
+        self, messages: List[Dict[str, Any]], prior_summary: str = ""
     ) -> str:
         """Compact messages into a summary.
 
@@ -184,9 +183,7 @@ class ConversationCompactor:
         full_prompt = self.COMPACT_PROMPT.format(conversation=conversation)
 
         try:
-            summary = await self.llm.chat([
-                {"role": "user", "content": full_prompt}
-            ])
+            summary = await self.llm.chat([{"role": "user", "content": full_prompt}])
 
             return f"""<context-summary>
 {summary.strip()}
@@ -228,9 +225,7 @@ class SessionSummarizer:
         self.llm = llm_client or LLMClient()
 
     async def summarize(
-            self,
-            messages: List[Dict[str, Any]],
-            date: Optional[str] = None
+        self, messages: List[Dict[str, Any]], date: Optional[str] = None
     ) -> str:
         """Generate a summary of messages for a specific date.
 
@@ -250,9 +245,7 @@ class SessionSummarizer:
         full_prompt = self.SUMMARY_PROMPT.format(date=date, conversation=conversation)
 
         try:
-            summary = await self.llm.chat([
-                {"role": "user", "content": full_prompt}
-            ])
+            summary = await self.llm.chat([{"role": "user", "content": full_prompt}])
             return summary.strip()
         except Exception as e:
             logger.error(f"Summarization failed: {e}")
@@ -260,8 +253,7 @@ class SessionSummarizer:
 
 
 async def compact_memory(
-        messages: List[Dict[str, Any]],
-        prior_summary: str = ""
+    messages: List[Dict[str, Any]], prior_summary: str = ""
 ) -> str:
     """Compact messages into a summary.
 
@@ -277,8 +269,7 @@ async def compact_memory(
 
 
 async def summarize_session(
-        messages: List[Dict[str, Any]],
-        date: Optional[str] = None
+    messages: List[Dict[str, Any]], date: Optional[str] = None
 ) -> str:
     """Generate a session summary.
 

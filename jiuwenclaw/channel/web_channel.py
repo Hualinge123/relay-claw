@@ -120,7 +120,11 @@ class WebChannel(BaseChannel):
             await ws.send(json.dumps(frame, ensure_ascii=False))
         except Exception as e:
             if bool(getattr(ws, "closed", False)):
-                logger.debug("WebChannel send_response skipped on closed websocket: id={} err={}", req_id, e)
+                logger.debug(
+                    "WebChannel send_response skipped on closed websocket: id={} err={}",
+                    req_id,
+                    e,
+                )
                 return
             raise
 
@@ -143,7 +147,11 @@ class WebChannel(BaseChannel):
             await ws.send(json.dumps(frame, ensure_ascii=False))
         except Exception as e:
             if bool(getattr(ws, "closed", False)):
-                logger.debug("WebChannel send_event skipped on closed websocket: event={} err={}", event, e)
+                logger.debug(
+                    "WebChannel send_event skipped on closed websocket: event={} err={}",
+                    event,
+                    e,
+                )
                 return
             raise
 
@@ -170,7 +178,11 @@ class WebChannel(BaseChannel):
                     if response.status == 200:
                         return await response.read()
                     else:
-                        logger.warning("WebChannel 文件下载失败: {}, 状态码: {}", url, response.status)
+                        logger.warning(
+                            "WebChannel 文件下载失败: {}, 状态码: {}",
+                            url,
+                            response.status,
+                        )
                         return None
         except Exception as e:
             logger.warning("WebChannel 文件下载异常: {}, 错误: {}", url, e)
@@ -190,7 +202,9 @@ class WebChannel(BaseChannel):
                 continue
 
             file_url = file_info.get("url") or file_info.get("uri") or ""
-            file_name = file_info.get("name") or file_info.get("filename") or "unknown_file"
+            file_name = (
+                file_info.get("name") or file_info.get("filename") or "unknown_file"
+            )
 
             if file_url:
                 file_content = await self._download_file(file_url)
@@ -244,7 +258,10 @@ class WebChannel(BaseChannel):
         """停止 WebSocket 服务并清理连接."""
         self._running = False
 
-        close_tasks = [client.close(code=1001, reason="server shutdown") for client in list(self._clients)]
+        close_tasks = [
+            client.close(code=1001, reason="server shutdown")
+            for client in list(self._clients)
+        ]
         if close_tasks:
             await asyncio.gather(*close_tasks, return_exceptions=True)
         self._clients.clear()
@@ -303,10 +320,20 @@ class WebChannel(BaseChannel):
 
         if isinstance(msg.payload, dict):
             # 对于需要传递完整结构化数据的事件类型
-            if event_name in ("connection.ack", "todo.updated", "chat.tool_call", "chat.tool_result",
-                             "chat.processing_status", "chat.interrupt_result", "chat.error", "heartbeat.relay",
-                             "context.compressed", "chat.ask_user_question", "chat.subtask_update",
-                             "chat.session_result"):
+            if event_name in (
+                "connection.ack",
+                "todo.updated",
+                "chat.tool_call",
+                "chat.tool_result",
+                "chat.processing_status",
+                "chat.interrupt_result",
+                "chat.error",
+                "heartbeat.relay",
+                "context.compressed",
+                "chat.ask_user_question",
+                "chat.subtask_update",
+                "chat.session_result",
+            ):
                 # 传递完整 payload，保留所有字段
                 payload = {**msg.payload}
                 # 确保包含 session_id
@@ -315,7 +342,11 @@ class WebChannel(BaseChannel):
             else:
                 # 对于纯文本消息（chat.delta, chat.final, chat.error 等），提取 content
                 content = str(msg.payload.get("content", "") or "")
-                if not content and not getattr(msg, "ok", True) and msg.payload.get("error"):
+                if (
+                    not content
+                    and not getattr(msg, "ok", True)
+                    and msg.payload.get("error")
+                ):
                     content = str(msg.payload.get("error", ""))
                 payload = {
                     "session_id": msg.session_id,
@@ -343,20 +374,33 @@ class WebChannel(BaseChannel):
 
         # interrupt_result 根据 intent 决定 is_processing 状态
         if event_name == "chat.interrupt_result":
-            intent = payload.get("intent", "cancel") if isinstance(payload, dict) else "cancel"
+            intent = (
+                payload.get("intent", "cancel")
+                if isinstance(payload, dict)
+                else "cancel"
+            )
             is_processing = intent in ("pause", "supplement", "resume")
-            await self._broadcast({
-                "type": "event",
-                "event": "chat.processing_status",
-                "payload": {"session_id": msg.session_id, "is_processing": is_processing},
-            })
+            await self._broadcast(
+                {
+                    "type": "event",
+                    "event": "chat.processing_status",
+                    "payload": {
+                        "session_id": msg.session_id,
+                        "is_processing": is_processing,
+                    },
+                }
+            )
 
     def get_metadata(self) -> ChannelMetadata:
         """获取 Channel 元数据."""
         return ChannelMetadata(
             channel_id=self.channel_id,
             source="websocket",
-            extra={"host": self.config.host, "port": self.config.port, "path": self.config.path},
+            extra={
+                "host": self.config.host,
+                "port": self.config.port,
+                "path": self.config.path,
+            },
         )
 
     # ── 内部实现 ──────────────────────────────────────────
@@ -392,15 +436,21 @@ class WebChannel(BaseChannel):
             self._clients.discard(ws)
             logger.info(f"WebChannel 连接关闭: remote={remote}")
 
-    async def _handle_raw_message(self, ws: Any, raw: str, query: dict[str, list[str]]) -> None:
+    async def _handle_raw_message(
+        self, ws: Any, raw: str, query: dict[str, list[str]]
+    ) -> None:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            await self.send_response(ws, "", ok=False, error="invalid json", code="BAD_REQUEST")
+            await self.send_response(
+                ws, "", ok=False, error="invalid json", code="BAD_REQUEST"
+            )
             return
 
         if not isinstance(data, dict):
-            await self.send_response(ws, "", ok=False, error="invalid request", code="BAD_REQUEST")
+            await self.send_response(
+                ws, "", ok=False, error="invalid request", code="BAD_REQUEST"
+            )
             return
 
         req_type = data.get("type")
@@ -408,7 +458,11 @@ class WebChannel(BaseChannel):
         method = data.get("method")
         params = data.get("params")
 
-        if req_type != "req" or not isinstance(req_id, str) or not isinstance(method, str):
+        if (
+            req_type != "req"
+            or not isinstance(req_id, str)
+            or not isinstance(method, str)
+        ):
             await self.send_response(
                 ws,
                 req_id if isinstance(req_id, str) else "",
@@ -463,32 +517,43 @@ class WebChannel(BaseChannel):
                 if ws_closed:
                     logger.warning(
                         "WebChannel method handler aborted on closed websocket ({}): {}",
-                        method, e,
+                        method,
+                        e,
                     )
                     return
 
                 logger.error("WebChannel method handler error ({}): {}", method, e)
                 try:
                     await self.send_response(
-                        ws, req_id, ok=False,
-                        error=f"handler error: {e}", code="INTERNAL_ERROR",
+                        ws,
+                        req_id,
+                        ok=False,
+                        error=f"handler error: {e}",
+                        code="INTERNAL_ERROR",
                     )
                 except Exception as send_err:
                     logger.warning(
                         "WebChannel failed to send handler error response ({}): {}",
-                        method, send_err,
+                        method,
+                        send_err,
                     )
         else:
             await self.send_response(
-                ws, req_id, ok=False,
-                error=f"unknown method: {method}", code="METHOD_NOT_FOUND",
+                ws,
+                req_id,
+                ok=False,
+                error=f"unknown method: {method}",
+                code="METHOD_NOT_FOUND",
             )
 
     async def _broadcast(self, frame: dict[str, Any]) -> None:
         data = json.dumps(frame, ensure_ascii=False)
         if not self._clients:
             return
-        await asyncio.gather(*[client.send(data) for client in list(self._clients)], return_exceptions=True)
+        await asyncio.gather(
+            *[client.send(data) for client in list(self._clients)],
+            return_exceptions=True,
+        )
 
     @staticmethod
     def _parse_req_method(method: str) -> ReqMethod | None:

@@ -3,6 +3,7 @@
 
 验证 openJariwen-DeepSearch 技能是否符合 OpenClaw/Claude Code 技能标准
 """
+
 import logging
 import sys
 from pathlib import Path
@@ -119,7 +120,9 @@ def check_skill_structure(skill_root: Path) -> bool:
             if "3.11" in content:
                 logger.info("  [OK] Python version requirement is 3.11+")
             else:
-                logger.warning("  [WARNING] Python version requirement may be incorrect")
+                logger.warning(
+                    "  [WARNING] Python version requirement may be incorrect"
+                )
         else:
             logger.error("  [MISSING] requires-python")
             all_passed = False
@@ -140,9 +143,7 @@ def main():
     """主函数"""
     # 配置日志输出到控制台
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(message)s',
-        handlers=[logging.StreamHandler()]
+        level=logging.INFO, format="%(message)s", handlers=[logging.StreamHandler()]
     )
 
     # 获取技能根目录
@@ -160,7 +161,9 @@ def main():
     logger.info("")
     logger.info("=" * 80)
     if all_passed:
-        logger.info("[SUCCESS] All checks passed! Skill meets OpenClaw/Claude Code standards.")
+        logger.info(
+            "[SUCCESS] All checks passed! Skill meets OpenClaw/Claude Code standards."
+        )
         logger.info("=" * 80)
         return 0
     else:

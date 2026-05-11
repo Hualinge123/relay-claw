@@ -26,7 +26,9 @@ class BaseController(ABC):
         """Clear any currently bound runtime runner."""
 
     @abstractmethod
-    def register_action(self, name: str, handler: Any, *, overwrite: bool = True) -> None:
+    def register_action(
+        self, name: str, handler: Any, *, overwrite: bool = True
+    ) -> None:
         """Register an action handler."""
 
     @abstractmethod

@@ -61,12 +61,7 @@ def parse_todo_status(content: str) -> dict[str, list[dict]]:
     1. Markdown checkbox: - [x] 任务 / - [ ] 任务
     2. YAML frontmatter: status: completed/running/waiting
     """
-    result = {
-        "completed": [],
-        "running": [],
-        "waiting": [],
-        "cancelled": []
-    }
+    result = {"completed": [], "running": [], "waiting": [], "cancelled": []}
 
     if not content:
         return result
@@ -92,10 +87,7 @@ def parse_todo_status(content: str) -> dict[str, list[dict]]:
             checked = checkbox_match.group(1).lower() == "x"
             task_desc = checkbox_match.group(2).strip()
             status = "completed" if checked else "waiting"
-            result[status].append({
-                "description": task_desc,
-                "status": status
-            })
+            result[status].append({"description": task_desc, "status": status})
             continue
 
         # 尝试状态标记格式
@@ -104,10 +96,7 @@ def parse_todo_status(content: str) -> dict[str, list[dict]]:
             status = status_match.group(1).lower()
             task_desc = status_match.group(2).strip()
             if status in result:
-                result[status].append({
-                    "description": task_desc,
-                    "status": status
-                })
+                result[status].append({"description": task_desc, "status": status})
             continue
 
         # 尝试提取 YAML 状态
@@ -120,10 +109,9 @@ def parse_todo_status(content: str) -> dict[str, list[dict]]:
         if task_match:
             task_desc = task_match.group(1).strip()
             if task_desc and current_status in result:
-                result[current_status].append({
-                    "description": task_desc,
-                    "status": current_status
-                })
+                result[current_status].append(
+                    {"description": task_desc, "status": current_status}
+                )
                 current_status = "waiting"  # 重置状态
 
     return result
@@ -194,7 +182,7 @@ def generate_report(
     date_str: str,
     memory_content: str,
     todo_data: dict[str, list[dict]],
-    long_term_memory: str = ""
+    long_term_memory: str = "",
 ) -> dict[str, Any]:
     """生成日报数据"""
 
@@ -213,15 +201,17 @@ def generate_report(
         "statistics": {
             "completed": completed_count,
             "running": running_count,
-            "waiting": waiting_count
+            "waiting": waiting_count,
         },
         "tasks": {
             "completed": [t["description"] for t in todo_data["completed"]],
             "running": [t["description"] for t in todo_data["running"]],
-            "waiting": [t["description"] for t in todo_data["waiting"]]
+            "waiting": [t["description"] for t in todo_data["waiting"]],
         },
         "work_summary": work_summaries,
-        "long_term_context": long_term_memory[:500] if long_term_memory else ""  # 截取前500字符
+        "long_term_context": (
+            long_term_memory[:500] if long_term_memory else ""
+        ),  # 截取前500字符
     }
 
     return report
@@ -237,7 +227,7 @@ def format_report_markdown(report: dict[str, Any]) -> str:
         f"- 完成任务: {report['statistics']['completed']} 项",
         f"- 进行中: {report['statistics']['running']} 项",
         f"- 待处理: {report['statistics']['waiting']} 项",
-        ""
+        "",
     ]
 
     # 已完成任务
@@ -278,26 +268,18 @@ def format_report_markdown(report: dict[str, Any]) -> str:
 def main():
     parser = argparse.ArgumentParser(description="日报生成器辅助脚本")
     parser.add_argument(
-        "--date",
-        default=None,
-        help="指定日期 (YYYY-MM-DD)，默认使用今天"
+        "--date", default=None, help="指定日期 (YYYY-MM-DD)，默认使用今天"
     )
     parser.add_argument(
         "--format",
         choices=["json", "markdown", "all"],
         default="all",
-        help="输出格式: json, markdown, all (默认: all)"
+        help="输出格式: json, markdown, all (默认: all)",
     )
     parser.add_argument(
-        "--output",
-        default=None,
-        help="输出文件路径，不指定则输出到标准输出"
+        "--output", default=None, help="输出文件路径，不指定则输出到标准输出"
     )
-    parser.add_argument(
-        "--workspace",
-        default=None,
-        help="指定 workspace 目录路径"
-    )
+    parser.add_argument("--workspace", default=None, help="指定 workspace 目录路径")
 
     args = parser.parse_args()
 
@@ -345,7 +327,7 @@ def main():
         date_str=date_str,
         memory_content=memory_content,
         todo_data=todo_data,
-        long_term_memory=long_term_memory
+        long_term_memory=long_term_memory,
     )
 
     # 6. 格式化输出

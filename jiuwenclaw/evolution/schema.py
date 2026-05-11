@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 """Data model definitions for skill evolution system."""
+
 from __future__ import annotations
 
 import uuid
@@ -28,11 +29,13 @@ class ExperienceTarget(str, Enum):
 
 @dataclass
 class EvolutionChange:
-    section: str    # "Instructions" | "Examples" | "Troubleshooting"
-    action: str     # "append" | "skip"
-    content: str    # Markdown content to append
+    section: str  # "Instructions" | "Examples" | "Troubleshooting"
+    action: str  # "append" | "skip"
+    content: str  # Markdown content to append
     target: ExperienceTarget = ExperienceTarget.BODY
-    skip_reason: Optional[str] = None  # "irrelevant" | "duplicate" (only when action=="skip")
+    skip_reason: Optional[str] = (
+        None  # "irrelevant" | "duplicate" (only when action=="skip")
+    )
     merge_target: Optional[str] = None  # existing entry id to replace (dedup merge)
 
     def to_dict(self) -> dict:
@@ -67,12 +70,12 @@ class EvolutionChange:
 
 @dataclass
 class EvolutionEntry:
-    id: str                    # "ev_xxxxxxxx"
-    source: str                # "execution_failure" | "user_correction" | "repeated_failure"
-    timestamp: str             # ISO 8601
-    context: str               # Signal summary
+    id: str  # "ev_xxxxxxxx"
+    source: str  # "execution_failure" | "user_correction" | "repeated_failure"
+    timestamp: str  # ISO 8601
+    context: str  # Signal summary
     change: EvolutionChange
-    applied: bool = False      # False = pending, True = solidified
+    applied: bool = False  # False = pending, True = solidified
 
     @classmethod
     def make(
@@ -165,10 +168,10 @@ class ExperienceContext:
 
 @dataclass
 class EvolutionSignal:
-    type: str                      # "execution_failure" | "user_correction" | "repeated_failure"
+    type: str  # "execution_failure" | "user_correction" | "repeated_failure"
     evolution_type: EvolutionType  # determines which handler processes this signal
-    section: str                   # Recommended SKILL.md section
-    excerpt: str                   # Original content summary
+    section: str  # Recommended SKILL.md section
+    excerpt: str  # Original content summary
     tool_name: Optional[str] = None
     skill_name: Optional[str] = None
 

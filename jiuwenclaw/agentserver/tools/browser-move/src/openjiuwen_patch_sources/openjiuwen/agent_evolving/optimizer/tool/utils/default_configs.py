@@ -13,7 +13,7 @@ default_config_eg = {
     "expand_num": 3,
     "max_depth": 2,
     "num_workers": 2,
-    "top_k": 5
+    "top_k": 5,
 }
 default_config_desc = {
     "gen_model_id": "gpt-5-mini",
@@ -27,5 +27,5 @@ default_config_desc = {
     "expand_num": 2,
     "max_depth": 2,
     "num_workers": 2,
-    "top_k": 3
+    "top_k": 3,
 }

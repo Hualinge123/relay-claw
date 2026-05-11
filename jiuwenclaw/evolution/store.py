@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 """EvolutionStore - Pure IO layer for skill evolution data."""
+
 from __future__ import annotations
 
 import json
@@ -71,7 +72,9 @@ class EvolutionStore:
     # ------------------------------------------------------------------
 
     def load_evolution_file(
-        self, name: str, target: Optional[ExperienceTarget] = None,
+        self,
+        name: str,
+        target: Optional[ExperienceTarget] = None,
     ) -> EvolutionFile:
         """Load the unified evolution file for the given skill.
 
@@ -129,7 +132,10 @@ class EvolutionStore:
         self._save_evolution_file(name, evo_file)
         logger.info(
             "[EvolutionStore] wrote %s/%s (id=%s, target=%s)",
-            name, _EVOLUTION_FILENAME, entry.id, entry.change.target.value,
+            name,
+            _EVOLUTION_FILENAME,
+            entry.id,
+            entry.change.target.value,
         )
 
     # ------------------------------------------------------------------
@@ -138,14 +144,18 @@ class EvolutionStore:
 
     def load_desc_pending_entries(self, name: str) -> List[EvolutionEntry]:
         """Load pending description-experience entries for a skill."""
-        return self.load_evolution_file(name, ExperienceTarget.DESCRIPTION).pending_entries
+        return self.load_evolution_file(
+            name, ExperienceTarget.DESCRIPTION
+        ).pending_entries
 
     def load_body_pending_entries(self, name: str) -> List[EvolutionEntry]:
         """Load pending body-experience entries for a skill."""
         return self.load_evolution_file(name, ExperienceTarget.BODY).pending_entries
 
     def get_pending_entries(
-        self, name: str, target: Optional[ExperienceTarget] = None,
+        self,
+        name: str,
+        target: Optional[ExperienceTarget] = None,
     ) -> List[EvolutionEntry]:
         """Load pending entries, optionally filtered by target.
 
@@ -168,13 +178,19 @@ class EvolutionStore:
         """
         skill_dir = self._base / name
         evo_file = self._load_full_evolution_file(name)
-        pending = [e for e in evo_file.pending_entries if e.change.target == ExperienceTarget.BODY]
+        pending = [
+            e
+            for e in evo_file.pending_entries
+            if e.change.target == ExperienceTarget.BODY
+        ]
         if not pending:
             return 0
 
         skill_md_path = self._find_skill_md(skill_dir)
         if skill_md_path is None:
-            logger.warning("[EvolutionStore] solidify: SKILL.md not found (skill=%s)", name)
+            logger.warning(
+                "[EvolutionStore] solidify: SKILL.md not found (skill=%s)", name
+            )
             return 0
 
         content = skill_md_path.read_text(encoding="utf-8")
@@ -185,7 +201,9 @@ class EvolutionStore:
         skill_md_path.write_text(content, encoding="utf-8")
         evo_file.updated_at = datetime.now(tz=timezone.utc).isoformat()
         self._save_evolution_file(name, evo_file)
-        logger.info("[EvolutionStore] solidified %d body entries (skill=%s)", len(pending), name)
+        logger.info(
+            "[EvolutionStore] solidified %d body entries (skill=%s)", len(pending), name
+        )
         return len(pending)
 
     # ------------------------------------------------------------------
@@ -231,7 +249,9 @@ class EvolutionStore:
             return ""
         lines = [f"\n\n# Skill '{name}' body 演进经验\n"]
         for index, entry in enumerate(pending):
-            lines.append(f"{index + 1}. **[{entry.change.section}]** {entry.change.content}")
+            lines.append(
+                f"{index + 1}. **[{entry.change.section}]** {entry.change.content}"
+            )
         return "\n".join(lines)
 
     def list_pending_summary(self, names: List[str]) -> str:
@@ -251,7 +271,11 @@ class EvolutionStore:
                 f"（description: {len(desc_pending)}, body: {len(body_pending)}）"
             )
             for e in all_pending:
-                tag = "description" if e.change.target == ExperienceTarget.DESCRIPTION else "body"
+                tag = (
+                    "description"
+                    if e.change.target == ExperienceTarget.DESCRIPTION
+                    else "body"
+                )
                 content = e.change.content
                 title = content.split("\n")[0] if "\n" in content else content[:50]
                 lines.append(f"   - [{tag}] **{title}**: ")
@@ -290,7 +314,9 @@ class EvolutionStore:
                 encoding="utf-8",
             )
         except Exception as exc:
-            logger.error("[EvolutionStore] write %s failed: %s", _EVOLUTION_FILENAME, exc)
+            logger.error(
+                "[EvolutionStore] write %s failed: %s", _EVOLUTION_FILENAME, exc
+            )
 
     @staticmethod
     def _read_evo_json(path: Path, skill_id: str) -> EvolutionFile:

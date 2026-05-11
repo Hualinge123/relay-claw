@@ -12,7 +12,7 @@ from fastmcp.client import SSETransport
 
 def make_sync_mcp_caller(
     url: str,
-    name: str = "Streamable HTTP Python Server", 
+    name: str = "Streamable HTTP Python Server",
 ) -> Callable[[Dict[str, Any]], Any]:
 
     def call(tool_arguments: Dict[str, Any]) -> Any:
@@ -20,7 +20,7 @@ def make_sync_mcp_caller(
             transport = SSETransport(url=url)
             client = Client(transport)
 
-            async with client:  
+            async with client:
                 tool_name = tool_arguments["name"]
                 arguments = tool_arguments.get("arguments")
 
@@ -78,35 +78,29 @@ schema = {
 '香港市场', '亚太市场', '新兴市场', '大中华市场', 
 '黄金', '白银', '油气', '纯债', '一级债', 
 '二级债', '高杠杆', '利率债', '信用债', 
-'可转债', '偏股债')""".strip()
+'可转债', '偏股债')""".strip(),
                 },
                 "keyword": {
                     "type": "string",
-                    "description": "基金名称关键字，支持分词搜索"
+                    "description": "基金名称关键字，支持分词搜索",
                 },
-                "size": {
-                    "type": "number",
-                    "description": "每页数量"
-                },
+                "size": {"type": "number", "description": "每页数量"},
                 "sortOrder": {
                     "type": "string",
-                    "description": "选择排序的顺序，如果是查找最大、最多等，可以是\"降序\"，否则为\"升序\" (可选值: '', '升序', '降序')"
+                    "description": "选择排序的顺序，如果是查找最大、最多等，可以是\"降序\"，否则为\"升序\" (可选值: '', '升序', '降序')",
                 },
                 "tradeStatus": {
                     "type": "string",
-                    "description": "交易状态 (可选值: '', '不限', '正常开放', '认购期', '暂停申购', '暂停赎回', '暂停交易')"
+                    "description": "交易状态 (可选值: '', '不限', '正常开放', '认购期', '暂停申购', '暂停赎回', '暂停交易')",
                 },
                 "sortColumn": {
                     "type": "string",
-                    "description": "选择要排序的列，可选值：成立日期、基金规模、收益率、近一年收益、起购金额、基金限额、选股能力、择时能力、最新股票仓位、综合费率、跟踪误差、七日年化收益率、万份收益"
+                    "description": "选择要排序的列，可选值：成立日期、基金规模、收益率、近一年收益、起购金额、基金限额、选股能力、择时能力、最新股票仓位、综合费率、跟踪误差、七日年化收益率、万份收益",
                 },
-                "page": {
-                    "type": "number",
-                    "description": "页码，从0开始"
-                }
-            }
-        }
-    }
+                "page": {"type": "number", "description": "页码，从0开始"},
+            },
+        },
+    },
 }
 description = json.dumps(schema, ensure_ascii=False)
-tool = {'name': 'SearchFunds', 'description': description}
+tool = {"name": "SearchFunds", "description": description}

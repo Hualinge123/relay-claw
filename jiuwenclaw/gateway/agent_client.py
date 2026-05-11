@@ -88,7 +88,9 @@ class WebSocketAgentServerClient(AgentServerClient):
     - 接收（流式）：多条 JSON 对象，对应 AgentResponseChunk，最后一条 is_complete=True。
     """
 
-    def __init__(self, *, ping_interval: float | None = 30.0, ping_timeout: float | None = 300.0) -> None:
+    def __init__(
+        self, *, ping_interval: float | None = 30.0, ping_timeout: float | None = 300.0
+    ) -> None:
         self._uri: str | None = None
         self._ws: Any = None
         self._lock = asyncio.Lock()
@@ -113,9 +115,11 @@ class WebSocketAgentServerClient(AgentServerClient):
         self._server_ready = False
         try:
             from websockets.legacy.client import connect as legacy_connect
+
             connect_fn = legacy_connect
         except ImportError:
             import websockets
+
             connect_fn = websockets.connect
         self._ws = await connect_fn(
             uri,
@@ -130,10 +134,14 @@ class WebSocketAgentServerClient(AgentServerClient):
             raw = await asyncio.wait_for(self._ws.recv(), timeout=5.0)
             logger.info("[WebSocketAgentServerClient] connect 首帧(raw): %s", raw)
             data = json.loads(raw)
-            logger.info("[WebSocketAgentServerClient] connect 首帧(parsed): %s", _to_json(data))
+            logger.info(
+                "[WebSocketAgentServerClient] connect 首帧(parsed): %s", _to_json(data)
+            )
             if data.get("type") == "event" and data.get("event") == "connection.ack":
                 self._server_ready = True
-                logger.info("[WebSocketAgentServerClient] 收到 connection.ack，AgentServer 已就绪")
+                logger.info(
+                    "[WebSocketAgentServerClient] 收到 connection.ack，AgentServer 已就绪"
+                )
             else:
                 logger.warning(
                     "[WebSocketAgentServerClient] 首帧非 connection.ack: %s",
@@ -142,7 +150,9 @@ class WebSocketAgentServerClient(AgentServerClient):
         except asyncio.TimeoutError:
             logger.warning("[WebSocketAgentServerClient] 等待 connection.ack 超时")
         except Exception as e:
-            logger.warning("[WebSocketAgentServerClient] 读取 connection.ack 失败: %s", e)
+            logger.warning(
+                "[WebSocketAgentServerClient] 读取 connection.ack 失败: %s", e
+            )
 
         # 启动消息接收和分发任务
         self._running = True
@@ -165,12 +175,14 @@ class WebSocketAgentServerClient(AgentServerClient):
                         # 没有对应的队列，记录警告
                         logger.warning(
                             "[WebSocketAgentServerClient] 收到无目标队列的消息: request_id=%s",
-                            request_id
+                            request_id,
                         )
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.exception("[WebSocketAgentServerClient] 消息接收循环异常: %s", e)
+                    logger.exception(
+                        "[WebSocketAgentServerClient] 消息接收循环异常: %s", e
+                    )
                     await asyncio.sleep(0.1)  # 避免快速循环
         finally:
             logger.info("[WebSocketAgentServerClient] 消息接收任务已停止")
@@ -207,7 +219,10 @@ class WebSocketAgentServerClient(AgentServerClient):
 
     async def send_request(self, request: AgentRequest) -> AgentResponse:
         self._ensure_connected()
-        logger.info("[WebSocketAgentServerClient] 发送请求(非流式) AgentRequest: %s", _to_json(asdict(request)))
+        logger.info(
+            "[WebSocketAgentServerClient] 发送请求(非流式) AgentRequest: %s",
+            _to_json(asdict(request)),
+        )
 
         # 创建该请求的消息队列
         queue = asyncio.Queue()
@@ -217,14 +232,23 @@ class WebSocketAgentServerClient(AgentServerClient):
             # 发送请求
             async with self._lock:
                 payload = _request_to_payload(request)
-                logger.info("[WebSocketAgentServerClient] 发送请求(非流式) payload: %s", _to_json(payload))
+                logger.info(
+                    "[WebSocketAgentServerClient] 发送请求(非流式) payload: %s",
+                    _to_json(payload),
+                )
                 await self._ws.send(json.dumps(payload, ensure_ascii=False))
 
             # 从队列中接收响应
             data = await queue.get()
-            logger.info("[WebSocketAgentServerClient] 收到响应(非流式) raw: %s", json.dumps(data, ensure_ascii=False))
+            logger.info(
+                "[WebSocketAgentServerClient] 收到响应(非流式) raw: %s",
+                json.dumps(data, ensure_ascii=False),
+            )
             resp = _payload_to_response(data)
-            logger.info("[WebSocketAgentServerClient] 收到完整响应 AgentResponse: %s", _to_json(asdict(resp)))
+            logger.info(
+                "[WebSocketAgentServerClient] 收到完整响应 AgentResponse: %s",
+                _to_json(asdict(resp)),
+            )
             return resp
         finally:
             # 清理队列
@@ -236,7 +260,10 @@ class WebSocketAgentServerClient(AgentServerClient):
     ) -> AsyncIterator[AgentResponseChunk]:
         self._ensure_connected()
         request.is_stream = True
-        logger.info("[WebSocketAgentServerClient] 发送请求(流式) AgentRequest: %s", _to_json(asdict(request)))
+        logger.info(
+            "[WebSocketAgentServerClient] 发送请求(流式) AgentRequest: %s",
+            _to_json(asdict(request)),
+        )
 
         # 创建该请求的消息队列
         queue = asyncio.Queue()
@@ -246,26 +273,40 @@ class WebSocketAgentServerClient(AgentServerClient):
             # 发送请求
             async with self._lock:
                 payload = _request_to_payload(request)
-                logger.info("[WebSocketAgentServerClient] 发送请求(流式) payload: %s", _to_json(payload))
+                logger.info(
+                    "[WebSocketAgentServerClient] 发送请求(流式) payload: %s",
+                    _to_json(payload),
+                )
                 await self._ws.send(json.dumps(payload, ensure_ascii=False))
 
             # 从队列中接收流式响应
             chunk_count = 0
             while True:
                 data = await queue.get()
-                logger.info("[WebSocketAgentServerClient] 收到流式事件 raw: %s", json.dumps(data, ensure_ascii=False))
+                logger.info(
+                    "[WebSocketAgentServerClient] 收到流式事件 raw: %s",
+                    json.dumps(data, ensure_ascii=False),
+                )
                 chunk = _payload_to_chunk(data)
                 chunk_count += 1
                 logger.info(
                     "[WebSocketAgentServerClient] 收到流式 chunk #%s AgentResponseChunk: %s",
-                    chunk_count, _to_json(asdict(chunk)),
+                    chunk_count,
+                    _to_json(asdict(chunk)),
                 )
                 yield chunk
                 if chunk.is_complete:
                     break
-            logger.info("[WebSocketAgentServerClient] 流式响应结束: request_id=%s 共 %s 个 chunk", request.request_id, chunk_count)
+            logger.info(
+                "[WebSocketAgentServerClient] 流式响应结束: request_id=%s 共 %s 个 chunk",
+                request.request_id,
+                chunk_count,
+            )
         except asyncio.CancelledError:
-            logger.info("[WebSocketAgentServerClient] 流式接收被取消: request_id=%s", request.request_id)
+            logger.info(
+                "[WebSocketAgentServerClient] 流式接收被取消: request_id=%s",
+                request.request_id,
+            )
             raise
         finally:
             # 清理队列
@@ -284,6 +325,7 @@ async def mock_agent_server_handler(ws: Any) -> None:
     同一连接可处理多请求。可与 websockets.serve(..., host, port) 一起使用。
     """
     import websockets
+
     try:
         while True:
             raw = await ws.recv()
@@ -292,7 +334,11 @@ async def mock_agent_server_handler(ws: Any) -> None:
             ch_id = data.get("channel_id", "")
             params = data.get("params", {})
             is_stream = data.get("is_stream", False)
-            params_str = json.dumps(params, ensure_ascii=False) if isinstance(params, dict) else str(params)
+            params_str = (
+                json.dumps(params, ensure_ascii=False)
+                if isinstance(params, dict)
+                else str(params)
+            )
 
             if is_stream:
                 # 流式：发 3 个 chunk，最后 is_complete=True
@@ -331,9 +377,11 @@ async def run_mock_agent_server(
     """
     try:
         from websockets.legacy.server import serve as legacy_serve
+
         server = await legacy_serve(mock_agent_server_handler, host, port)
     except ImportError:
         import websockets
+
         server = await websockets.serve(mock_agent_server_handler, host, port)
     logger.info("[MockAgentServer] 已启动: ws://%s:%s", host, port)
     return server
@@ -380,8 +428,14 @@ async def _run_verification() -> None:
             chunks.append(ch)
         assert len(chunks) == 3
         assert chunks[-1].is_complete
-        full_content = "".join(c.payload.get("content", "") for c in chunks if c.payload)
-        logger.info("[main] 流式验证通过: 共 %s 个 chunk, 拼接内容=%r", len(chunks), full_content)
+        full_content = "".join(
+            c.payload.get("content", "") for c in chunks if c.payload
+        )
+        logger.info(
+            "[main] 流式验证通过: 共 %s 个 chunk, 拼接内容=%r",
+            len(chunks),
+            full_content,
+        )
     finally:
         await client.disconnect()
         server.close()

@@ -62,7 +62,9 @@ class SkillManager:
         self._state: dict[str, Any] = self._load_state()
         # SkillNet 异步安装：install 立即返回 install_id，后台下载；完成后调用 hook 重载 Agent
         self._skillnet_install_jobs: dict[str, dict[str, Any]] = {}
-        self._skillnet_install_complete_hook: Callable[[], Awaitable[None]] | None = None
+        self._skillnet_install_complete_hook: Callable[[], Awaitable[None]] | None = (
+            None
+        )
 
     def set_skillnet_install_complete_hook(
         self, hook: Callable[[], Awaitable[None]] | None
@@ -211,11 +213,17 @@ class SkillManager:
                 marketplace = m
                 break
         if marketplace is None:
-            return {"success": False, "detail": f"未找到 marketplace: {marketplace_name}"}
+            return {
+                "success": False,
+                "detail": f"未找到 marketplace: {marketplace_name}",
+            }
 
         git_url = marketplace.get("url", "")
         if not git_url:
-            return {"success": False, "detail": f"marketplace {marketplace_name} 缺少 url"}
+            return {
+                "success": False,
+                "detail": f"marketplace {marketplace_name} 缺少 url",
+            }
 
         # 确保 marketplace 仓库已 clone
         repo_dir = _MARKETPLACE_DIR / marketplace_name
@@ -229,7 +237,10 @@ class SkillManager:
         # 在仓库中查找 plugin 目录
         plugin_src = repo_dir / "skills" / plugin_name
         if not plugin_src.is_dir():
-            return {"success": False, "detail": f"在 marketplace 仓库中未找到 plugin: {plugin_name}"}
+            return {
+                "success": False,
+                "detail": f"在 marketplace 仓库中未找到 plugin: {plugin_name}",
+            }
 
         md = self._try_find_skill_file(plugin_src)
         if md is None:
@@ -245,16 +256,19 @@ class SkillManager:
 
         # 解析元数据并记录（添加 installed_at 时间戳）
         from datetime import datetime, timezone
+
         meta = self._parse_skill_md(self._try_find_skill_file(dest)) or {}
         commit_hash = await self._git_get_commit(repo_dir)
-        self._add_installed_plugin({
-            "name": plugin_name,
-            "marketplace": marketplace_name,
-            "version": meta.get("version", ""),
-            "commit": commit_hash or "",
-            "source": marketplace_name,
-            "installed_at": datetime.now(timezone.utc).isoformat(),
-        })
+        self._add_installed_plugin(
+            {
+                "name": plugin_name,
+                "marketplace": marketplace_name,
+                "version": meta.get("version", ""),
+                "commit": commit_hash or "",
+                "source": marketplace_name,
+                "installed_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         self._refresh_agent_data_indexes()
 
         return {"success": True}
@@ -295,7 +309,9 @@ class SkillManager:
                 return {"success": False, "detail": "参数 threshold 必须是数字"}
 
         try:
-            raw_results = await asyncio.to_thread(self._skillnet_search_sync, search_kwargs)
+            raw_results = await asyncio.to_thread(
+                self._skillnet_search_sync, search_kwargs
+            )
         except Exception as exc:
             logger.error("SkillNet 搜索失败: %s", exc)
             raw = str(exc).strip()
@@ -317,14 +333,18 @@ class SkillManager:
             elif not isinstance(item, dict):
                 item = vars(item)
 
-            normalized.append({
-                "skill_name": item.get("skill_name", item.get("name", "")),
-                "skill_description": item.get("skill_description", item.get("description", "")),
-                "author": item.get("author", ""),
-                "stars": item.get("stars", 0),
-                "skill_url": item.get("skill_url", item.get("url", "")),
-                "category": item.get("category", ""),
-            })
+            normalized.append(
+                {
+                    "skill_name": item.get("skill_name", item.get("name", "")),
+                    "skill_description": item.get(
+                        "skill_description", item.get("description", "")
+                    ),
+                    "author": item.get("author", ""),
+                    "stars": item.get("stars", 0),
+                    "skill_url": item.get("skill_url", item.get("url", "")),
+                    "category": item.get("category", ""),
+                }
+            )
 
         return {
             "success": True,
@@ -359,9 +379,7 @@ class SkillManager:
         install_id = uuid.uuid4().hex
         self._skillnet_install_jobs[install_id] = {"status": "pending"}
         asyncio.create_task(
-            self._skillnet_install_background(
-                install_id, skill_url, force, mirror_url
-            ),
+            self._skillnet_install_background(install_id, skill_url, force, mirror_url),
             name=f"skillnet_install_{install_id[:8]}",
         )
         return {
@@ -447,20 +465,24 @@ class SkillManager:
         meta = result["meta"]
         skill_url_stored = result["skill_url"]
         try:
-            self._add_local_skill({
-                "name": skill_name,
-                "origin": skill_url_stored,
-                "source": "skillnet",
-                "installed_at": datetime.now(timezone.utc).isoformat(),
-            })
-            self._add_installed_plugin({
-                "name": skill_name,
-                "marketplace": "skillnet",
-                "version": meta.get("version", ""),
-                "commit": "",
-                "source": "skillnet",
-                "installed_at": datetime.now(timezone.utc).isoformat(),
-            })
+            self._add_local_skill(
+                {
+                    "name": skill_name,
+                    "origin": skill_url_stored,
+                    "source": "skillnet",
+                    "installed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            self._add_installed_plugin(
+                {
+                    "name": skill_name,
+                    "marketplace": "skillnet",
+                    "version": meta.get("version", ""),
+                    "commit": "",
+                    "source": "skillnet",
+                    "installed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
             self._refresh_agent_data_indexes()
         except Exception as exc:
             logger.error("SkillNet 写入状态失败: %s", exc)
@@ -525,7 +547,9 @@ class SkillManager:
                         "detail_key": "skills.skillNet.errors.parseSkillFailed",
                     }
 
-                skill_name = str(meta.get("name", skill_dir.name)).strip() or skill_dir.name
+                skill_name = (
+                    str(meta.get("name", skill_dir.name)).strip() or skill_dir.name
+                )
                 dest = _SKILLS_DIR / skill_name
                 if dest.exists():
                     if not force:
@@ -624,7 +648,10 @@ class SkillManager:
         elif src.is_dir():
             md = self._try_find_skill_file(src)
             if md is None:
-                return {"success": False, "detail": f"目录中未找到 SKILL.md: {raw_path}"}
+                return {
+                    "success": False,
+                    "detail": f"目录中未找到 SKILL.md: {raw_path}",
+                }
             meta = self._parse_skill_md(md) or {}
             skill_name = meta.get("name", src.name)
             dest = _SKILLS_DIR / skill_name
@@ -636,7 +663,9 @@ class SkillManager:
         else:
             return {"success": False, "detail": f"不支持的路径类型: {raw_path}"}
 
-        self._add_local_skill({"name": skill_name, "origin": raw_path, "source": "local"})
+        self._add_local_skill(
+            {"name": skill_name, "origin": raw_path, "source": "local"}
+        )
         self._refresh_agent_data_indexes()
         return {"success": True, "skill": {"name": skill_name}}
 
@@ -724,12 +753,22 @@ class SkillManager:
             if repo_dir.exists():
                 commit = await self._git_pull(repo_dir)
                 if commit is None:
-                    return {"success": False, "name": name, "enabled": False, "detail": "git pull 失败"}
+                    return {
+                        "success": False,
+                        "name": name,
+                        "enabled": False,
+                        "detail": "git pull 失败",
+                    }
                 detail = "已启用并执行 git pull"
             else:
                 commit = await self._git_clone(url, repo_dir)
                 if commit is None:
-                    return {"success": False, "name": name, "enabled": False, "detail": "git clone 失败"}
+                    return {
+                        "success": False,
+                        "name": name,
+                        "enabled": False,
+                        "detail": "git clone 失败",
+                    }
                 detail = "已启用并执行 git clone"
 
             self._set_marketplace_enabled(name, True)
@@ -745,7 +784,12 @@ class SkillManager:
                 cache_removed = True
             except Exception as exc:
                 logger.warning("禁用 marketplace 时删除缓存失败: %s", exc)
-                return {"success": False, "name": name, "enabled": True, "detail": "删除本地缓存失败"}
+                return {
+                    "success": False,
+                    "name": name,
+                    "enabled": True,
+                    "detail": "删除本地缓存失败",
+                }
 
         self._set_marketplace_enabled(name, False)
         self._set_marketplace_last_updated(name)
@@ -754,7 +798,9 @@ class SkillManager:
             "name": name,
             "enabled": False,
             "cache_removed": cache_removed,
-            "detail": "已禁用并删除本地缓存" if cache_removed else "已禁用（无本地缓存）",
+            "detail": (
+                "已禁用并删除本地缓存" if cache_removed else "已禁用（无本地缓存）"
+            ),
         }
 
     # -----------------------------------------------------------------------
@@ -811,7 +857,11 @@ class SkillManager:
                     # 处理 YAML 列表 [a, b, c]
                     if val.startswith("[") and val.endswith("]"):
                         inner = val[1:-1]
-                        val = [v.strip().strip("'\"") for v in inner.split(",") if v.strip()]
+                        val = [
+                            v.strip().strip("'\"")
+                            for v in inner.split(",")
+                            if v.strip()
+                        ]
                     # 去掉引号
                     elif val.startswith(("'", '"')) and val.endswith(("'", '"')):
                         val = val[1:-1]
@@ -882,7 +932,9 @@ class SkillManager:
             # 检查是否通过 import_local / SkillNet 等写入 local_skills（含 origin 供前端对照 skill_url）
             for ls in self._state.get("local_skills", []):
                 if ls.get("name") == meta.get("name"):
-                    source = ls.get("source", "local") if isinstance(ls, dict) else "local"
+                    source = (
+                        ls.get("source", "local") if isinstance(ls, dict) else "local"
+                    )
                     if isinstance(ls, dict):
                         origin = ls.get("origin")
                         if isinstance(origin, str) and origin.strip():
@@ -983,7 +1035,10 @@ class SkillManager:
             source_resources_skills_dir = (
                 source_repo_root / "jiuwenclaw" / "resources" / "agent" / "skills"
             )
-            if source_resources_skills_dir.exists() and source_resources_skills_dir.resolve() != _SKILLS_DIR.resolve():
+            if (
+                source_resources_skills_dir.exists()
+                and source_resources_skills_dir.resolve() != _SKILLS_DIR.resolve()
+            ):
                 mirrors.append(source_resources_skills_dir)
         except Exception:
             return []
@@ -1019,16 +1074,24 @@ class SkillManager:
                 continue
             relative_file_path = entry.relative_to(agent_root).as_posix()
             relative_folder_path = entry.parent.relative_to(agent_root).as_posix()
-            folder_key = root_folder_key if relative_folder_path == "." else relative_folder_path
+            folder_key = (
+                root_folder_key if relative_folder_path == "." else relative_folder_path
+            )
 
             display_name = SkillManager._normalize_lang_suffix(entry.name)
             display_path = (
-                f"agent/{relative_folder_path}/{display_name}".replace("/.", "/").replace("//", "/")
+                f"agent/{relative_folder_path}/{display_name}".replace(
+                    "/.", "/"
+                ).replace("//", "/")
                 if relative_folder_path != "."
                 else f"agent/{display_name}"
             )
             # 模板中 HEARTBEAT/PRINCIPLE/TONE 在 agent 根目录，运行时在 agent/home/，统一映射到 home
-            if folder_key == root_folder_key and display_name.lower() in ("heartbeat.md", "principle.md", "tone.md"):
+            if folder_key == root_folder_key and display_name.lower() in (
+                "heartbeat.md",
+                "principle.md",
+                "tone.md",
+            ):
                 folder_key = "home"
                 display_path = f"agent/home/{display_name}"
 
@@ -1047,7 +1110,9 @@ class SkillManager:
 
         sorted_folder_data = {
             folder_key: sorted(files, key=lambda item: item["path"])
-            for folder_key, files in sorted(folder_data.items(), key=lambda item: item[0])
+            for folder_key, files in sorted(
+                folder_data.items(), key=lambda item: item[0]
+            )
         }
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(
@@ -1068,7 +1133,11 @@ class SkillManager:
             try:
                 self._generate_agent_data_for_workspace(workspace_root)
             except Exception as exc:
-                logger.warning("重建 agent-data.json 失败: agent_root=%s error=%s", workspace_root, exc)
+                logger.warning(
+                    "重建 agent-data.json 失败: agent_root=%s error=%s",
+                    workspace_root,
+                    exc,
+                )
 
     @staticmethod
     def _locate_skill_dir(path: Path) -> Path | None:
@@ -1124,13 +1193,13 @@ class SkillManager:
             return ""
 
         owner, repo, ref, dir_path, _ = parsed
-        api = f"https://api.github.com/repos/{owner}/{repo}/contents/{dir_path}?ref={ref}"
+        api = (
+            f"https://api.github.com/repos/{owner}/{repo}/contents/{dir_path}?ref={ref}"
+        )
         try:
             r = dl.session.get(api, timeout=_SKILLNET_DOWNLOAD_TIMEOUT)
         except Exception as exc:
-            logger.debug(
-                "SkillNet 安装错误上下文: GitHub Contents 请求失败: %s", exc
-            )
+            logger.debug("SkillNet 安装错误上下文: GitHub Contents 请求失败: %s", exc)
             return ""
 
         parts: list[str] = []
@@ -1152,9 +1221,7 @@ class SkillManager:
                 if raw:
                     parts.append(f"HTTP {r.status_code}: {raw}")
 
-            if r.status_code == 403 or any(
-                "rate limit" in p.lower() for p in parts
-            ):
+            if r.status_code == 403 or any("rate limit" in p.lower() for p in parts):
                 try:
                     rl = dl.session.get("https://api.github.com/rate_limit", timeout=12)
                     if rl.status_code == 200:
@@ -1172,7 +1239,6 @@ class SkillManager:
                     )
 
         return " | ".join(parts) if parts else ""
-
 
     @staticmethod
     def _skillnet_download_sync(
@@ -1197,7 +1263,9 @@ class SkillManager:
         downloader = SkillDownloader(**dl_kwargs)
 
         try:
-            local_path = downloader.download(folder_url=skill_url, target_dir=target_dir)
+            local_path = downloader.download(
+                folder_url=skill_url, target_dir=target_dir
+            )
         except GitHubAPIError:
             raise
         except Exception as exc:
@@ -1217,7 +1285,12 @@ class SkillManager:
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
             proc = await asyncio.create_subprocess_exec(
-                "git", "clone", "--depth", "1", url, str(dest),
+                "git",
+                "clone",
+                "--depth",
+                "1",
+                url,
+                str(dest),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -1234,7 +1307,11 @@ class SkillManager:
         """拉取最新代码，返回 commit hash 或 None."""
         try:
             proc = await asyncio.create_subprocess_exec(
-                "git", "-C", str(repo_path), "pull", "--ff-only",
+                "git",
+                "-C",
+                str(repo_path),
+                "pull",
+                "--ff-only",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -1251,7 +1328,11 @@ class SkillManager:
         """获取当前 HEAD commit hash."""
         try:
             proc = await asyncio.create_subprocess_exec(
-                "git", "-C", str(repo_path), "rev-parse", "HEAD",
+                "git",
+                "-C",
+                str(repo_path),
+                "rev-parse",
+                "HEAD",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -1264,7 +1345,9 @@ class SkillManager:
 
     async def _sync_marketplace_repos(self) -> None:
         """同步所有已配置 marketplace 到本地目录（存在则 pull，不存在则 clone）."""
-        marketplaces = [m for m in self._get_marketplaces() if bool(m.get("enabled", True))]
+        marketplaces = [
+            m for m in self._get_marketplaces() if bool(m.get("enabled", True))
+        ]
         if not marketplaces:
             return
 
@@ -1303,7 +1386,11 @@ class SkillManager:
                 return state
         except Exception:
             logger.warning("加载 skills_state.json 失败，使用默认空状态")
-        default_state = {"marketplaces": [], "installed_plugins": [], "local_skills": []}
+        default_state = {
+            "marketplaces": [],
+            "installed_plugins": [],
+            "local_skills": [],
+        }
         self._normalize_state(default_state)
         return default_state
 
@@ -1383,12 +1470,14 @@ class SkillManager:
             url = item.get("url", "")
             if not name or not url:
                 continue
-            normalized.append({
-                **item,
-                "name": name,
-                "url": url,
-                "enabled": bool(item.get("enabled", True)),
-            })
+            normalized.append(
+                {
+                    **item,
+                    "name": name,
+                    "url": url,
+                    "enabled": bool(item.get("enabled", True)),
+                }
+            )
         return normalized
 
     def _normalize_state(self, state: dict[str, Any]) -> None:

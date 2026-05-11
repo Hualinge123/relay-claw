@@ -22,7 +22,9 @@ from openjiuwen.core.runner import Runner
 import requests
 
 from jiuwenclaw.utils import logger
-from jiuwenclaw.agentserver.tools.multimodal_config import apply_audio_model_config_from_yaml
+from jiuwenclaw.agentserver.tools.multimodal_config import (
+    apply_audio_model_config_from_yaml,
+)
 
 ACR_ACCESS_KEY = os.environ.get("ACR_ACCESS_KEY", "")
 ACR_ACCESS_SECRET = os.environ.get("ACR_ACCESS_SECRET", "")
@@ -41,8 +43,13 @@ mcp = FastMCP("audio-mcp-server")
 _log = logging.getLogger(__name__)
 
 _AUDIO_EXT_MAP = {
-    ".mp3": "mp3", ".wav": "wav", ".m4a": "m4a",
-    ".aac": "aac", ".ogg": "ogg", ".flac": "flac", ".wma": "wma",
+    ".mp3": "mp3",
+    ".wav": "wav",
+    ".m4a": "m4a",
+    ".aac": "aac",
+    ".ogg": "ogg",
+    ".flac": "flac",
+    ".wma": "wma",
 }
 
 _MIME_TO_FORMAT = {"mpeg": "mp3", "wav": "wav", "wave": "wav"}
@@ -140,10 +147,7 @@ def _build_sandbox_unavailable_msg(tool_name: str) -> str:
 
 
 def _build_missing_key_msg(tool_name: str) -> str:
-    return (
-        f"[ERROR]: AUDIO_API_KEY or API_KEY is not configured "
-        f"for {tool_name}."
-    )
+    return f"[ERROR]: AUDIO_API_KEY or API_KEY is not configured " f"for {tool_name}."
 
 
 @tool(
@@ -157,6 +161,7 @@ def _build_missing_key_msg(tool_name: str) -> str:
 )
 async def audio_question_answering(audio_path_or_url: str, question: str) -> str:
     from jiuwenclaw.config import get_config
+
     try:
         apply_audio_model_config_from_yaml(get_config())
     except Exception:
@@ -167,7 +172,11 @@ async def audio_question_answering(audio_path_or_url: str, question: str) -> str
         return _build_missing_key_msg("audio question answering")
 
     audio_model = os.environ.get("AUDIO_MODEL_NAME", "gpt-4o-audio-preview")
-    logger.info("[audio_question_answering] using model: %s (api_base: %s)", audio_model, api_base)
+    logger.info(
+        "[audio_question_answering] using model: %s (api_base: %s)",
+        audio_model,
+        api_base,
+    )
 
     try:
         prompt_text = f"Answer the following question based on the given audio information:\n\n{question}"
@@ -203,12 +212,18 @@ async def audio_question_answering(audio_path_or_url: str, question: str) -> str
         resp = client.chat.completions.create(
             model=audio_model,
             messages=[
-                {"role": "system", "content": "You are a helpful assistant specializing in audio analysis."},
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant specializing in audio analysis.",
+                },
                 {
                     "role": "user",
                     "content": [
                         {"type": "text", "text": prompt_text},
-                        {"type": "input_audio", "input_audio": {"data": b64_data, "format": fmt}},
+                        {
+                            "type": "input_audio",
+                            "input_audio": {"data": b64_data, "format": fmt},
+                        },
                     ],
                 },
             ],
@@ -262,9 +277,7 @@ async def audio_metadata(audio_path_or_url: str) -> str:
             )
 
         ts = time.time()
-        sig_base = (
-            "POST\n/v1/identify\n" + ACR_ACCESS_KEY + "\naudio\n1\n" + str(ts)
-        )
+        sig_base = "POST\n/v1/identify\n" + ACR_ACCESS_KEY + "\naudio\n1\n" + str(ts)
         sig = base64.b64encode(
             hmac.new(
                 ACR_ACCESS_SECRET.encode("ascii"),
@@ -292,7 +305,9 @@ async def audio_metadata(audio_path_or_url: str) -> str:
             "signature_version": "1",
         }
 
-        r = requests.post(ACR_BASE_URL, files=files_payload, data=form_data, timeout=HTTP_TIMEOUT)
+        r = requests.post(
+            ACR_BASE_URL, files=files_payload, data=form_data, timeout=HTTP_TIMEOUT
+        )
         r.encoding = "utf-8"
         parsed = json.loads(r.text)
 
@@ -301,13 +316,15 @@ async def audio_metadata(audio_path_or_url: str) -> str:
             items = meta["humming"]
             scored = []
             for itm in items:
-                scored.append((
-                    itm.get("duration_ms"),
-                    itm.get("title"),
-                    itm.get("artists", [{}])[0].get("name"),
-                    itm.get("release_date"),
-                    itm.get("score"),
-                ))
+                scored.append(
+                    (
+                        itm.get("duration_ms"),
+                        itm.get("title"),
+                        itm.get("artists", [{}])[0].get("name"),
+                        itm.get("release_date"),
+                        itm.get("score"),
+                    )
+                )
             scored.sort(key=lambda x: x[0] or 0, reverse=True)
             best = scored[0]
             return f"Name: {best[1]}, Artist: {best[2]}, Release Date: {best[3]}. Note: score={best[4]}"

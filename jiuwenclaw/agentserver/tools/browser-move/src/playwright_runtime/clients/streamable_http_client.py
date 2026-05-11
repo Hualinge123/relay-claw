@@ -9,9 +9,13 @@ from openjiuwen.core.foundation.tool import McpToolCard
 from openjiuwen.core.foundation.tool.mcp.base import NO_TIMEOUT
 
 try:
-    from openjiuwen.core.foundation.tool.mcp.client.streamable_http_client import StreamableHttpClient
+    from openjiuwen.core.foundation.tool.mcp.client.streamable_http_client import (
+        StreamableHttpClient,
+    )
 except ModuleNotFoundError:
-    from openjiuwen.core.foundation.tool.mcp.client.sse_client import SseClient as StreamableHttpClient
+    from openjiuwen.core.foundation.tool.mcp.client.sse_client import (
+        SseClient as StreamableHttpClient,
+    )
 
 T = TypeVar("T")
 
@@ -68,14 +72,20 @@ class BrowserMoveStreamableHttpClient(StreamableHttpClient):
                 await asyncio.wait_for(session.initialize(), timeout=actual_timeout)
                 return await operation(session)
 
-    async def connect(self, *, retry_times: int = 1, timeout: float = NO_TIMEOUT) -> bool:
+    async def connect(
+        self, *, retry_times: int = 1, timeout: float = NO_TIMEOUT
+    ) -> bool:
         attempts = max(1, int(retry_times))
         for attempt in range(1, attempts + 1):
             try:
                 async with self._io_lock:
-                    await self._with_fresh_session(lambda _session: asyncio.sleep(0), timeout=timeout)
+                    await self._with_fresh_session(
+                        lambda _session: asyncio.sleep(0), timeout=timeout
+                    )
                 self._is_disconnected = False
-                logger.info(f"Streamable HTTP client connected successfully to {self._server_path}")
+                logger.info(
+                    f"Streamable HTTP client connected successfully to {self._server_path}"
+                )
                 return True
             except asyncio.TimeoutError:
                 logger.error(
@@ -116,19 +126,27 @@ class BrowserMoveStreamableHttpClient(StreamableHttpClient):
             for attempt in range(2):
                 try:
                     tools_list = await self._with_fresh_session(_list, timeout=timeout)
-                    logger.info(f"Retrieved {len(tools_list)} tools from Streamable HTTP server")
+                    logger.info(
+                        f"Retrieved {len(tools_list)} tools from Streamable HTTP server"
+                    )
                     self._is_disconnected = False
                     return tools_list
                 except Exception as e:
                     if attempt == 0 and self._is_retryable_transport_error(e):
-                        logger.warning(f"Streamable HTTP list_tools retry with fresh session: {e}")
+                        logger.warning(
+                            f"Streamable HTTP list_tools retry with fresh session: {e}"
+                        )
                         continue
                     logger.error(f"Failed to list tools via Streamable HTTP: {e}")
                     raise
 
-    async def call_tool(self, tool_name: str, arguments: dict, *, timeout: float = NO_TIMEOUT) -> Any:
+    async def call_tool(
+        self, tool_name: str, arguments: dict, *, timeout: float = NO_TIMEOUT
+    ) -> Any:
         async def _call(session: Any) -> Any:
-            logger.info(f"Calling tool '{tool_name}' via Streamable HTTP with arguments: {arguments}")
+            logger.info(
+                f"Calling tool '{tool_name}' via Streamable HTTP with arguments: {arguments}"
+            )
             tool_result = await session.call_tool(tool_name, arguments=arguments)
             result_content = None
             if tool_result.content and len(tool_result.content) > 0:
@@ -163,18 +181,26 @@ class BrowserMoveStreamableHttpClient(StreamableHttpClient):
         async with self._io_lock:
             for attempt in range(2):
                 try:
-                    result_content = await self._with_fresh_session(_call, timeout=timeout)
-                    logger.info(f"Tool '{tool_name}' call completed via Streamable HTTP")
+                    result_content = await self._with_fresh_session(
+                        _call, timeout=timeout
+                    )
+                    logger.info(
+                        f"Tool '{tool_name}' call completed via Streamable HTTP"
+                    )
                     self._is_disconnected = False
                     return result_content
                 except Exception as e:
                     if attempt == 0 and self._is_retryable_transport_error(e):
-                        logger.warning(f"Streamable HTTP tool call '{tool_name}' retry with fresh session: {e}")
+                        logger.warning(
+                            f"Streamable HTTP tool call '{tool_name}' retry with fresh session: {e}"
+                        )
                         continue
                     logger.error(f"Tool call failed via Streamable HTTP: {e}")
                     raise
 
-    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[Any]:
+    async def get_tool_info(
+        self, tool_name: str, *, timeout: float = NO_TIMEOUT
+    ) -> Optional[Any]:
         tools = await self.list_tools(timeout=timeout)
         for tool in tools:
             if tool.name == tool_name:

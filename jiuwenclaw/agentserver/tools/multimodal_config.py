@@ -7,6 +7,7 @@
 2. embed.{audio_model/video_model/vision_model} 和 embed.embed_api_key/embed_api_base
 3. 环境变量 MODEL_NAME, API_KEY, API_BASE
 """
+
 import os
 from typing import Any
 

@@ -43,10 +43,13 @@ class ChannelManager(ABC):
         """Channel 同步 on_message 回调：交给 MessageHandler 处理（入队并最终发往 AgentServer）."""
         logger.info(
             "[ChannelManager] Channel 消息 -> MessageHandler: id=%s channel_id=%s",
-            msg.id, msg.channel_id,
+            msg.id,
+            msg.channel_id,
         )
         if not self._channels.get(msg.channel_id, None):
-            logger.info(f"[ChannelManager] Channel: {msg.channel_id} closed, cancel this user message.")
+            logger.info(
+                f"[ChannelManager] Channel: {msg.channel_id} closed, cancel this user message."
+            )
             return
 
         self._message_handler.handle_message(msg)
@@ -56,7 +59,11 @@ class ChannelManager(ABC):
         cid = channel.channel_id
         self._channels[cid] = channel
         channel.on_message(self._on_channel_message)
-        logger.info("[ChannelManager] 已注册 Channel: channel_id=%s, 当前共 %d 个", cid, len(self._channels))
+        logger.info(
+            "[ChannelManager] 已注册 Channel: channel_id=%s, 当前共 %d 个",
+            cid,
+            len(self._channels),
+        )
 
     def unregister_channel(self, channel_id: str) -> None:
         """注销指定 Channel."""
@@ -111,7 +118,9 @@ class ChannelManager(ABC):
         # 仅当 MessageHandler 提供 consume_robot_messages 时才能派发
         consume = getattr(self._message_handler, "consume_robot_messages", None)
         if not callable(consume):
-            logger.warning("MessageHandler has no consume_robot_messages, robot_messages dispatch skipped")
+            logger.warning(
+                "MessageHandler has no consume_robot_messages, robot_messages dispatch skipped"
+            )
             return
         while self._running:
             try:
@@ -120,7 +129,9 @@ class ChannelManager(ABC):
                     continue
                 logger.info(
                     "[ChannelManager] 从 robot_messages 取出，准备派发: id=%s channel_id=%s type=%s",
-                    msg.id, msg.channel_id, msg.type,
+                    msg.id,
+                    msg.channel_id,
+                    msg.type,
                 )
                 channel = self._channels.get(msg.channel_id)
                 if channel:
@@ -128,14 +139,18 @@ class ChannelManager(ABC):
                         await channel.send(msg)
                         logger.info(
                             "[ChannelManager] 已派发到 Channel: channel_id=%s id=%s",
-                            msg.channel_id, msg.id,
+                            msg.channel_id,
+                            msg.id,
                         )
                     except Exception as e:
-                        logger.error("send to channel %s: %s", msg.channel_id, e, exc_info=True)
+                        logger.error(
+                            "send to channel %s: %s", msg.channel_id, e, exc_info=True
+                        )
                 else:
                     logger.warning(
                         "[ChannelManager] 未找到 Channel，丢弃 robot_messages: channel_id=%s id=%s",
-                        msg.channel_id, msg.id,
+                        msg.channel_id,
+                        msg.id,
                     )
             except asyncio.CancelledError:
                 break
@@ -146,7 +161,9 @@ class ChannelManager(ABC):
             return
         self._running = True
         self._dispatch_task = asyncio.create_task(self._dispatch_robot_messages())
-        logger.info("[ChannelManager] 出队派发循环已启动 (robot_messages -> Channel.send)")
+        logger.info(
+            "[ChannelManager] 出队派发循环已启动 (robot_messages -> Channel.send)"
+        )
 
     async def stop_dispatch(self) -> None:
         """停止出队派发任务."""

@@ -79,16 +79,24 @@ def _generate_agent_data(project_root: Path) -> None:
             continue
         relative_file_path = entry.relative_to(agent_root).as_posix()
         relative_folder_path = entry.parent.relative_to(agent_root).as_posix()
-        folder_key = root_folder_key if relative_folder_path == "." else relative_folder_path
+        folder_key = (
+            root_folder_key if relative_folder_path == "." else relative_folder_path
+        )
 
         display_name = _normalize_lang_suffix(entry.name)
         display_path = (
-            f"agent/{relative_folder_path}/{display_name}".replace("/.", "/").replace("//", "/")
+            f"agent/{relative_folder_path}/{display_name}".replace("/.", "/").replace(
+                "//", "/"
+            )
             if relative_folder_path != "."
             else f"agent/{display_name}"
         )
         # 模板中 HEARTBEAT/PRINCIPLE/TONE 在 agent 根目录，运行时在 agent/home/，统一映射到 home
-        if folder_key == root_folder_key and display_name.lower() in ("heartbeat.md", "principle.md", "tone.md"):
+        if folder_key == root_folder_key and display_name.lower() in (
+            "heartbeat.md",
+            "principle.md",
+            "tone.md",
+        ):
             folder_key = "home"
             display_path = f"agent/home/{display_name}"
 
@@ -219,10 +227,7 @@ class _SpaStaticHandler(SimpleHTTPRequestHandler):
                 del self._buffer[:frame_end]
 
                 if masked:
-                    payload = bytes(
-                        b ^ mask_key[i % 4]
-                        for i, b in enumerate(payload)
-                    )
+                    payload = bytes(b ^ mask_key[i % 4] for i, b in enumerate(payload))
 
                 if rsv:
                     continue
@@ -242,7 +247,9 @@ class _SpaStaticHandler(SimpleHTTPRequestHandler):
                     self._fragmented_text.extend(payload)
                     if fin:
                         messages.append(
-                            bytes(self._fragmented_text).decode("utf-8", errors="replace")
+                            bytes(self._fragmented_text).decode(
+                                "utf-8", errors="replace"
+                            )
                         )
                         self._fragmented_text.clear()
                         self._awaiting_continuation = False
@@ -383,11 +390,15 @@ class _SpaStaticHandler(SimpleHTTPRequestHandler):
 
         upstream_host = parsed.hostname or "127.0.0.1"
         upstream_port = parsed.port or (
-            self._DEFAULT_HTTPS_PORT if parsed.scheme in ("wss", "https") else self._DEFAULT_HTTP_PORT
+            self._DEFAULT_HTTPS_PORT
+            if parsed.scheme in ("wss", "https")
+            else self._DEFAULT_HTTP_PORT
         )
 
         try:
-            upstream = socket.create_connection((upstream_host, upstream_port), timeout=self._WS_CONNECT_TIMEOUT)
+            upstream = socket.create_connection(
+                (upstream_host, upstream_port), timeout=self._WS_CONNECT_TIMEOUT
+            )
             if parsed.scheme in ("wss", "https"):
                 ctx = ssl.create_default_context()
                 upstream = ctx.wrap_socket(upstream, server_hostname=upstream_host)
@@ -401,7 +412,10 @@ class _SpaStaticHandler(SimpleHTTPRequestHandler):
             for key, value in self.headers.items():
                 # Optional debug mode: disable websocket compression so frames stay
                 # plain text and can be parsed for req/res/event logging.
-                if self.ws_disable_compress and key.lower() == "sec-websocket-extensions":
+                if (
+                    self.ws_disable_compress
+                    and key.lower() == "sec-websocket-extensions"
+                ):
                     continue
                 if key.lower() == "host":
                     request_lines.append(f"Host: {upstream_host}:{upstream_port}")
@@ -427,17 +441,26 @@ class _SpaStaticHandler(SimpleHTTPRequestHandler):
             self.connection.sendall(response_head)
 
             if b" 101 " not in response_head.split(b"\r\n", 1)[0]:
-                self.logger.info("[ws][handshake] upstream returned non-101, tunnel closed")
+                self.logger.info(
+                    "[ws][handshake] upstream returned non-101, tunnel closed"
+                )
                 return
 
-            self.logger.info("[ws][handshake] tunnel established %s <-> %s:%s", self.client_address[0], upstream_host, upstream_port)
+            self.logger.info(
+                "[ws][handshake] tunnel established %s <-> %s:%s",
+                self.client_address[0],
+                upstream_host,
+                upstream_port,
+            )
             self.connection.setblocking(False)
             upstream.setblocking(False)
             sockets = [self.connection, upstream]
             client_parser = self._WsTextFrameParser()
             server_parser = self._WsTextFrameParser()
             while True:
-                readable, _, errored = select.select(sockets, [], sockets, self._WS_SELECT_TIMEOUT)
+                readable, _, errored = select.select(
+                    sockets, [], sockets, self._WS_SELECT_TIMEOUT
+                )
                 if errored:
                     break
                 if not readable:
@@ -451,11 +474,15 @@ class _SpaStaticHandler(SimpleHTTPRequestHandler):
                         return
                     if sock is self.connection:
                         for text_message in client_parser.feed(data):
-                            self._log_ws_business_message("frontend->backend", text_message)
+                            self._log_ws_business_message(
+                                "frontend->backend", text_message
+                            )
                         upstream.sendall(data)
                     else:
                         for text_message in server_parser.feed(data):
-                            self._log_ws_business_message("backend->frontend", text_message)
+                            self._log_ws_business_message(
+                                "backend->frontend", text_message
+                            )
                         self.connection.sendall(data)
         except Exception as exc:  # noqa: BLE001
             self.log_error("proxy ws error: %s", exc)
@@ -490,8 +517,12 @@ class _SpaStaticHandler(SimpleHTTPRequestHandler):
     def _is_path_under_allowed_root(cls, target: Path) -> bool:
         target_resolved = target.resolve()
         try:
-            in_workspace = os.path.commonpath([str(cls.workspace_root), str(target_resolved)]) == str(cls.workspace_root)
-            in_logs = os.path.commonpath([str(cls.logs_root), str(target_resolved)]) == str(cls.logs_root)
+            in_workspace = os.path.commonpath(
+                [str(cls.workspace_root), str(target_resolved)]
+            ) == str(cls.workspace_root)
+            in_logs = os.path.commonpath(
+                [str(cls.logs_root), str(target_resolved)]
+            ) == str(cls.logs_root)
             return in_workspace or in_logs
         except ValueError:
             return False
@@ -563,7 +594,9 @@ class _SpaStaticHandler(SimpleHTTPRequestHandler):
                     {
                         "name": entry.name,
                         "path": str(entry.relative_to(self.project_root)),
-                        "isMarkdown": self._is_markdown(entry) if entry.is_file() else False,
+                        "isMarkdown": (
+                            self._is_markdown(entry) if entry.is_file() else False
+                        ),
                         "isDirectory": entry.is_dir(),
                     }
                 )
@@ -584,10 +617,14 @@ class _SpaStaticHandler(SimpleHTTPRequestHandler):
                     try:
                         _generate_agent_data(self.project_root)
                     except Exception as exc:  # noqa: BLE001
-                        self._write_json(500, {"error": "generate_failed", "detail": str(exc)})
+                        self._write_json(
+                            500, {"error": "generate_failed", "detail": str(exc)}
+                        )
                         return
                 if not full_path.exists():
-                    self._write_json(404, {"error": "file_not_found", "fullPath": str(full_path)})
+                    self._write_json(
+                        404, {"error": "file_not_found", "fullPath": str(full_path)}
+                    )
                     return
             try:
                 data = full_path.read_text(encoding="utf-8")
@@ -681,7 +718,9 @@ class _SpaStaticHandler(SimpleHTTPRequestHandler):
                 "[jiuwenclaw-web] ws disable compress updated: %s",
                 ws_disable_compress,
             )
-            self._write_json(200, {"ok": True, "wsDisableCompress": ws_disable_compress})
+            self._write_json(
+                200, {"ok": True, "wsDisableCompress": ws_disable_compress}
+            )
             return
 
         self._write_json(404, {"error": "not_found"})
@@ -783,7 +822,9 @@ def _setup_logger(logs_root: Path, log_level: str) -> logging.Logger:
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
 
-    file_handler = logging.FileHandler(logs_root / "ws-dev.log", mode="w", encoding="utf-8")
+    file_handler = logging.FileHandler(
+        logs_root / "ws-dev.log", mode="w", encoding="utf-8"
+    )
     file_handler.setFormatter(formatter)
 
     logger.addHandler(stream_handler)
@@ -792,7 +833,9 @@ def _setup_logger(logs_root: Path, log_level: str) -> logging.Logger:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Serve JiuwenClaw frontend static files.")
+    parser = argparse.ArgumentParser(
+        description="Serve JiuwenClaw frontend static files."
+    )
     parser.add_argument("--host", default="localhost", help="Host to bind.")
     parser.add_argument("--port", type=int, default=5173, help="Port to bind.")
     parser.add_argument(

@@ -20,7 +20,7 @@ _USER_AGENT = (
 _REQUEST_HEADERS = {"User-Agent": _USER_AGENT}
 _CHARSET_HEADER_RE = re.compile(r"charset=([^\s;]+)", flags=re.IGNORECASE)
 _CHARSET_META_RE = re.compile(
-    br"""<meta[^>]+charset=["']?\s*([A-Za-z0-9._-]+)""",
+    rb"""<meta[^>]+charset=["']?\s*([A-Za-z0-9._-]+)""",
     flags=re.IGNORECASE,
 )
 
@@ -145,12 +145,18 @@ def _fetch_webpage_sync(url: str, timeout_seconds: int) -> dict[str, str | int]:
 
     text = _decode_response_text(response)
     content_type = response.headers.get("Content-Type", "")
-    title_match = re.search(r"<title[^>]*>(.*?)</title>", text, flags=re.IGNORECASE | re.DOTALL)
+    title_match = re.search(
+        r"<title[^>]*>(.*?)</title>", text, flags=re.IGNORECASE | re.DOTALL
+    )
     title = _strip_tags(title_match.group(1)) if title_match else ""
 
     if "html" in content_type.lower():
-        text = re.sub(r"<script[^>]*>.*?</script>", " ", text, flags=re.IGNORECASE | re.DOTALL)
-        text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.IGNORECASE | re.DOTALL)
+        text = re.sub(
+            r"<script[^>]*>.*?</script>", " ", text, flags=re.IGNORECASE | re.DOTALL
+        )
+        text = re.sub(
+            r"<style[^>]*>.*?</style>", " ", text, flags=re.IGNORECASE | re.DOTALL
+        )
         text = _strip_tags(text)
     else:
         text = re.sub(r"\s+", " ", text).strip()
@@ -167,7 +173,9 @@ def _fetch_webpage_sync(url: str, timeout_seconds: int) -> dict[str, str | int]:
     name="mcp_fetch_webpage",
     description="Fetch webpage text content from URL. Returns status/title/plain text content.",
 )
-async def mcp_fetch_webpage(url: str, max_chars: int = 12000, timeout_seconds: int = 30) -> str:
+async def mcp_fetch_webpage(
+    url: str, max_chars: int = 12000, timeout_seconds: int = 30
+) -> str:
     url = _normalize_url(url)
     if not url:
         return "[ERROR]: url cannot be empty."

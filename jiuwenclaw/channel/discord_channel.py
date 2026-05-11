@@ -83,7 +83,11 @@ class DiscordChannel(BaseChannel):
         @client.event
         async def on_ready() -> None:
             user = getattr(client, "user", None)
-            logger.info("Discord bot ready: %s (%s)", getattr(user, "name", "unknown"), getattr(user, "id", "unknown"))
+            logger.info(
+                "Discord bot ready: %s (%s)",
+                getattr(user, "name", "unknown"),
+                getattr(user, "id", "unknown"),
+            )
 
         @client.event
         async def on_message(message: Any) -> None:
@@ -180,7 +184,9 @@ class DiscordChannel(BaseChannel):
             metadata={
                 "discord_user_id": author_id,
                 "discord_username": str(getattr(message.author, "name", "") or ""),
-                "discord_global_name": str(getattr(message.author, "global_name", "") or ""),
+                "discord_global_name": str(
+                    getattr(message.author, "global_name", "") or ""
+                ),
                 "discord_channel_id": channel_id,
                 "discord_channel_name": str(getattr(channel, "name", "") or ""),
                 "discord_guild_id": guild_id,
@@ -218,7 +224,11 @@ class DiscordChannel(BaseChannel):
     @staticmethod
     def _extract_outgoing_text(msg: Message) -> str:
         payload = getattr(msg, "payload", None) or {}
-        if msg.event_type == EventType.HEARTBEAT_RELAY and isinstance(payload, dict) and payload.get("heartbeat"):
+        if (
+            msg.event_type == EventType.HEARTBEAT_RELAY
+            and isinstance(payload, dict)
+            and payload.get("heartbeat")
+        ):
             return str(payload.get("heartbeat")).strip()
 
         if isinstance(payload, dict) and "content" in payload:

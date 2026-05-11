@@ -62,6 +62,7 @@ async def check_tool_permissions(
         - denied_results: [(tool_call, denial_message), ...] 被拒绝的调用
     """
     from jiuwenclaw.agentserver.permissions.core import get_permission_engine
+
     engine = get_permission_engine()
     if not engine.enabled:
         return list(tool_calls), []
@@ -89,19 +90,22 @@ async def check_tool_permissions(
             allowed.append(tc)
             logger.warning(
                 "Permission ALLOWED: tool=%s, rule=%s",
-                tool_name, result.matched_rule,
+                tool_name,
+                result.matched_rule,
             )
         elif result.is_denied:
             deny_msg = f"[PERMISSION_DENIED] {result.reason or 'Operation not allowed'}"
             denied.append((tc, deny_msg))
             logger.warning(
                 "Permission DENIED: tool=%s, rule=%s",
-                tool_name, result.matched_rule,
+                tool_name,
+                result.matched_rule,
             )
         elif result.needs_approval:
             logger.warning(
                 "Permission needs_approval: tool=%s, rule=%s",
-                tool_name, result.matched_rule,
+                tool_name,
+                result.matched_rule,
             )
             if session is not None and request_approval_callback is not None:
                 decision = await request_approval_callback(session, tc, result)
@@ -122,17 +126,14 @@ async def check_tool_permissions(
                         (tc, "[PERMISSION_REJECTED] User rejected the request.")
                     )
             else:
-                denied.append(
-                    (tc, f"[APPROVAL_REQUIRED] {result.reason}")
-                )
+                denied.append((tc, f"[APPROVAL_REQUIRED] {result.reason}"))
 
     return allowed, denied
 
 
 # ---------- 命令风险评估 ----------
 
-_RISK_EVALUATION_PROMPT = (
-    """你是一个安全审计专家。请评估以下工具调用的安全风险等级。
+_RISK_EVALUATION_PROMPT = """你是一个安全审计专家。请评估以下工具调用的安全风险等级。
     1. 工具名称: {tool_name}。
     2. 调用参数: {tool_args}。
     3. 请严格按照以下 JSON 格式返回（不要输出其他内容）：
@@ -144,7 +145,6 @@ _RISK_EVALUATION_PROMPT = (
     - 中风险：读取workspace目录外的文件、操作浏览器、操作本地应用、执行代码/脚本。
     - 低风险：读取workspace目录下的文件、查看天气/格式化输出/计算器等不会改变系统状态的操作。
     """
-)
 
 _RISK_ICON_MAP = {"高": "\U0001f534", "中": "\U0001f7e1", "低": "\U0001f7e2"}
 
@@ -164,16 +164,30 @@ def assess_command_risk_static(tool_name: str, tool_args: dict | str) -> dict:
     cmd = str(tool_args.get("command", tool_args.get("cmd", "")))
     if re.search(
         r"\b(rm\s+-rf|del\s+/[fsq]|format|shutdown|reboot|mkfs|dd\s+if=|>\s*/dev/)",
-        cmd, re.IGNORECASE,
+        cmd,
+        re.IGNORECASE,
     ):
-        return {"level": "高", "explanation": "该命令可能造成不可逆的数据丢失或系统损坏", "icon": "\U0001f534"}
+        return {
+            "level": "高",
+            "explanation": "该命令可能造成不可逆的数据丢失或系统损坏",
+            "icon": "\U0001f534",
+        }
     if re.search(
         r"\b(sudo|pip\s+install|npm\s+install|curl.*\|\s*sh|wget.*\|\s*sh|chmod|chown)",
-        cmd, re.IGNORECASE,
+        cmd,
+        re.IGNORECASE,
     ):
-        return {"level": "中", "explanation": "该命令涉及权限变更或软件安装", "icon": "\U0001f7e1"}
+        return {
+            "level": "中",
+            "explanation": "该命令涉及权限变更或软件安装",
+            "icon": "\U0001f7e1",
+        }
     if tool_name == "mcp_exec_command":
-        return {"level": "中", "explanation": "该命令需要用户确认后执行", "icon": "\U0001f7e1"}
+        return {
+            "level": "中",
+            "explanation": "该命令需要用户确认后执行",
+            "icon": "\U0001f7e1",
+        }
     return {"level": "低", "explanation": "该操作风险较低", "icon": "\U0001f7e2"}
 
 
@@ -211,6 +225,7 @@ async def assess_command_risk_with_llm(
 
     try:
         from openjiuwen.core.foundation.llm import UserMessage
+
         ai_msg = await llm.invoke(
             model=model_name,
             messages=[UserMessage(content=prompt)],
@@ -240,17 +255,35 @@ async def assess_command_risk_with_llm(
 # If a command matches an allow pattern but also contains these operators,
 # the permission is escalated from ALLOW → ASK as a safety net.
 _SHELL_OPERATORS_RE = re.compile(
-    r'[;&|`<>]'    # ; & | ` < > (covers &&, ||, pipes, redirects, backticks)
-    r'|\$[({]'     # $( or ${ — command / variable substitution
-    r'|\r?\n'      # newline injection
+    r"[;&|`<>]"  # ; & | ` < > (covers &&, ||, pipes, redirects, backticks)
+    r"|\$[({]"  # $( or ${ — command / variable substitution
+    r"|\r?\n"  # newline injection
 )
 _COMMAND_EXEC_TOOLS = frozenset({"mcp_exec_command"})
 
 # 会操作路径的命令（需做外部目录检测）
-_PATH_AWARE_COMMANDS = frozenset({
-    "cd", "rm", "cp", "mv", "mkdir", "touch", "chmod", "chown", "cat",
-    "ls", "dir", "type", "del", "rd", "copy", "move", "md", "rd",
-})
+_PATH_AWARE_COMMANDS = frozenset(
+    {
+        "cd",
+        "rm",
+        "cp",
+        "mv",
+        "mkdir",
+        "touch",
+        "chmod",
+        "chown",
+        "cat",
+        "ls",
+        "dir",
+        "type",
+        "del",
+        "rd",
+        "copy",
+        "move",
+        "md",
+        "rd",
+    }
+)
 
 
 def _extract_paths_from_command(command: str, workdir: str | Path) -> list[Path]:
@@ -299,6 +332,7 @@ class ExternalDirectoryChecker:
         if workspace is None:
             try:
                 from jiuwenclaw.utils import get_workspace_dir
+
                 workspace = get_workspace_dir()
             except ImportError:
                 return None
@@ -357,6 +391,7 @@ class ExternalDirectoryChecker:
 
 # ---------- 工具权限检查器 ----------
 
+
 class ToolPermissionChecker:
     """按 deny > ask > allow 优先级匹配工具权限规则."""
 
@@ -410,10 +445,14 @@ class ToolPermissionChecker:
         tools_cfg = self.config.get("tools", {})
         if tool_name not in tools_cfg:
             return None, None
-        return self._check_tool_config(tools_cfg[tool_name], tool_args, f"tools.{tool_name}")
+        return self._check_tool_config(
+            tools_cfg[tool_name], tool_args, f"tools.{tool_name}"
+        )
 
     # -- 工具级默认 --
-    def _check_tool_default(self, tool_name: str) -> tuple[PermissionLevel | None, str | None]:
+    def _check_tool_default(
+        self, tool_name: str
+    ) -> tuple[PermissionLevel | None, str | None]:
         tools_cfg = self.config.get("tools", {})
         if tool_name in tools_cfg and isinstance(tools_cfg[tool_name], str):
             return PermissionLevel(tools_cfg[tool_name]), f"tools.{tool_name}"
@@ -443,12 +482,13 @@ class ToolPermissionChecker:
                     for pattern, perm in patterns_raw.items():
                         if self._match_args_pattern(pattern, tool_args):
                             matched.append(
-                                (PermissionLevel(perm), f"{rule_prefix}.patterns[{pattern!r}]")
+                                (
+                                    PermissionLevel(perm),
+                                    f"{rule_prefix}.patterns[{pattern!r}]",
+                                )
                             )
                 if matched:
-                    matched.sort(
-                        key=lambda r: self._LEVEL_STRICTNESS.get(r[0], 99)
-                    )
+                    matched.sort(key=lambda r: self._LEVEL_STRICTNESS.get(r[0], 99))
                     return matched[0]
 
             if "*" in tool_config:

@@ -21,6 +21,7 @@ How to run the MCP servers (each in its own terminal; SSE = default, ports match
 
 Then run this test: uv run -m src.super_agent.test.test_with_mcp
 """
+
 from __future__ import annotations
 
 import sys
@@ -59,13 +60,26 @@ class _DummyBaseSession(BaseSession):
     def __init__(self, sid: str):
         self._sid = sid
 
-    def config(self): return None
-    def state(self): return None
-    def tracer(self) -> Any: return None
-    def stream_writer_manager(self): return None
-    def callback_manager(self): return None
-    def session_id(self) -> str: return self._sid
-    def checkpointer(self): return None
+    def config(self):
+        return None
+
+    def state(self):
+        return None
+
+    def tracer(self) -> Any:
+        return None
+
+    def stream_writer_manager(self):
+        return None
+
+    def callback_manager(self):
+        return None
+
+    def session_id(self) -> str:
+        return self._sid
+
+    def checkpointer(self):
+        return None
 
 
 class DemoSession(Session):
@@ -76,14 +90,26 @@ class DemoSession(Session):
         self._global_state: Dict[str, Any] = {}
         self._base = _DummyBaseSession(self._sid)
 
-    def base(self) -> BaseSession: return self._base
-    def session_id(self) -> str: return self._sid
-    def exec_id(self) -> str: return self._exec_id
+    def base(self) -> BaseSession:
+        return self._base
 
-    def get(self, key: str, default=None): return self._state.get(key, default)
-    def set(self, key: str, value: Any) -> None: self._state[key] = value
-    def get_global(self, key: str, default=None): return self._global_state.get(key, default)
-    def set_global(self, key: str, value: Any) -> None: self._global_state[key] = value
+    def session_id(self) -> str:
+        return self._sid
+
+    def exec_id(self) -> str:
+        return self._exec_id
+
+    def get(self, key: str, default=None):
+        return self._state.get(key, default)
+
+    def set(self, key: str, value: Any) -> None:
+        self._state[key] = value
+
+    def get_global(self, key: str, default=None):
+        return self._global_state.get(key, default)
+
+    def set_global(self, key: str, value: Any) -> None:
+        self._global_state[key] = value
 
 
 # =============================================================================
@@ -181,7 +207,7 @@ def build_mcp_sub_agent(
     api_key: str,
     api_base: str,
     model_name: str,
-    mcp_cfg: McpServerConfig
+    mcp_cfg: McpServerConfig,
 ) -> ReActAgent:
     """
     Build a sub-agent that uses MCP tools from a specific server.
@@ -223,7 +249,10 @@ def make_mcp_config(
     port: int,
     transport: str = "sse",
 ) -> McpServerConfig:
-    fields = getattr(McpServerConfig, "model_fields", None) or getattr(McpServerConfig, "__fields__", {})
+    fields = getattr(McpServerConfig, "model_fields", None) or getattr(
+        McpServerConfig, "__fields__", {}
+    )
+
     def has(k: str) -> bool:
         try:
             return k in fields
@@ -280,7 +309,9 @@ async def register_mcp_server_to_resource_mgr(mcp_cfg: McpServerConfig, tag: str
     """
     rm = Runner.resource_mgr
     if not hasattr(rm, "add_mcp_server"):
-        raise RuntimeError("Runner.resource_mgr has no method add_mcp_server() in this version.")
+        raise RuntimeError(
+            "Runner.resource_mgr has no method add_mcp_server() in this version."
+        )
     return await rm.add_mcp_server(mcp_cfg, tag=tag)
 
 
@@ -295,7 +326,7 @@ async def build_main_agent_with_mcp_subs(
     mcp_host: str = "127.0.0.1",
 ) -> ReActAgent:
     """Build main agent with direct MCP tools (non-browser) and one browser sub-agent."""
-    
+
     # Direct MCP tools on main agent (all enabled except browser)
     main_agent_mcp = [
         f"- {key}: {info['description']}"
@@ -365,7 +396,9 @@ async def build_main_agent_with_mcp_subs(
 
         if key == BROWSER_MCP_KEY:
             # Browser: sub-agent only
-            print(f"  Registering sub-agent {key}_sub at port {config['port']} (browser)...")
+            print(
+                f"  Registering sub-agent {key}_sub at port {config['port']} (browser)..."
+            )
             await register_mcp_server_to_resource_mgr(mcp_cfg, tag=f"agent.{key}_sub")
             sub_agent = build_mcp_sub_agent(
                 agent_id=f"agent.{key}_sub",
@@ -379,16 +412,26 @@ async def build_main_agent_with_mcp_subs(
                 mcp_cfg=mcp_cfg,
             )
             sub_agent.ability_manager.add(mcp_cfg)
-            Runner.resource_mgr.add_agent(sub_agent.card, lambda a=sub_agent: a, tag=agent.card.id)
+            Runner.resource_mgr.add_agent(
+                sub_agent.card, lambda a=sub_agent: a, tag=agent.card.id
+            )
             agent.ability_manager.add(sub_agent.card)
         else:
             # Non-browser: main agent MCP tools (only add to ability_manager if registration succeeded)
-            print(f"  Registering MCP tools for main agent: {key} at port {config['port']}...")
-            result = await register_mcp_server_to_resource_mgr(mcp_cfg, tag=agent.card.id)
+            print(
+                f"  Registering MCP tools for main agent: {key} at port {config['port']}..."
+            )
+            result = await register_mcp_server_to_resource_mgr(
+                mcp_cfg, tag=agent.card.id
+            )
             if result is not None and getattr(result, "is_ok", lambda: False)():
                 agent.ability_manager.add(mcp_cfg)
             else:
-                err = getattr(result, "value", result) if result is not None else "connection failed"
+                err = (
+                    getattr(result, "value", result)
+                    if result is not None
+                    else "connection failed"
+                )
                 print(f"  [WARN] Skipping {key} (MCP server not available): {err}")
 
     return agent
@@ -400,13 +443,17 @@ async def build_main_agent_with_mcp_subs(
 async def main():
     # Start the runner first (required for MCP resource manager)
     await Runner.start()
-    
+
     # Get credentials from environment (OpenRouter or OpenAI)
     # When MODEL_PROVIDER=openrouter, use OpenRouter key/base; otherwise OpenAI.
     model_provider = (os.getenv("MODEL_PROVIDER") or "OpenAI").strip().lower()
     if model_provider == "openrouter":
-        api_key = (os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY") or "").strip()
-        api_base = (os.getenv("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1").strip()
+        api_key = (
+            os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
+        ).strip()
+        api_base = (
+            os.getenv("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1"
+        ).strip()
         model_name = (os.getenv("MODEL_NAME") or "anthropic/claude-sonnet-4").strip()
         # openjiuwen Model only accepts OpenAI, SiliconFlow, DashScope; OpenRouter is OpenAI-compatible
         provider = "OpenAI"
@@ -448,16 +495,16 @@ async def main():
         model_name=model_name,
         mcp_host=mcp_host,
     )
-    
+
     print("\nDiscovering available tools and sub-agents...")
     tools = await agent.ability_manager.list_tool_info()
     print(f"✅ Main agent has {len(tools)} capabilities\n")
-    
+
     # Show available capabilities
     print("Main agent capabilities:")
     for tool in tools:
-        tool_name = getattr(tool, 'name', 'unknown')
-        tool_desc = getattr(tool, 'description', '')[:100]
+        tool_name = getattr(tool, "name", "unknown")
+        tool_desc = getattr(tool, "description", "")[:100]
         print(f"  - {tool_name}: {tool_desc}")
     print()
 
@@ -469,15 +516,17 @@ async def main():
     Reply with the name of the roaster that sits in that position.
     """
     print(f"Test Query: {query}\n")
-    print("Running main agent (will call MCP tools or delegate to sub-agent as needed)...\n")
-    
+    print(
+        "Running main agent (will call MCP tools or delegate to sub-agent as needed)...\n"
+    )
+
     result = await agent.invoke({"query": query}, session=None)
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("FINAL RESULT")
-    print("="*70)
+    print("=" * 70)
     print(result)
-    print("="*70)
+    print("=" * 70)
 
 
 if __name__ == "__main__":
@@ -485,7 +534,10 @@ if __name__ == "__main__":
         asyncio.run(main())
     except RuntimeError as e:
         # Swallow the specific MCP/anyio shutdown bug so tests can continue
-        if "Attempted to exit cancel scope in a different task than it was entered in" in str(e):
+        if (
+            "Attempted to exit cancel scope in a different task than it was entered in"
+            in str(e)
+        ):
             print(f"Ignoring MCP shutdown error: {e}", file=sys.stderr)
         else:
             # Re-raise anything else so real errors still fail

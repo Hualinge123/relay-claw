@@ -37,7 +37,9 @@ class StreamableHttpClient(McpClient):
                 auth_headers=auth_headers or {},
                 auth_query_params=auth_query_params or {},
             )
-            logger.info("Using custom header and query authorization for Streamable HTTP client")
+            logger.info(
+                "Using custom header and query authorization for Streamable HTTP client"
+            )
         else:
             self._auth_provider = None
 
@@ -64,7 +66,9 @@ class StreamableHttpClient(McpClient):
         async with self._reconnect_lock:
             return await self.connect(retry_times=1, timeout=timeout)
 
-    async def connect(self, *, timeout: float = NO_TIMEOUT, retry_times: int = 1) -> bool:
+    async def connect(
+        self, *, timeout: float = NO_TIMEOUT, retry_times: int = 1
+    ) -> bool:
         from mcp import ClientSession
         from mcp.client.streamable_http import streamablehttp_client
 
@@ -78,13 +82,19 @@ class StreamableHttpClient(McpClient):
                     timeout=actual_timeout,
                     auth=self._auth_provider,
                 )
-                self._read, self._write, self._get_session_id = await self._exit_stack.enter_async_context(self._client)
+                self._read, self._write, self._get_session_id = (
+                    await self._exit_stack.enter_async_context(self._client)
+                )
                 self._session = await self._exit_stack.enter_async_context(
                     ClientSession(self._read, self._write, sampling_callback=None)
                 )
-                await asyncio.wait_for(self._session.initialize(), timeout=actual_timeout)
+                await asyncio.wait_for(
+                    self._session.initialize(), timeout=actual_timeout
+                )
                 self._is_disconnected = False
-                logger.info(f"Streamable HTTP client connected successfully to {self._server_path}")
+                logger.info(
+                    f"Streamable HTTP client connected successfully to {self._server_path}"
+                )
                 return True
             except asyncio.TimeoutError:
                 logger.error(
@@ -137,18 +147,24 @@ class StreamableHttpClient(McpClient):
                     )
                     for tool in tools_response.tools
                 ]
-                logger.info(f"Retrieved {len(tools_list)} tools from Streamable HTTP server")
+                logger.info(
+                    f"Retrieved {len(tools_list)} tools from Streamable HTTP server"
+                )
                 return tools_list
             except Exception as e:
                 if attempt == 0 and self._is_retryable_transport_error(e):
-                    logger.warning(f"Streamable HTTP list_tools retry after reconnect: {e}")
+                    logger.warning(
+                        f"Streamable HTTP list_tools retry after reconnect: {e}"
+                    )
                     connected = await self._reconnect(timeout=timeout)
                     if connected:
                         continue
                 logger.error(f"Failed to list tools via Streamable HTTP: {e}")
                 raise
 
-    async def call_tool(self, tool_name: str, arguments: dict, *, timeout: float = NO_TIMEOUT) -> Any:
+    async def call_tool(
+        self, tool_name: str, arguments: dict, *, timeout: float = NO_TIMEOUT
+    ) -> Any:
         """Call tool via Streamable HTTP."""
         if not self._session:
             connected = await self._reconnect(timeout=timeout)
@@ -157,8 +173,12 @@ class StreamableHttpClient(McpClient):
 
         for attempt in range(2):
             try:
-                logger.info(f"Calling tool '{tool_name}' via Streamable HTTP with arguments: {arguments}")
-                tool_result = await self._session.call_tool(tool_name, arguments=arguments)
+                logger.info(
+                    f"Calling tool '{tool_name}' via Streamable HTTP with arguments: {arguments}"
+                )
+                tool_result = await self._session.call_tool(
+                    tool_name, arguments=arguments
+                )
                 result_content = None
                 if tool_result.content and len(tool_result.content) > 0:
                     last_item = tool_result.content[-1]
@@ -171,14 +191,18 @@ class StreamableHttpClient(McpClient):
                 return result_content
             except Exception as e:
                 if attempt == 0 and self._is_retryable_transport_error(e):
-                    logger.warning(f"Streamable HTTP tool call '{tool_name}' retry after reconnect: {e}")
+                    logger.warning(
+                        f"Streamable HTTP tool call '{tool_name}' retry after reconnect: {e}"
+                    )
                     connected = await self._reconnect(timeout=timeout)
                     if connected:
                         continue
                 logger.error(f"Tool call failed via Streamable HTTP: {e}")
                 raise
 
-    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[Any]:
+    async def get_tool_info(
+        self, tool_name: str, *, timeout: float = NO_TIMEOUT
+    ) -> Optional[Any]:
         """Get specific tool info via Streamable HTTP."""
         tools = await self.list_tools(timeout=timeout)
         for tool in tools:
@@ -194,7 +218,9 @@ class AuthHeaderAndQueryProvider(httpx.Auth):
         self.headers = auth_headers
         self.query_params = auth_query_params
 
-    async def async_auth_flow(self, request: httpx.Request) -> AsyncGenerator[httpx.Request, httpx.Response]:
+    async def async_auth_flow(
+        self, request: httpx.Request
+    ) -> AsyncGenerator[httpx.Request, httpx.Response]:
         if self.headers:
             for key, value in self.headers.items():
                 request.headers[key] = value

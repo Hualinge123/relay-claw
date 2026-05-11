@@ -75,7 +75,9 @@ class WhatsAppChannel(BaseChannel):
         if self.config.auto_start_bridge:
             await self._start_bridge_process()
 
-        self._connect_task = asyncio.create_task(self._reconnect_loop(), name="whatsapp-channel-connect")
+        self._connect_task = asyncio.create_task(
+            self._reconnect_loop(), name="whatsapp-channel-connect"
+        )
         logger.info("WhatsAppChannel started")
 
     async def stop(self) -> None:
@@ -97,14 +99,22 @@ class WhatsAppChannel(BaseChannel):
             self._ws = None
 
         await self._stop_bridge_process()
-        self._set_connection_state("stopped", bridge_ws_connected=False, whatsapp_connected=False, qr_pending=False)
+        self._set_connection_state(
+            "stopped",
+            bridge_ws_connected=False,
+            whatsapp_connected=False,
+            qr_pending=False,
+        )
         logger.info("WhatsAppChannel stopped")
 
     async def send(self, msg: Message) -> None:
         if self._ws is None:
             return
         if not self._whatsapp_connected:
-            logger.warning("WhatsAppChannel send skipped: WhatsApp not connected (state=%s)", self._bridge_state)
+            logger.warning(
+                "WhatsAppChannel send skipped: WhatsApp not connected (state=%s)",
+                self._bridge_state,
+            )
             return
         if (
             not self.config.enable_streaming
@@ -152,7 +162,9 @@ class WhatsAppChannel(BaseChannel):
 
         command = (self.config.bridge_command or "").strip()
         if not command:
-            logger.warning("WhatsAppChannel auto_start_bridge enabled but bridge_command is empty")
+            logger.warning(
+                "WhatsAppChannel auto_start_bridge enabled but bridge_command is empty"
+            )
             return
 
         workdir = (self.config.bridge_workdir or "").strip()
@@ -169,7 +181,9 @@ class WhatsAppChannel(BaseChannel):
                 cwd=workdir,
                 env=env,
             )
-            logger.info("WhatsApp bridge process started: pid=%s", self._bridge_process.pid)
+            logger.info(
+                "WhatsApp bridge process started: pid=%s", self._bridge_process.pid
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning("WhatsApp bridge process start failed: %s", exc)
             self._bridge_process = None
@@ -215,7 +229,9 @@ class WhatsAppChannel(BaseChannel):
         ) as ws:
             self._ws = ws
             self._set_connection_state("bridge_connected", bridge_ws_connected=True)
-            logger.info("WhatsAppChannel connected to bridge: %s", self.config.bridge_ws_url)
+            logger.info(
+                "WhatsAppChannel connected to bridge: %s", self.config.bridge_ws_url
+            )
             try:
                 async for raw in ws:
                     await self._handle_raw_message(raw)
@@ -388,17 +404,25 @@ class WhatsAppChannel(BaseChannel):
             qr_pending=True,
             ts_ms=self._to_int(data.get("ts")),
         )
-        logger.info("WhatsAppChannel QR available; scan it in the bridge terminal to link WhatsApp")
+        logger.info(
+            "WhatsAppChannel QR available; scan it in the bridge terminal to link WhatsApp"
+        )
 
     def _handle_send_result(self, data: dict[str, Any]) -> None:
         ok = bool(data.get("ok"))
         request_id = str(data.get("request_id") or "").strip()
         if ok:
-            logger.debug("WhatsAppChannel send ack: request_id=%s jid=%s", request_id, data.get("jid"))
+            logger.debug(
+                "WhatsAppChannel send ack: request_id=%s jid=%s",
+                request_id,
+                data.get("jid"),
+            )
             return
 
         error = str(data.get("error") or "unknown error").strip()
-        logger.warning("WhatsAppChannel send failed: request_id=%s error=%s", request_id, error)
+        logger.warning(
+            "WhatsAppChannel send failed: request_id=%s error=%s", request_id, error
+        )
         if error == "whatsapp not connected":
             self._set_connection_state(
                 "connecting",
@@ -433,7 +457,14 @@ class WhatsAppChannel(BaseChannel):
             self._qr_pending = qr_pending
         if ts_ms is not None:
             self._last_status_ts_ms = ts_ms
-        if status_code is not None or state in {"open", "connecting", "close", "logged_out", "qr_pending", "stopped"}:
+        if status_code is not None or state in {
+            "open",
+            "connecting",
+            "close",
+            "logged_out",
+            "qr_pending",
+            "stopped",
+        }:
             self._last_status_code = status_code
 
         current = (
@@ -465,7 +496,11 @@ class WhatsAppChannel(BaseChannel):
     @staticmethod
     def _extract_outgoing_text(msg: Message) -> str:
         payload = getattr(msg, "payload", None) or {}
-        if msg.event_type == EventType.HEARTBEAT_RELAY and isinstance(payload, dict) and payload.get("heartbeat"):
+        if (
+            msg.event_type == EventType.HEARTBEAT_RELAY
+            and isinstance(payload, dict)
+            and payload.get("heartbeat")
+        ):
             return str(payload.get("heartbeat"))
 
         if isinstance(payload, dict) and "content" in payload:

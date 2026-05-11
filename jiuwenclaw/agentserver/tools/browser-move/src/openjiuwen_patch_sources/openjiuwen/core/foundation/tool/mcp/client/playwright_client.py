@@ -28,21 +28,30 @@ class PlaywrightClient(McpClient):
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.sse import sse_client
         from mcp.client.stdio import stdio_client
-        
+
         try:
             # Determine client type based on server_path type
             if isinstance(self._server_path, StdioServerParameters):
                 self._client = stdio_client(self._server_path)
-                self._read, self._write = await self._exit_stack.enter_async_context(self._client)
+                self._read, self._write = await self._exit_stack.enter_async_context(
+                    self._client
+                )
                 logger.debug("Using Stdio transport for Playwright client")
-            elif isinstance(self._server_path, str) and self._server_path.startswith(("http://", "https://")):
+            elif isinstance(self._server_path, str) and self._server_path.startswith(
+                ("http://", "https://")
+            ):
                 self._client = sse_client(self._server_path)
-                self._read, self._write = await self._exit_stack.enter_async_context(self._client)
+                self._read, self._write = await self._exit_stack.enter_async_context(
+                    self._client
+                )
                 logger.debug("Using SSE transport for Playwright client")
             else:
-                raise ValueError(f"Unsupported server_path type: {type(self._server_path)}")
+                raise ValueError(
+                    f"Unsupported server_path type: {type(self._server_path)}"
+                )
             self._session = await self._exit_stack.enter_async_context(
-                ClientSession(self._read, self._write, sampling_callback=None))
+                ClientSession(self._read, self._write, sampling_callback=None)
+            )
             await self._session.initialize()
             self._is_disconnected = False
             logger.info("Playwright client connected successfully")
@@ -93,19 +102,25 @@ class PlaywrightClient(McpClient):
                 )
                 for tool in tools_response.tools
             ]
-            logger.info(f"Retrieved {len(tools_list)} browser tools from Playwright server")
+            logger.info(
+                f"Retrieved {len(tools_list)} browser tools from Playwright server"
+            )
             return tools_list
         except Exception as e:
             logger.error(f"Failed to list browser tools: {e}")
             raise
 
-    async def call_tool(self, tool_name: str, arguments: dict, *, timeout: float = NO_TIMEOUT) -> Any:
+    async def call_tool(
+        self, tool_name: str, arguments: dict, *, timeout: float = NO_TIMEOUT
+    ) -> Any:
         """Call browser tool"""
         if not self._session:
             raise RuntimeError("Not connected to Playwright server")
 
         try:
-            logger.info(f"Calling browser tool '{tool_name}' with arguments: {arguments}")
+            logger.info(
+                f"Calling browser tool '{tool_name}' with arguments: {arguments}"
+            )
             tool_result = await self._session.call_tool(tool_name, arguments=arguments)
             result_content = None
             if tool_result.content and len(tool_result.content) > 0:
@@ -121,7 +136,9 @@ class PlaywrightClient(McpClient):
             logger.error(f"Browser tool call failed: {e!r}")
             raise
 
-    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[Any]:
+    async def get_tool_info(
+        self, tool_name: str, *, timeout: float = NO_TIMEOUT
+    ) -> Optional[Any]:
         """Get specific browser tool info"""
         tools = await self.list_tools(timeout=timeout)
         for tool in tools:

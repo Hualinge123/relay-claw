@@ -90,11 +90,11 @@ def build_playwright_mcp_config() -> McpServerConfig:
     args = parse_args(os.getenv("PLAYWRIGHT_MCP_ARGS", "-y @playwright/mcp@latest"))
     cwd = resolve_playwright_mcp_cwd()
     driver_mode = (os.getenv("BROWSER_DRIVER") or "").strip().lower()
-    extension_mode = driver_mode == "extension" or _is_truthy_env(os.getenv("PLAYWRIGHT_MCP_EXTENSION") or "")
+    extension_mode = driver_mode == "extension" or _is_truthy_env(
+        os.getenv("PLAYWRIGHT_MCP_EXTENSION") or ""
+    )
     timeout_raw = (
-        os.getenv("PLAYWRIGHT_MCP_TIMEOUT_S")
-        or os.getenv("BROWSER_TIMEOUT_S")
-        or "180"
+        os.getenv("PLAYWRIGHT_MCP_TIMEOUT_S") or os.getenv("BROWSER_TIMEOUT_S") or "180"
     )
 
     env_map: Dict[str, str] = {}
@@ -127,15 +127,23 @@ def build_playwright_mcp_config() -> McpServerConfig:
             args.append("--extension")
     else:
         # CDP support for official Playwright MCP server.
-        cdp_endpoint = _first_non_empty_env("PLAYWRIGHT_MCP_CDP_ENDPOINT", "PLAYWRIGHT_CDP_URL")
-        cdp_headers = _first_non_empty_env("PLAYWRIGHT_MCP_CDP_HEADERS", "PLAYWRIGHT_CDP_HEADERS")
-        cdp_timeout = _first_non_empty_env("PLAYWRIGHT_MCP_CDP_TIMEOUT", "PLAYWRIGHT_CDP_TIMEOUT_MS")
+        cdp_endpoint = _first_non_empty_env(
+            "PLAYWRIGHT_MCP_CDP_ENDPOINT", "PLAYWRIGHT_CDP_URL"
+        )
+        cdp_headers = _first_non_empty_env(
+            "PLAYWRIGHT_MCP_CDP_HEADERS", "PLAYWRIGHT_CDP_HEADERS"
+        )
+        cdp_timeout = _first_non_empty_env(
+            "PLAYWRIGHT_MCP_CDP_TIMEOUT", "PLAYWRIGHT_CDP_TIMEOUT_MS"
+        )
         browser_name = _first_non_empty_env("PLAYWRIGHT_MCP_BROWSER")
         device_name = _first_non_empty_env("PLAYWRIGHT_MCP_DEVICE")
 
         if cdp_endpoint:
             if device_name:
-                raise ValueError("PLAYWRIGHT_MCP_DEVICE is not supported with CDP endpoint mode.")
+                raise ValueError(
+                    "PLAYWRIGHT_MCP_DEVICE is not supported with CDP endpoint mode."
+                )
             env_map["PLAYWRIGHT_MCP_CDP_ENDPOINT"] = cdp_endpoint
             if not browser_name:
                 # CDP mode is Chromium-only.
@@ -172,7 +180,12 @@ def resolve_model_settings() -> Tuple[str, str, str]:
     provider_mode = _normalize_provider(
         _first_non_empty_env("MODEL_PROVIDER", "MODEL_CLIENT_PROVIDER")
     )
-    if provider_mode and provider_mode not in {"openai", "openrouter", "siliconflow", "dashscope"}:
+    if provider_mode and provider_mode not in {
+        "openai",
+        "openrouter",
+        "siliconflow",
+        "dashscope",
+    }:
         raise ValueError(
             f"Unsupported MODEL_PROVIDER '{provider_mode}'. "
             "Supported: openai, openrouter, siliconflow, dashscope."
@@ -215,12 +228,15 @@ def resolve_model_settings() -> Tuple[str, str, str]:
             "OPENROUTER_API_KEY",
             "OPENAI_API_KEY",
         )
-        api_base = _first_non_empty_env(
-            "API_BASE",
-            "MODEL_API_BASE",
-            "OPENROUTER_BASE_URL",
-            "OPENROUTER_API_BASE",
-        ) or "https://openrouter.ai/api/v1"
+        api_base = (
+            _first_non_empty_env(
+                "API_BASE",
+                "MODEL_API_BASE",
+                "OPENROUTER_BASE_URL",
+                "OPENROUTER_API_BASE",
+            )
+            or "https://openrouter.ai/api/v1"
+        )
     elif provider == "siliconflow":
         api_key = _first_non_empty_env(
             "API_KEY",
@@ -229,12 +245,15 @@ def resolve_model_settings() -> Tuple[str, str, str]:
             "OPENAI_API_KEY",
             "OPENROUTER_API_KEY",
         )
-        api_base = _first_non_empty_env(
-            "API_BASE",
-            "MODEL_API_BASE",
-            "SILICONFLOW_BASE_URL",
-            "SILICONFLOW_API_BASE",
-        ) or "https://api.siliconflow.cn/v1"
+        api_base = (
+            _first_non_empty_env(
+                "API_BASE",
+                "MODEL_API_BASE",
+                "SILICONFLOW_BASE_URL",
+                "SILICONFLOW_API_BASE",
+            )
+            or "https://api.siliconflow.cn/v1"
+        )
     elif provider == "dashscope":
         api_key = _first_non_empty_env(
             "API_KEY",
@@ -243,12 +262,15 @@ def resolve_model_settings() -> Tuple[str, str, str]:
             "OPENAI_API_KEY",
             "OPENROUTER_API_KEY",
         )
-        api_base = _first_non_empty_env(
-            "API_BASE",
-            "MODEL_API_BASE",
-            "DASHSCOPE_BASE_URL",
-            "DASHSCOPE_API_BASE",
-        ) or "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        api_base = (
+            _first_non_empty_env(
+                "API_BASE",
+                "MODEL_API_BASE",
+                "DASHSCOPE_BASE_URL",
+                "DASHSCOPE_API_BASE",
+            )
+            or "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        )
     else:
         api_key = _first_non_empty_env(
             "API_KEY",
@@ -256,10 +278,13 @@ def resolve_model_settings() -> Tuple[str, str, str]:
             "OPENAI_API_KEY",
             "OPENROUTER_API_KEY",
         )
-        api_base = _first_non_empty_env(
-            "API_BASE",
-            "MODEL_API_BASE",
-            "OPENAI_BASE_URL",
-            "OPENAI_API_BASE",
-        ) or "https://api.openai.com/v1"
+        api_base = (
+            _first_non_empty_env(
+                "API_BASE",
+                "MODEL_API_BASE",
+                "OPENAI_BASE_URL",
+                "OPENAI_API_BASE",
+            )
+            or "https://api.openai.com/v1"
+        )
     return provider, api_key, api_base

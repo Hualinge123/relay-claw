@@ -26,6 +26,7 @@ Supported intent types (see ``IntentType`` for details):
 - SWITCH_TASK
 - UNKNOWN_TASK
 """
+
 import asyncio
 import json
 from abc import ABC, abstractmethod
@@ -34,15 +35,30 @@ from typing import TYPE_CHECKING, List
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.context_engine import ContextEngine, ModelContext
-from openjiuwen.core.controller import DataFrame, TextDataFrame, FileDataFrame, JsonDataFrame, IntentType, TaskStatus, \
-    Task
+from openjiuwen.core.controller import (
+    DataFrame,
+    TextDataFrame,
+    FileDataFrame,
+    JsonDataFrame,
+    IntentType,
+    TaskStatus,
+    Task,
+)
 from openjiuwen.core.controller.base import ControllerConfig
-from openjiuwen.core.controller.modules.event_handler import EventHandler, EventHandlerInput
+from openjiuwen.core.controller.modules.event_handler import (
+    EventHandler,
+    EventHandlerInput,
+)
 from openjiuwen.core.controller.modules.intent_toolkits import IntentToolkits
 from openjiuwen.core.controller.modules.task_manager import TaskManager, TaskFilter
 from openjiuwen.core.controller.schema import Intent
-from openjiuwen.core.controller.schema.event import Event, InputEvent, TaskFailedEvent, TaskCompletionEvent, \
-    TaskInteractionEvent
+from openjiuwen.core.controller.schema.event import (
+    Event,
+    InputEvent,
+    TaskFailedEvent,
+    TaskCompletionEvent,
+    TaskInteractionEvent,
+)
 from openjiuwen.core.foundation.llm import SystemMessage, UserMessage, ToolMessage
 from openjiuwen.core.session.agent import Session
 from openjiuwen.core.single_agent.ability_manager import AbilityManager
@@ -53,12 +69,13 @@ class IntentRecognizer:
 
     负责识别用户输入中的意图，将事件转换为Intent对象。
     """
+
     def __init__(
-            self,
-            config: ControllerConfig,
-            task_manager: TaskManager,
-            ability_manager: AbilityManager,
-            context_engine: ContextEngine
+        self,
+        config: ControllerConfig,
+        task_manager: TaskManager,
+        ability_manager: AbilityManager,
+        context_engine: ContextEngine,
     ):
         """初始化意图识别器
 
@@ -106,14 +123,14 @@ class IntentRecognizer:
         if tasks:
             for task in tasks:
                 task_prompt.append(
-                    f"## Task id: {task.task_id}\n### Task description: {task.description}\nStatus: {task.status}\n")
+                    f"## Task id: {task.task_id}\n### Task description: {task.description}\nStatus: {task.status}\n"
+                )
         else:
             task_prompt.append("无")
         task_prompt = "\n".join(task_prompt)
 
         prompt = self._user_prompt_template.format(
-            task_descriptions=task_prompt,
-            query=query
+            task_descriptions=task_prompt, query=query
         )
         return UserMessage(content=prompt)
 
@@ -143,24 +160,26 @@ class IntentRecognizer:
         if files or jsons:
             raise build_error(
                 status=StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
-                error_msg="Inputs with files or jsons are not supported for intent recognition."
+                error_msg="Inputs with files or jsons are not supported for intent recognition.",
             )
 
         if len(texts) > 1:
             raise build_error(
                 status=StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
-                error_msg="Multiple inputs are not supported for intent recognition."
+                error_msg="Multiple inputs are not supported for intent recognition.",
             )
 
         from openjiuwen.core.runner import Runner
+
         model = await Runner.resource_mgr.get_model(model_id=self._config.intent_llm_id)
         user_message = await self._prepare_user_message(query=texts[0].text)
         await context.add_messages(user_message)
         toolkits = IntentToolkits(event, self._config.intent_confidence_threshold)
         max_message_len = 50
         response = await model.invoke(
-            messages=[self._system_message] + context.get_messages(size=max_message_len),
-            tools=toolkits.get_openai_tool_schemas(self._config.intent_type_list)
+            messages=[self._system_message]
+            + context.get_messages(size=max_message_len),
+            tools=toolkits.get_openai_tool_schemas(self._config.intent_type_list),
         )
         await context.add_messages(response)
 
@@ -173,13 +192,13 @@ class IntentRecognizer:
                     instance = getattr(toolkits, tool_call.name)
                     intent, result = await instance(**json.loads(tool_call.arguments))
                     intents.append(intent)
-                    await context.add_messages(ToolMessage(
-                        tool_call_id=tool_call.id,
-                        content=result
-                    ))
+                    await context.add_messages(
+                        ToolMessage(tool_call_id=tool_call.id, content=result)
+                    )
                 response = await model.invoke(
-                    messages=[self._system_message] + context.get_messages(size=max_message_len),
-                    tools=toolkits.get_openai_tool_schemas()
+                    messages=[self._system_message]
+                    + context.get_messages(size=max_message_len),
+                    tools=toolkits.get_openai_tool_schemas(),
                 )
                 await context.add_messages(response)
 
@@ -195,10 +214,7 @@ class EventHandlerWithIntentRecognition(EventHandler):
     def __init__(self):
         super().__init__()
         self.recognizer = IntentRecognizer(
-            self._config,
-            self.task_manager,
-            self.ability_manager,
-            self.context_engine
+            self._config, self.task_manager, self.ability_manager, self.context_engine
         )
 
     async def handle_input(self, inputs: EventHandlerInput):
@@ -213,21 +229,53 @@ class EventHandlerWithIntentRecognition(EventHandler):
         tasks = []
         for intent in intents:
             if intent.intent_type == IntentType.CREATE_TASK:
-                tasks.append(asyncio.create_task(self._process_create_task_intent(intent, inputs.session)))
+                tasks.append(
+                    asyncio.create_task(
+                        self._process_create_task_intent(intent, inputs.session)
+                    )
+                )
             elif intent.intent_type == IntentType.PAUSE_TASK:
-                tasks.append(asyncio.create_task(self._process_pause_task_intent(intent, inputs.session)))
+                tasks.append(
+                    asyncio.create_task(
+                        self._process_pause_task_intent(intent, inputs.session)
+                    )
+                )
             elif intent.intent_type == IntentType.RESUME_TASK:
-                tasks.append(asyncio.create_task(self._process_resume_task_intent(intent, inputs.session)))
+                tasks.append(
+                    asyncio.create_task(
+                        self._process_resume_task_intent(intent, inputs.session)
+                    )
+                )
             elif intent.intent_type == IntentType.CONTINUE_TASK:
-                tasks.append(asyncio.create_task(self._process_continue_task_intent(intent, inputs.session)))
+                tasks.append(
+                    asyncio.create_task(
+                        self._process_continue_task_intent(intent, inputs.session)
+                    )
+                )
             elif intent.intent_type == IntentType.SUPPLEMENT_TASK:
-                tasks.append(asyncio.create_task(self._process_supplement_task_intent(intent, inputs.session)))
+                tasks.append(
+                    asyncio.create_task(
+                        self._process_supplement_task_intent(intent, inputs.session)
+                    )
+                )
             elif intent.intent_type == IntentType.CANCEL_TASK:
-                tasks.append(asyncio.create_task(self._process_cancel_task_intent(intent, inputs.session)))
+                tasks.append(
+                    asyncio.create_task(
+                        self._process_cancel_task_intent(intent, inputs.session)
+                    )
+                )
             elif intent.intent_type == IntentType.MODIFY_TASK:
-                tasks.append(asyncio.create_task(self._process_modify_task_intent(intent, inputs.session)))
+                tasks.append(
+                    asyncio.create_task(
+                        self._process_modify_task_intent(intent, inputs.session)
+                    )
+                )
             else:
-                tasks.append(asyncio.create_task(self._process_unknown_task_intent(intent, inputs.session)))
+                tasks.append(
+                    asyncio.create_task(
+                        self._process_unknown_task_intent(intent, inputs.session)
+                    )
+                )
         return await asyncio.gather(*tasks)
 
     async def handle_task_interaction(self, inputs: EventHandlerInput):
@@ -241,11 +289,9 @@ class EventHandlerWithIntentRecognition(EventHandler):
         if not isinstance(inputs.event, TaskInteractionEvent):
             raise build_error(
                 status=StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
-                error_msg=f"Input Event has to be type of TaskInteractionEvent, not {type(inputs.event)}"
+                error_msg=f"Input Event has to be type of TaskInteractionEvent, not {type(inputs.event)}",
             )
-        await inputs.session.write_stream({
-                "interaction": inputs.event.interaction
-            })
+        await inputs.session.write_stream({"interaction": inputs.event.interaction})
 
     async def handle_task_completion(self, inputs: EventHandlerInput):
         """处理任务完成事件
@@ -258,11 +304,9 @@ class EventHandlerWithIntentRecognition(EventHandler):
         if not isinstance(inputs.event, TaskCompletionEvent):
             raise build_error(
                 status=StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
-                error_msg=f"Input Event has to be type of TaskCompletionEvent, not {type(inputs.event)}"
+                error_msg=f"Input Event has to be type of TaskCompletionEvent, not {type(inputs.event)}",
             )
-        await inputs.session.write_stream({
-                "result": inputs.event.task_result
-            })
+        await inputs.session.write_stream({"result": inputs.event.task_result})
 
     async def handle_task_failed(self, inputs: EventHandlerInput):
         """处理任务失败事件
@@ -275,11 +319,9 @@ class EventHandlerWithIntentRecognition(EventHandler):
         if not isinstance(inputs.event, TaskFailedEvent):
             raise build_error(
                 status=StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
-                error_msg=f"Input Event has to be type of TaskFailedEvent, not {type(inputs.event)}"
+                error_msg=f"Input Event has to be type of TaskFailedEvent, not {type(inputs.event)}",
             )
-        await inputs.session.write_stream({
-                "error_message": inputs.event.error_message
-            })
+        await inputs.session.write_stream({"error_message": inputs.event.error_message})
 
     async def _process_create_task_intent(self, intent: Intent, session: Session):
         """处理创建任务意图
@@ -324,7 +366,9 @@ class EventHandlerWithIntentRecognition(EventHandler):
             intent: 意图
             session: Session
         """
-        task = await self.task_manager.get_task(TaskFilter(task_id=intent.target_task_id))
+        task = await self.task_manager.get_task(
+            TaskFilter(task_id=intent.target_task_id)
+        )
         task = task[0]
         if task.status == TaskStatus.PAUSED:
             task.status = TaskStatus.SUBMITTED
@@ -340,7 +384,7 @@ class EventHandlerWithIntentRecognition(EventHandler):
         if not isinstance(intent.event, InputEvent):
             raise build_error(
                 status=StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
-                error_msg=f"Input Event has to be type of InputEvent, not {type(intent.event)}"
+                error_msg=f"Input Event has to be type of InputEvent, not {type(intent.event)}",
             )
         previous_events = []
         context_ids = []
@@ -352,10 +396,14 @@ class EventHandlerWithIntentRecognition(EventHandler):
                 context_ids.append(context_id)
         event: InputEvent = intent.event
         event.input_data.append(
-            JsonDataFrame(data={
-                context_id: (await self._context_engine.get_context(context_id)).get_messages()
-                for context_id in context_ids
-            })
+            JsonDataFrame(
+                data={
+                    context_id: (
+                        await self._context_engine.get_context(context_id)
+                    ).get_messages()
+                    for context_id in context_ids
+                }
+            )
         )
         previous_events.append(event)
         task = Task(
@@ -382,10 +430,12 @@ class EventHandlerWithIntentRecognition(EventHandler):
         if intent.intent_type != IntentType.SUPPLEMENT_TASK:
             raise build_error(
                 status=StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
-                error_msg=f"Input Event has to be type of SUPPLEMENT_TASK, not {type(intent.event)}"
+                error_msg=f"Input Event has to be type of SUPPLEMENT_TASK, not {type(intent.event)}",
             )
 
-        tasks = await self.task_manager.get_task(TaskFilter(task_id=intent.target_task_id))
+        tasks = await self.task_manager.get_task(
+            TaskFilter(task_id=intent.target_task_id)
+        )
         task = tasks[0]
         await self.task_scheduler.pause_task(intent.target_task_id)
         task.description += "\n\n任务补充信息:\n{}".format(intent.supplementary_info)
@@ -404,7 +454,7 @@ class EventHandlerWithIntentRecognition(EventHandler):
         if intent.intent_type != IntentType.CANCEL_TASK:
             raise build_error(
                 status=StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
-                error_msg=f"Input event has to be type of CANCEL_TASK, not {type(intent.event)}"
+                error_msg=f"Input event has to be type of CANCEL_TASK, not {type(intent.event)}",
             )
 
         await self.task_scheduler.cancel_task(intent.target_task_id)
@@ -421,10 +471,12 @@ class EventHandlerWithIntentRecognition(EventHandler):
         if intent.intent_type != IntentType.MODIFY_TASK:
             raise build_error(
                 status=StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
-                error_msg=f"Input Event has to be type of InputEvent, not {type(intent.event)}"
+                error_msg=f"Input Event has to be type of InputEvent, not {type(intent.event)}",
             )
         await self.task_scheduler.cancel_task(intent.target_task_id)
-        task = await self.task_manager.get_task(TaskFilter(task_id=intent.target_task_id))
+        task = await self.task_manager.get_task(
+            TaskFilter(task_id=intent.target_task_id)
+        )
         task[0].description = intent.target_task_description
         if not isinstance(task[0].inputs, list):
             task[0].inputs = [intent.event]
@@ -444,6 +496,6 @@ class EventHandlerWithIntentRecognition(EventHandler):
         """
         if intent.intent_type != IntentType.UNKNOWN_TASK:
             raise ValueError
-        await session.write_stream({
-                "clarification_prompt": intent.clarification_prompt
-            })
+        await session.write_stream(
+            {"clarification_prompt": intent.clarification_prompt}
+        )

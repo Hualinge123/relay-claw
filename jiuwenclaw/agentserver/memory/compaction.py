@@ -23,6 +23,7 @@ COMPRESSED_SUMMARY_FILE = "compressed_summary.json"
 
 class MessageStatus(Enum):
     """Message compression status marks."""
+
     PENDING = "pending"
     ARCHIVED = "archived"
 
@@ -30,6 +31,7 @@ class MessageStatus(Enum):
 @dataclass
 class MessageRecord:
     """Message with compression tracking."""
+
     msg_id: str
     role: str
     content: str
@@ -42,7 +44,7 @@ class MessageRecord:
             "role": self.role,
             "content": self.content,
             "created_at": self.created_at,
-            "status": self.status.value
+            "status": self.status.value,
         }
 
     @classmethod
@@ -52,7 +54,7 @@ class MessageRecord:
             role=data["role"],
             content=data["content"],
             created_at=data.get("created_at", ""),
-            status=MessageStatus(data.get("status", "pending"))
+            status=MessageStatus(data.get("status", "pending")),
         )
 
 
@@ -92,7 +94,9 @@ class MessageRepository:
     def __init__(self, workspace_dir: str):
         self.workspace_dir = workspace_dir
         self.store_path = os.path.join(workspace_dir, "memory", "messages.json")
-        self.summary_path = os.path.join(workspace_dir, "memory", COMPRESSED_SUMMARY_FILE)
+        self.summary_path = os.path.join(
+            workspace_dir, "memory", COMPRESSED_SUMMARY_FILE
+        )
         self._records: List[MessageRecord] = []
         self._archived_summary: str = ""
         self._load()
@@ -102,7 +106,9 @@ class MessageRepository:
             try:
                 with open(self.store_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    self._records = [MessageRecord.from_dict(m) for m in data.get("records", [])]
+                    self._records = [
+                        MessageRecord.from_dict(m) for m in data.get("records", [])
+                    ]
             except Exception as e:
                 logger.warning(f"Failed to load messages: {e}")
 
@@ -118,20 +124,30 @@ class MessageRepository:
         os.makedirs(os.path.dirname(self.store_path), exist_ok=True)
 
         with open(self.store_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "records": [r.to_dict() for r in self._records]
-            }, f, ensure_ascii=False, indent=2)
+            json.dump(
+                {"records": [r.to_dict() for r in self._records]},
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
 
     def _save_summary(self) -> None:
         os.makedirs(os.path.dirname(self.summary_path), exist_ok=True)
 
         with open(self.summary_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "summary": self._archived_summary,
-                "updated_at": datetime.now().isoformat()
-            }, f, ensure_ascii=False, indent=2)
+            json.dump(
+                {
+                    "summary": self._archived_summary,
+                    "updated_at": datetime.now().isoformat(),
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
 
-    def add_record(self, role: str, content: str, msg_id: Optional[str] = None) -> MessageRecord:
+    def add_record(
+        self, role: str, content: str, msg_id: Optional[str] = None
+    ) -> MessageRecord:
         import uuid
 
         record = MessageRecord(
@@ -139,25 +155,22 @@ class MessageRepository:
             role=role,
             content=content,
             created_at=datetime.now().isoformat(),
-            status=MessageStatus.PENDING
+            status=MessageStatus.PENDING,
         )
         self._records.append(record)
         self._save()
         return record
 
     def get_records(
-            self,
-            exclude_status: Optional[MessageStatus] = None,
-            include_status: Optional[MessageStatus] = None,
-            prepend_summary: bool = True
+        self,
+        exclude_status: Optional[MessageStatus] = None,
+        include_status: Optional[MessageStatus] = None,
+        prepend_summary: bool = True,
     ) -> List[Dict[str, Any]]:
         result = []
 
         if prepend_summary and self._archived_summary:
-            result.append({
-                "role": "system",
-                "content": self._archived_summary
-            })
+            result.append({"role": "system", "content": self._archived_summary})
 
         for rec in self._records:
             if exclude_status and rec.status == exclude_status:
@@ -165,12 +178,14 @@ class MessageRepository:
             if include_status and rec.status != include_status:
                 continue
 
-            result.append({
-                "id": rec.msg_id,
-                "role": rec.role,
-                "content": rec.content,
-                "timestamp": rec.created_at
-            })
+            result.append(
+                {
+                    "id": rec.msg_id,
+                    "role": rec.role,
+                    "content": rec.content,
+                    "timestamp": rec.created_at,
+                }
+            )
 
         return result
 
@@ -213,10 +228,10 @@ class ContextCompactionManager:
     """Manages automatic message compression."""
 
     def __init__(
-            self,
-            workspace_dir: str,
-            threshold: int = CONTEXT_COMPACT_THRESHOLD,
-            keep_recent: int = CONTEXT_COMPACT_KEEP_RECENT
+        self,
+        workspace_dir: str,
+        threshold: int = CONTEXT_COMPACT_THRESHOLD,
+        keep_recent: int = CONTEXT_COMPACT_KEEP_RECENT,
     ):
         self.workspace_dir = workspace_dir
         self.threshold = threshold
@@ -241,15 +256,16 @@ class ContextCompactionManager:
         if len(messages) <= self.keep_recent:
             return False
 
-        messages_to_archive = messages[:-self.keep_recent] if self.keep_recent > 0 else messages
+        messages_to_archive = (
+            messages[: -self.keep_recent] if self.keep_recent > 0 else messages
+        )
         estimated_tokens = TokenEstimator.estimate_messages(messages_to_archive)
 
         return estimated_tokens > self.threshold
 
     async def check_and_compact(self, memory_manager) -> Optional[str]:
         messages = self.message_repo.get_records(
-            exclude_status=MessageStatus.ARCHIVED,
-            prepend_summary=False
+            exclude_status=MessageStatus.ARCHIVED, prepend_summary=False
         )
 
         if not self.should_compact(messages):
@@ -264,14 +280,15 @@ class ContextCompactionManager:
             logger.debug("Not enough messages to compact")
             return ""
 
-        records_to_archive = records[:-self.keep_recent] if self.keep_recent > 0 else records
-        records_to_keep = records[-self.keep_recent:] if self.keep_recent > 0 else []
+        records_to_archive = (
+            records[: -self.keep_recent] if self.keep_recent > 0 else records
+        )
+        records_to_keep = records[-self.keep_recent :] if self.keep_recent > 0 else []
 
-        archive_dicts = [{
-            "role": r.role,
-            "content": r.content,
-            "timestamp": r.created_at
-        } for r in records_to_archive]
+        archive_dicts = [
+            {"role": r.role, "content": r.content, "timestamp": r.created_at}
+            for r in records_to_archive
+        ]
 
         estimated_tokens = TokenEstimator.estimate_messages(archive_dicts)
 
@@ -281,27 +298,28 @@ class ContextCompactionManager:
             estimated_tokens,
             self.threshold,
             len(records_to_archive),
-            len(records_to_keep)
+            len(records_to_keep),
         )
 
         prior_summary = self.message_repo.get_archived_summary()
 
         from .summarizer import compact_memory
+
         archived = await compact_memory(
-            messages=archive_dicts,
-            prior_summary=prior_summary
+            messages=archive_dicts, prior_summary=prior_summary
         )
 
         self.message_repo.update_archived_summary(archived)
 
         archived_ids = [r.msg_id for r in records_to_archive]
-        marked_count = self.message_repo.mark_records(archived_ids, MessageStatus.ARCHIVED)
+        marked_count = self.message_repo.mark_records(
+            archived_ids, MessageStatus.ARCHIVED
+        )
 
         logger.info(f"Marked {marked_count} messages as archived")
 
         memory_manager.add_async_summary_task(
-            messages=archive_dicts,
-            date=datetime.now().strftime("%Y-%m-%d")
+            messages=archive_dicts, date=datetime.now().strftime("%Y-%m-%d")
         )
 
         await self._notify_compaction(archived, len(records_to_archive))
@@ -313,8 +331,7 @@ class ContextCompactionManager:
 
     def get_messages_for_context(self) -> List[Dict[str, Any]]:
         return self.message_repo.get_records(
-            exclude_status=MessageStatus.ARCHIVED,
-            prepend_summary=True
+            exclude_status=MessageStatus.ARCHIVED, prepend_summary=True
         )
 
     def get_archived_summary(self) -> str:
@@ -327,5 +344,5 @@ class ContextCompactionManager:
             "pending_records": self.message_repo.pending_count,
             "threshold": self.threshold,
             "keep_recent": self.keep_recent,
-            "has_archived_summary": bool(self.message_repo.get_archived_summary())
+            "has_archived_summary": bool(self.message_repo.get_archived_summary()),
         }

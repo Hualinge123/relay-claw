@@ -194,9 +194,7 @@ class EmailCollector:
             imap_date = date_obj.strftime("%d-%b-%Y")
 
             # 获取今日收到的邮件
-            status, messages = self._connection.search(
-                None, f'(ON "{imap_date}")'
-            )
+            status, messages = self._connection.search(None, f'(ON "{imap_date}")')
 
             if status == "OK" and messages[0]:
                 today_message_ids = messages[0].split()

@@ -111,7 +111,9 @@ class OllamaEmbedding(Embedding):
                     # If event loop is running, use default value
                     self._dimension = 768
                 else:
-                    test_embedding = loop.run_until_complete(self._get_ollama_embedding("X"))
+                    test_embedding = loop.run_until_complete(
+                        self._get_ollama_embedding("X")
+                    )
                     if test_embedding:
                         self._dimension = len(test_embedding[0])
                     else:
@@ -124,7 +126,8 @@ class OllamaEmbedding(Embedding):
     async def embed_query(self, text: str, **kwargs) -> List[float]:
         if not text.strip():
             raise build_error(
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID, error_msg="Empty text provided for embedding"
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID,
+                error_msg="Empty text provided for embedding",
             )
 
         embeddings = await self._get_embeddings(text, **kwargs)
@@ -137,9 +140,14 @@ class OllamaEmbedding(Embedding):
         **kwargs,
     ) -> List[List[float]]:
         if not texts:
-            raise build_error(StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID, error_msg="Empty texts list provided")
+            raise build_error(
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID,
+                error_msg="Empty texts list provided",
+            )
         callback_cls = kwargs.pop("callback_cls", BaseCallback)
-        if not isinstance(callback_cls, type) or not issubclass(callback_cls, BaseCallback):
+        if not isinstance(callback_cls, type) or not issubclass(
+            callback_cls, BaseCallback
+        ):
             raise build_error(
                 StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID,
                 error_msg=(
@@ -158,7 +166,8 @@ class OllamaEmbedding(Embedding):
 
         if not non_empty_texts:
             raise build_error(
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID, error_msg="All texts are empty after filtering"
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID,
+                error_msg="All texts are empty after filtering",
             )
 
         # Respect caller batch_size but never exceed configured max_batch_size
@@ -185,7 +194,9 @@ class OllamaEmbedding(Embedding):
 
         return all_embeddings
 
-    async def _get_embeddings(self, text: str | List[str], **kwargs) -> List[List[float]]:
+    async def _get_embeddings(
+        self, text: str | List[str], **kwargs
+    ) -> List[List[float]]:
         """Get embedding vectors"""
 
         payload = {
@@ -224,10 +235,13 @@ class OllamaEmbedding(Embedding):
                 logger.warning(f"Attempt {attempt + 1} failed, retrying: {e}")
 
         raise build_error(
-            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED, error_msg="This should never be reached"
+            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED,
+            error_msg="This should never be reached",
         )
 
-    def _get_embeddings_sync(self, text: str | List[str], **kwargs) -> List[List[float]]:
+    def _get_embeddings_sync(
+        self, text: str | List[str], **kwargs
+    ) -> List[List[float]]:
         """Get embedding vectors"""
 
         payload = {
@@ -265,5 +279,6 @@ class OllamaEmbedding(Embedding):
                 logger.warning(f"Attempt {attempt + 1} failed, retrying: {e}")
 
         raise build_error(
-            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED, error_msg="This should never be reached"
+            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED,
+            error_msg="This should never be reached",
         )

@@ -92,14 +92,23 @@ class TodoToolkit:
                 if len(parts) >= self.PARTS_MIN_COUNT_WITH_RESULT:
                     result = parts[self.PARTS_INDEX_RESULT]
                 # 解析行："- [ ] 1. xxx" / "- [x] 1. xxx"
-                rest = line.replace("- [x]", "").replace("- [-]", "").replace("- [ ]", "").strip()
+                rest = (
+                    line.replace("- [x]", "")
+                    .replace("- [-]", "")
+                    .replace("- [ ]", "")
+                    .strip()
+                )
                 if "." in rest:
                     idx_str, _, task_text = rest.partition(".")
-                    task_text = task_text.split("|")[0].strip()  # drop | status | result
+                    task_text = task_text.split("|")[
+                        0
+                    ].strip()  # drop | status | result
                     try:
                         idx = int(idx_str.strip())
                         tasks.append(
-                            TodoTask(idx=idx, tasks=task_text, status=status, result=result)
+                            TodoTask(
+                                idx=idx, tasks=task_text, status=status, result=result
+                            )
                         )
                     except ValueError:
                         pass
@@ -116,7 +125,9 @@ class TodoToolkit:
             else:
                 checkbox = "[ ]"
             if t.result:
-                lines.append(f"- {checkbox} {t.idx}. {t.tasks} | {t.status.value} | {t.result}")
+                lines.append(
+                    f"- {checkbox} {t.idx}. {t.tasks} | {t.status.value} | {t.result}"
+                )
             else:
                 lines.append(f"- {checkbox} {t.idx}. {t.tasks} | {t.status.value}")
         self.todo_dir.mkdir(parents=True, exist_ok=True)
@@ -200,7 +211,9 @@ class TodoToolkit:
             todo_tasks.extend(new_tasks)
             todo_tasks.sort(key=lambda x: x.idx)
             self._save_tasks(todo_tasks)
-            return self._append_todo_list(f"Inserted {len(tasks)} task(s) at index {idx}.")
+            return self._append_todo_list(
+                f"Inserted {len(tasks)} task(s) at index {idx}."
+            )
 
     def todo_remove(self, idx: int) -> str:
         """Remove a task and renumber remaining tasks.

@@ -9,14 +9,16 @@ from openjiuwen.agent_evolving.optimizer.tool.utils.rits import get_rits_respons
 
 
 class ToolDescriptionReviewer:
-    
+
     def __init__(self, eval_model_id: str, llm_api_key: str):
         self.eval_model_id = eval_model_id
         self.llm_api_key = llm_api_key
         self.processors: List[Callable] = []
-    
-    def format(self, json_schema: dict, description: str, example: Optional[str] = None) -> dict:
-        
+
+    def format(
+        self, json_schema: dict, description: str, example: Optional[str] = None
+    ) -> dict:
+
         prompt_original = f"""You will receive an input that contains a textual description.
 The input may be free-form text, bullet points, or JSON in any structure.
 Your task is to convert that content into MY target JSON format, while keeping the information and meaning exactly the same.
@@ -95,37 +97,35 @@ Input:
 Input:
 {description}
 """
-        
+
         def verify_output(output):
             return json.loads(output)
-        
+
         response = get_rits_response(
-            'gpt-5.2', 
-            prompt, 
-            self.llm_api_key, 
-            verify_output=verify_output, 
-            max_attempts=5, 
-            include_stop_sequence=False,  
-            verbose=False
+            "gpt-5.2",
+            prompt,
+            self.llm_api_key,
+            verify_output=verify_output,
+            max_attempts=5,
+            include_stop_sequence=False,
+            verbose=False,
         )
         return response
-    
+
     @staticmethod
     def _is_mostly_english(text: str) -> bool:
 
-        text_no_space = re.sub(r'\s+', '', text)
-        
+        text_no_space = re.sub(r"\s+", "", text)
+
         if len(text_no_space) == 0:
             return False
 
-        english_chars = len(re.findall(r'[a-zA-Z]', text_no_space))
-        
+        english_chars = len(re.findall(r"[a-zA-Z]", text_no_space))
 
         english_ratio = english_chars / len(text_no_space)
-        
 
         return english_ratio > 0.7
-    
+
     def clean_and_deduplicate(self, data: dict) -> dict:
 
         prompt = f"""
@@ -158,21 +158,21 @@ cleaned JSON without explanations. DO NOT change the overall structure of JSON.
 Input JSON:
 {json.dumps(data, ensure_ascii=False, indent=2)}
 """
-        
+
         def verify_output(output):
             return json.loads(output)
-        
+
         response = get_rits_response(
-            self.eval_model_id, 
-            prompt, 
-            self.llm_api_key, 
-            verify_output=verify_output, 
-            max_attempts=5, 
-            include_stop_sequence=False,  
-            verbose=False
+            self.eval_model_id,
+            prompt,
+            self.llm_api_key,
+            verify_output=verify_output,
+            max_attempts=5,
+            include_stop_sequence=False,
+            verbose=False,
         )
         return response
-    
+
     def cross_check(self, data: dict, ori_tool: str):
         prompt = f"""比较原始描述和修改后的描述，按照以下要求整理修改后的描述：
 1. 补充修改后的描述丢失的信息：例如，参数可选值列表丢失，需把原始描述中的列表补充道修改后的对应位置。
@@ -186,29 +186,29 @@ Input JSON:
 修改后描述（待优化）：
 {json.dumps(data, ensure_ascii=False, indent=2)}
 """
-        
+
         def verify_output(output):
             return json.loads(output)
-        
+
         response = get_rits_response(
-            self.eval_model_id, 
-            prompt, 
-            self.llm_api_key, 
-            verify_output=verify_output, 
-            max_attempts=5, 
-            include_stop_sequence=False,  
-            verbose=False
+            self.eval_model_id,
+            prompt,
+            self.llm_api_key,
+            verify_output=verify_output,
+            max_attempts=5,
+            include_stop_sequence=False,
+            verbose=False,
         )
         return response
 
     def translate_to_chinese(self, data: dict) -> dict:
 
         json_str = json.dumps(data, ensure_ascii=False)
-        
+
         if not self._is_mostly_english(json_str):
 
             return data
-        
+
         prompt = f"""Translate all English text in the following JSON to Chinese.
 Keep JSON structure unchanged. Keep technical terms and code examples as-is.
 Output only the translated JSON without explanations.
@@ -216,25 +216,25 @@ Output only the translated JSON without explanations.
 Input JSON:
 {json.dumps(data, ensure_ascii=False, indent=2)}
 """
-        
+
         def verify_output(output):
             return json.loads(output)
-        
+
         response = get_rits_response(
-            self.eval_model_id, 
-            prompt, 
-            self.llm_api_key, 
-            verify_output=verify_output, 
-            max_attempts=5, 
-            include_stop_sequence=False,  
-            verbose=False
+            self.eval_model_id,
+            prompt,
+            self.llm_api_key,
+            verify_output=verify_output,
+            max_attempts=5,
+            include_stop_sequence=False,
+            verbose=False,
         )
         return response
 
     def process(self, data: dict, ori_tool: str, steps: List[str]) -> dict:
 
         result = data
-        
+
         for step in steps:
             if step == "cross_check":
                 result = self.cross_check(data=data, ori_tool=ori_tool)
@@ -245,9 +245,3 @@ Input JSON:
             else:
                 raise ValueError(f"Unknown processing step: {step}")
         return result
-
-
-
-
-
-    

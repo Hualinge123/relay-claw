@@ -4,20 +4,35 @@ from typing import Union, List, Optional, AsyncIterator, Type, Dict
 
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
-from openjiuwen.core.foundation.llm.model_clients.dashscope_model_client import DashScopeModelClient
-from openjiuwen.core.foundation.llm.schema.message import BaseMessage, AssistantMessage, UserMessage
+from openjiuwen.core.foundation.llm.model_clients.dashscope_model_client import (
+    DashScopeModelClient,
+)
+from openjiuwen.core.foundation.llm.schema.message import (
+    BaseMessage,
+    AssistantMessage,
+    UserMessage,
+)
 from openjiuwen.core.foundation.llm.schema.message_chunk import AssistantMessageChunk
 from openjiuwen.core.foundation.tool import ToolInfo
-from openjiuwen.core.foundation.llm.schema.config import ModelRequestConfig, ModelClientConfig
+from openjiuwen.core.foundation.llm.schema.config import (
+    ModelRequestConfig,
+    ModelClientConfig,
+)
 from openjiuwen.core.foundation.llm.output_parsers.output_parser import BaseOutputParser
 from openjiuwen.core.foundation.llm.schema.generation_response import (
     ImageGenerationResponse,
     AudioGenerationResponse,
-    VideoGenerationResponse
+    VideoGenerationResponse,
 )
-from openjiuwen.core.foundation.llm.model_clients.base_model_client import BaseModelClient
-from openjiuwen.core.foundation.llm.model_clients.openai_model_client import OpenAIModelClient
-from openjiuwen.core.foundation.llm.model_clients.siliconflow_model_client import SiliconFlowModelClient
+from openjiuwen.core.foundation.llm.model_clients.base_model_client import (
+    BaseModelClient,
+)
+from openjiuwen.core.foundation.llm.model_clients.openai_model_client import (
+    OpenAIModelClient,
+)
+from openjiuwen.core.foundation.llm.model_clients.siliconflow_model_client import (
+    SiliconFlowModelClient,
+)
 
 _CLIENT_TYPE_REGISTRY: Dict[str, Type[BaseModelClient]] = {
     "OpenAI": OpenAIModelClient,
@@ -43,9 +58,9 @@ class Model:
     """
 
     def __init__(
-            self,
-            model_client_config: Optional[ModelClientConfig],
-            model_config: ModelRequestConfig = None,
+        self,
+        model_client_config: Optional[ModelClientConfig],
+        model_config: ModelRequestConfig = None,
     ):
         """Initialize Model instance
 
@@ -60,27 +75,33 @@ class Model:
         if model_client_config is not None:
             self._client = self._create_model_client(model_client_config)
         else:
-            raise build_error(StatusCode.MODEL_SERVICE_CONFIG_ERROR,
-                              error_msg="model client config is none")
+            raise build_error(
+                StatusCode.MODEL_SERVICE_CONFIG_ERROR,
+                error_msg="model client config is none",
+            )
 
     def _create_model_client(self, client_config: ModelClientConfig) -> BaseModelClient:
         """Create corresponding ModelClient instance based on client_type
-        
+
         Args:
             client_config: Client configuration
-            
+
         Returns:
             BaseModelClient: ModelClient instance
-            
+
         Raises:
             ValueError: When client_provider is not supported
         """
         if client_config.client_provider is None:
-            raise build_error(StatusCode.MODEL_SERVICE_CONFIG_ERROR,
-                              error_msg="model client config client_provider is none")
+            raise build_error(
+                StatusCode.MODEL_SERVICE_CONFIG_ERROR,
+                error_msg="model client config client_provider is none",
+            )
         if client_config.client_id is None:
-            raise build_error(StatusCode.MODEL_SERVICE_CONFIG_ERROR,
-                              error_msg="model client config client_id is none")
+            raise build_error(
+                StatusCode.MODEL_SERVICE_CONFIG_ERROR,
+                error_msg="model client config client_id is none",
+            )
         client_provider = client_config.client_provider
 
         client_class = _CLIENT_TYPE_REGISTRY.get(client_provider)
@@ -90,24 +111,24 @@ class Model:
 
             raise build_error(
                 StatusCode.MODEL_SERVICE_CONFIG_ERROR,
-                error_msg=f"Unsupported client_type: '{client_provider}', Supported types: {supported_types}"
+                error_msg=f"Unsupported client_type: '{client_provider}', Supported types: {supported_types}",
             )
 
         return client_class(self.model_config, client_config)
 
     async def invoke(
-            self,
-            messages: Union[str, List[BaseMessage], List[dict]],
-            *,
-            tools: Union[List[ToolInfo], List[dict], None] = None,
-            temperature: Optional[float] = None,
-            top_p: Optional[float] = None,
-            max_tokens: Optional[int] = None,
-            stop: Union[Optional[str], None] = None,
-            model: str = None,
-            output_parser: Optional[BaseOutputParser] = None,
-            timeout: float = None,
-            **kwargs
+        self,
+        messages: Union[str, List[BaseMessage], List[dict]],
+        *,
+        tools: Union[List[ToolInfo], List[dict], None] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        stop: Union[Optional[str], None] = None,
+        model: str = None,
+        output_parser: Optional[BaseOutputParser] = None,
+        timeout: float = None,
+        **kwargs,
     ) -> AssistantMessage:
         """Asynchronous LLM invocation
 
@@ -136,22 +157,22 @@ class Model:
             max_tokens=max_tokens,
             output_parser=output_parser,
             timeout=timeout,
-            **kwargs
+            **kwargs,
         )
 
     async def stream(
-            self,
-            messages: Union[str, List[BaseMessage], List[dict]],
-            *,
-            tools: Union[List[ToolInfo], List[dict], None] = None,
-            temperature: Optional[float] = None,
-            top_p: Optional[float] = None,
-            max_tokens: Optional[int] = None,
-            stop: Union[Optional[str], None] = None,
-            model: str = None,
-            output_parser: Optional[BaseOutputParser] = None,
-            timeout: float = None,
-            **kwargs
+        self,
+        messages: Union[str, List[BaseMessage], List[dict]],
+        *,
+        tools: Union[List[ToolInfo], List[dict], None] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        stop: Union[Optional[str], None] = None,
+        model: str = None,
+        output_parser: Optional[BaseOutputParser] = None,
+        timeout: float = None,
+        **kwargs,
     ) -> AsyncIterator[AssistantMessageChunk]:
         """Asynchronous streaming LLM invocation
 
@@ -171,31 +192,31 @@ class Model:
             AssistantMessageChunk
         """
         async for chunk in self._client.stream(
-                messages=messages,
-                stop=stop,
-                model=model,
-                tools=tools,
-                temperature=temperature,
-                top_p=top_p,
-                max_tokens=max_tokens,
-                output_parser=output_parser,
-                timeout=timeout,
-                **kwargs
+            messages=messages,
+            stop=stop,
+            model=model,
+            tools=tools,
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+            output_parser=output_parser,
+            timeout=timeout,
+            **kwargs,
         ):
             yield chunk
 
     async def generate_image(
-            self,
-            messages: List[UserMessage],
-            *,
-            model: Optional[str] = None,
-            size: Optional[str] = "1664*928",
-            negative_prompt: Optional[str] = None,
-            n: Optional[int] = 1,
-            prompt_extend: bool = True,
-            watermark: bool = False,
-            seed: int = 0,
-            **kwargs
+        self,
+        messages: List[UserMessage],
+        *,
+        model: Optional[str] = None,
+        size: Optional[str] = "1664*928",
+        negative_prompt: Optional[str] = None,
+        n: Optional[int] = 1,
+        prompt_extend: bool = True,
+        watermark: bool = False,
+        seed: int = 0,
+        **kwargs,
     ) -> ImageGenerationResponse:
         """Generate image from text prompt (text-to-image or text+image-to-image)
 
@@ -222,17 +243,17 @@ class Model:
             prompt_extend=prompt_extend,
             watermark=watermark,
             seed=seed,
-            **kwargs
+            **kwargs,
         )
 
     async def generate_speech(
-            self,
-            messages: List[UserMessage],
-            *,
-            model: Optional[str] = None,
-            voice: Optional[str] = "Cherry",
-            language_type: Optional[str] = "Auto",
-            **kwargs
+        self,
+        messages: List[UserMessage],
+        *,
+        model: Optional[str] = None,
+        voice: Optional[str] = "Cherry",
+        language_type: Optional[str] = "Auto",
+        **kwargs,
     ) -> AudioGenerationResponse:
         """Generate speech audio from text
 
@@ -251,24 +272,24 @@ class Model:
             model=model,
             voice=voice,
             language_type=language_type,
-            **kwargs
+            **kwargs,
         )
 
     async def generate_video(
-            self,
-            messages: List[UserMessage],
-            *,
-            img_url: Optional[str] = None,
-            audio_url: Optional[str] = None,
-            model: Optional[str] = None,
-            size: Optional[str] = None,
-            resolution: Optional[str] = None,
-            duration: Optional[int] = 5,
-            prompt_extend: bool = True,
-            watermark: bool = False,
-            negative_prompt: Optional[str] = None,
-            seed: Optional[int] = None,
-            **kwargs
+        self,
+        messages: List[UserMessage],
+        *,
+        img_url: Optional[str] = None,
+        audio_url: Optional[str] = None,
+        model: Optional[str] = None,
+        size: Optional[str] = None,
+        resolution: Optional[str] = None,
+        duration: Optional[int] = 5,
+        prompt_extend: bool = True,
+        watermark: bool = False,
+        negative_prompt: Optional[str] = None,
+        seed: Optional[int] = None,
+        **kwargs,
     ) -> VideoGenerationResponse:
         """Generate video from text prompt (text-to-video or image-to-video)
 
@@ -302,5 +323,5 @@ class Model:
             watermark=watermark,
             negative_prompt=negative_prompt,
             seed=seed,
-            **kwargs
+            **kwargs,
         )

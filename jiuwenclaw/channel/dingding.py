@@ -14,6 +14,7 @@ from jiuwenclaw.schema.message import Message, ReqMethod
 
 class DingTalkConfig(BaseModel):
     """钉钉通道配置（使用Stream模式）"""
+
     enabled: bool = False
     client_id: str = ""  # 应用ID
     client_secret: str = ""  # 应用密钥
@@ -49,7 +50,9 @@ class DingTalkHandler(CallbackHandler):
         super().__init__()
         self.channel = channel
 
-    def _extract_message_content(self, chatbot_msg: ChatbotMessage, raw_data: dict) -> str:
+    def _extract_message_content(
+        self, chatbot_msg: ChatbotMessage, raw_data: dict
+    ) -> str:
         """从消息对象中提取文本内容"""
         content = ""
         if chatbot_msg.text:
@@ -64,17 +67,27 @@ class DingTalkHandler(CallbackHandler):
         sender_name = chatbot_msg.sender_nick or "Unknown"
         return sender_id, sender_name
 
-    def _extract_conversation_info(self, chatbot_msg: ChatbotMessage) -> tuple[str, str]:
+    def _extract_conversation_info(
+        self, chatbot_msg: ChatbotMessage
+    ) -> tuple[str, str]:
         """提取会话信息"""
         conversation_id = chatbot_msg.conversation_id or ""
         conversation_type = chatbot_msg.conversation_type or "1"  # 1: 单聊；2：群聊
         return conversation_id, conversation_type
 
-    def _create_message_task(self, content: str, sender_id: str, sender_name: str,
-                              conversation_id: str, conversation_type: str) -> None:
+    def _create_message_task(
+        self,
+        content: str,
+        sender_id: str,
+        sender_name: str,
+        conversation_id: str,
+        conversation_type: str,
+    ) -> None:
         """创建异步任务处理消息"""
         task = asyncio.create_task(
-            self.channel._on_message(content, sender_id, sender_name, conversation_id, conversation_type)
+            self.channel._on_message(
+                content, sender_id, sender_name, conversation_id, conversation_type
+            )
         )
         self.channel._background_tasks.add(task)
         task.add_done_callback(self.channel._background_tasks.discard)
@@ -89,23 +102,25 @@ class DingTalkHandler(CallbackHandler):
             content = self._extract_message_content(chatbot_msg, message.data)
 
             if not content:
-                logger.warning(
-                    f"收到空或不支持的消息类型: {chatbot_msg.message_type}"
-                )
+                logger.warning(f"收到空或不支持的消息类型: {chatbot_msg.message_type}")
                 return AckMessage.STATUS_OK, "OK"
 
             # 提取发送者信息
             sender_id, sender_name = self._extract_sender_info(chatbot_msg)
 
             # 提取会话信息
-            conversation_id, conversation_type = self._extract_conversation_info(chatbot_msg)
+            conversation_id, conversation_type = self._extract_conversation_info(
+                chatbot_msg
+            )
 
             logger.info(
                 f"收到来自 {sender_name} ({sender_id}) 的钉钉消息: {content} (会话ID: {conversation_id})"
             )
 
             # 转发到通道（非阻塞）
-            self._create_message_task(content, sender_id, sender_name, conversation_id, conversation_type)
+            self._create_message_task(
+                content, sender_id, sender_name, conversation_id, conversation_type
+            )
 
             return AckMessage.STATUS_OK, "OK"
 
@@ -148,10 +163,7 @@ class DingTalkChannel(BaseChannel):
         self._gateway_callback = callback
 
     async def _handle_message(
-            self,
-            chat_id: str,
-            content: str,
-            metadata: dict[str, Any] | None = None
+        self, chat_id: str, content: str, metadata: dict[str, Any] | None = None
     ) -> None:
         """处理来自钉钉通道的传入消息（符合基类接口）"""
         # 检查发送者权限
@@ -169,12 +181,20 @@ class DingTalkChannel(BaseChannel):
             metadata=metadata,
         )
 
-    def _build_user_message(self, chat_id: str, sender_id: str, content: str,
-                            conversation_id: str, conversation_type: str,
-                            metadata: dict[str, Any] | None = None) -> Message:
+    def _build_user_message(
+        self,
+        chat_id: str,
+        sender_id: str,
+        content: str,
+        conversation_id: str,
+        conversation_type: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> Message:
         """构建用户消息对象"""
         metadata = metadata or {}
-        metadata.update({"conversation_id": conversation_id, "conversation_type": conversation_type})
+        metadata.update(
+            {"conversation_id": conversation_id, "conversation_type": conversation_type}
+        )
         return Message(
             id=chat_id,
             type="req",
@@ -187,11 +207,19 @@ class DingTalkChannel(BaseChannel):
             metadata=metadata,
         )
 
-    async def _process_incoming_message(self, chat_id: str, sender_id: str, content: str, conversation_id: str,
-                              conversation_type: str, metadata: dict[str, Any] | None = None) -> None:
+    async def _process_incoming_message(
+        self,
+        chat_id: str,
+        sender_id: str,
+        content: str,
+        conversation_id: str,
+        conversation_type: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """处理来自钉钉通道的传入消息"""
-        msg = self._build_user_message(chat_id, sender_id, content, conversation_id, conversation_type, metadata)
-
+        msg = self._build_user_message(
+            chat_id, sender_id, content, conversation_id, conversation_type, metadata
+        )
 
         if self._gateway_callback:
             self._gateway_callback(msg)
@@ -201,9 +229,7 @@ class DingTalkChannel(BaseChannel):
     def _validate_config(self) -> bool:
         """验证配置是否有效"""
         if not DINGTALK_AVAILABLE:
-            logger.error(
-                "钉钉Stream SDK未安装。请运行: pip install dingtalk-stream"
-            )
+            logger.error("钉钉Stream SDK未安装。请运行: pip install dingtalk-stream")
             return False
 
         if not self.config.client_id or not self.config.client_secret:
@@ -214,9 +240,7 @@ class DingTalkChannel(BaseChannel):
 
     def _initialize_stream_client(self) -> None:
         """初始化钉钉Stream客户端"""
-        logger.info(
-            f"正在初始化钉钉Stream客户端，客户端ID: {self.config.client_id}..."
-        )
+        logger.info(f"正在初始化钉钉Stream客户端，客户端ID: {self.config.client_id}...")
         credential = Credential(self.config.client_id, self.config.client_secret)
         self._client = DingTalkStreamClient(credential)
 
@@ -238,7 +262,9 @@ class DingTalkChannel(BaseChannel):
             self._initialize_stream_client()
 
             # 将 SDK start() 作为独立任务运行，便于在 stop() 时取消
-            self._stream_task = asyncio.create_task(self._client.start(), name="dingtalk-sdk-start")
+            self._stream_task = asyncio.create_task(
+                self._client.start(), name="dingtalk-sdk-start"
+            )
 
             # 等待任务完成（当 _running=False 时，任务会被取消）
             try:
@@ -269,7 +295,11 @@ class DingTalkChannel(BaseChannel):
         self._stream_task = None
 
         # 关闭 WebSocket 连接
-        if self._client and hasattr(self._client, 'websocket') and self._client.websocket:
+        if (
+            self._client
+            and hasattr(self._client, "websocket")
+            and self._client.websocket
+        ):
             try:
                 await self._client.websocket.close()
             except Exception as e:
@@ -279,13 +309,13 @@ class DingTalkChannel(BaseChannel):
         if self._client:
             try:
                 # 检查 SDK 是否提供 stop 方法
-                if hasattr(self._client, 'stop'):
+                if hasattr(self._client, "stop"):
                     await self._client.stop()
                 # 检查 SDK 是否提供 close 方法
-                elif hasattr(self._client, 'close'):
+                elif hasattr(self._client, "close"):
                     await self._client.close()
                 # 检查 SDK 是否提供 shutdown 方法
-                elif hasattr(self._client, 'shutdown'):
+                elif hasattr(self._client, "shutdown"):
                     await self._client.shutdown()
             except Exception as e:
                 logger.warning(f"停止 DingTalkStreamClient 时出错: {e}")
@@ -365,16 +395,20 @@ class DingTalkChannel(BaseChannel):
             chat_id = msg.session_id
         return chat_id
 
-    def _build_group_message_payload(self, content: str, open_conversation_id: str) -> dict:
+    def _build_group_message_payload(
+        self, content: str, open_conversation_id: str
+    ) -> dict:
         """构建群聊消息负载"""
         return {
             "robotCode": self.config.client_id,
             "openConversationId": open_conversation_id,
             "msgKey": "sampleMarkdown",
-            "msgParam": json.dumps({
-                "text": content,
-                "title": "JiuClaw Reply",
-            }),
+            "msgParam": json.dumps(
+                {
+                    "text": content,
+                    "title": "JiuClaw Reply",
+                }
+            ),
         }
 
     def _build_private_message_payload(self, chat_id: str, content: str) -> dict:
@@ -383,10 +417,12 @@ class DingTalkChannel(BaseChannel):
             "robotCode": self.config.client_id,
             "userIds": [chat_id],
             "msgKey": "sampleMarkdown",
-            "msgParam": json.dumps({
-                "text": content,
-                "title": "JiuClaw Reply",
-            }),
+            "msgParam": json.dumps(
+                {
+                    "text": content,
+                    "title": "JiuClaw Reply",
+                }
+            ),
         }
 
     def _get_send_api_url(self, conversation_type: str) -> str:
@@ -396,7 +432,13 @@ class DingTalkChannel(BaseChannel):
         else:
             return "https://api.dingtalk.com/v1.0/robot/oToMessages/batchSend"
 
-    def _build_send_request(self, chat_id: str, content: str, conversation_type: str, open_conversation_id: str) -> tuple[str, dict]:
+    def _build_send_request(
+        self,
+        chat_id: str,
+        content: str,
+        conversation_type: str,
+        open_conversation_id: str,
+    ) -> tuple[str, dict]:
         """构建发送请求"""
         url = self._get_send_api_url(conversation_type)
 
@@ -407,7 +449,9 @@ class DingTalkChannel(BaseChannel):
 
         return url, data
 
-    async def _send_http_request(self, url: str, data: dict, token: str, chat_id: str) -> None:
+    async def _send_http_request(
+        self, url: str, data: dict, token: str, chat_id: str
+    ) -> None:
         """发送HTTP请求"""
         headers = {"x-acs-dingtalk-access-token": token}
 
@@ -446,13 +490,21 @@ class DingTalkChannel(BaseChannel):
         metadata = msg.metadata or {}
         conversation_type = metadata.get("conversation_type", "")
         open_conversation_id = metadata.get("conversation_id", "")
-        url, data = self._build_send_request(chat_id, content, conversation_type, open_conversation_id)
+        url, data = self._build_send_request(
+            chat_id, content, conversation_type, open_conversation_id
+        )
 
         # 发送HTTP请求
         await self._send_http_request(url, data, token, chat_id)
 
-    async def _on_message(self, content: str, sender_id: str, sender_name: str, conversation_id: str,
-                          conversation_type: str) -> None:
+    async def _on_message(
+        self,
+        content: str,
+        sender_id: str,
+        sender_name: str,
+        conversation_id: str,
+        conversation_type: str,
+    ) -> None:
         """处理传入消息（由DingTalkHandler调用）
 
         委托给 _process_incoming_message()，该方法在发布到总线之前执行 allow_from

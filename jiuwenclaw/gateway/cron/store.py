@@ -37,7 +37,9 @@ class CronJobStore:
             except Exception:
                 # Ignore invalid entries to keep system robust
                 continue
-        jobs.sort(key=lambda j: (j.updated_at or 0.0, j.created_at or 0.0), reverse=True)
+        jobs.sort(
+            key=lambda j: (j.updated_at or 0.0, j.created_at or 0.0), reverse=True
+        )
         return jobs
 
     async def get_job(self, job_id: str) -> CronJob | None:
@@ -67,7 +69,9 @@ class CronJobStore:
             enabled=bool(enabled),
             cron_expr=str(cron_expr or "").strip(),
             timezone=str(timezone or "").strip(),
-            wake_offset_seconds=int(wake_offset_seconds) if wake_offset_seconds is not None else 60,
+            wake_offset_seconds=(
+                int(wake_offset_seconds) if wake_offset_seconds is not None else 60
+            ),
             description=str(description or ""),
             targets=str(targets or "").strip(),
             created_at=now,
@@ -93,9 +97,13 @@ class CronJobStore:
         if "enabled" in patch:
             updated = replace(updated, enabled=bool(patch.get("enabled")))
         if "cron_expr" in patch:
-            updated = replace(updated, cron_expr=str(patch.get("cron_expr") or "").strip())
+            updated = replace(
+                updated, cron_expr=str(patch.get("cron_expr") or "").strip()
+            )
         if "timezone" in patch:
-            updated = replace(updated, timezone=str(patch.get("timezone") or "").strip())
+            updated = replace(
+                updated, timezone=str(patch.get("timezone") or "").strip()
+            )
         if "wake_offset_seconds" in patch:
             raw = patch.get("wake_offset_seconds")
             try:

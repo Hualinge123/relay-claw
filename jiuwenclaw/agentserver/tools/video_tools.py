@@ -16,7 +16,9 @@ from openjiuwen.core.foundation.tool import tool
 
 from jiuwenclaw.config import get_config
 from jiuwenclaw.utils import get_config_file, logger
-from jiuwenclaw.agentserver.tools.multimodal_config import apply_video_model_config_from_yaml
+from jiuwenclaw.agentserver.tools.multimodal_config import (
+    apply_video_model_config_from_yaml,
+)
 
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -78,9 +80,14 @@ def _guess_video_mime(path: str) -> str:
         return mime
     ext = Path(path).suffix.lower()
     mapping = {
-        ".mp4": "video/mp4", ".mov": "video/quicktime", ".avi": "video/x-msvideo",
-        ".mkv": "video/x-matroska", ".webm": "video/webm", ".mpeg": "video/mpeg",
-        ".mpg": "video/mpeg", ".m4v": "video/x-m4v",
+        ".mp4": "video/mp4",
+        ".mov": "video/quicktime",
+        ".avi": "video/x-msvideo",
+        ".mkv": "video/x-matroska",
+        ".webm": "video/webm",
+        ".mpeg": "video/mpeg",
+        ".mpg": "video/mpeg",
+        ".m4v": "video/x-m4v",
     }
     return mapping.get(ext, "video/mp4")
 
@@ -116,7 +123,11 @@ def _extract_answer(data: dict[str, Any]) -> str:
     if isinstance(content, str):
         return content.strip()
     if isinstance(content, list):
-        texts = [str(item.get("text")) for item in content if isinstance(item, dict) and item.get("text")]
+        texts = [
+            str(item.get("text"))
+            for item in content
+            if isinstance(item, dict) and item.get("text")
+        ]
         return "\n".join(texts).strip()
     return str(content).strip()
 
@@ -124,22 +135,28 @@ def _extract_answer(data: dict[str, Any]) -> str:
 def _normalize_request(inputs: dict[str, Any]) -> VideoUnderstandingRequest:
     query = str(inputs.get("query", "") or "").strip()
     video_path = str(inputs.get("video_path", "") or "").strip()
-    default_model = (os.environ.get("VIDEO_MODEL_NAME") or "glm-4.6v").strip() or "glm-4.6v"
+    default_model = (
+        os.environ.get("VIDEO_MODEL_NAME") or "glm-4.6v"
+    ).strip() or "glm-4.6v"
     model = str(inputs.get("model", default_model) or default_model).strip()
     timeout_seconds = max(10, min(int(inputs.get("timeout_seconds", 120)), 600))
     max_tokens = max(128, min(int(inputs.get("max_tokens", 2048)), 8192))
     temperature = max(0.0, min(float(inputs.get("temperature", 0.2)), 2.0))
     thinking_enabled = bool(inputs.get("thinking_enabled", False))
-    
+
     if not query:
         raise ValueError("query cannot be empty.")
     if not video_path:
         raise ValueError("video_path cannot be empty.")
-    
+
     return VideoUnderstandingRequest(
-        query=query, video_path=video_path, model=model,
-        timeout_seconds=timeout_seconds, max_tokens=max_tokens,
-        temperature=temperature, thinking_enabled=thinking_enabled,
+        query=query,
+        video_path=video_path,
+        model=model,
+        timeout_seconds=timeout_seconds,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        thinking_enabled=thinking_enabled,
     )
 
 
@@ -153,7 +170,7 @@ def _resolve_chat_completions_url(base: str) -> str:
 def _glm_video_understanding_sync(req: VideoUnderstandingRequest) -> str:
     yaml_key = os.environ.get("VIDEO_API_KEY", "").strip()
     yaml_base = os.environ.get("VIDEO_API_BASE", "").strip()
-    
+
     if yaml_key and yaml_base:
         api_key = yaml_key
         api_url = _resolve_chat_completions_url(yaml_base)
@@ -166,30 +183,36 @@ def _glm_video_understanding_sync(req: VideoUnderstandingRequest) -> str:
                 f"No video API credentials. Config file: {get_config_file()}\n"
                 "Set models.video.model_config with api_key and api_base, or set ZHIPU_API_KEY."
             )
-        api_url = os.environ.get("ZHIPU_API_URL", "https://open.bigmodel.cn/api/paas/v4/chat/completions").strip()
-    
+        api_url = os.environ.get(
+            "ZHIPU_API_URL", "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+        ).strip()
+
     video_url = _video_path_to_url(req.video_path)
-    
+
     payload = {
         "model": req.model,
-        "messages": [{
-            "role": "user",
-            "content": [
-                {"type": "video_url", "video_url": {"url": video_url}},
-                {"type": "text", "text": req.query},
-            ],
-        }],
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "video_url", "video_url": {"url": video_url}},
+                    {"type": "text", "text": req.query},
+                ],
+            }
+        ],
         "stream": False,
         "max_tokens": req.max_tokens,
         "temperature": req.temperature,
     }
-    
+
     if req.thinking_enabled:
         payload["thinking"] = {"type": "enabled"}
-    
+
     headers = {**_REQUEST_HEADERS, "Authorization": f"Bearer {api_key}"}
-    response = _http_post(api_url, headers=headers, json=payload, timeout=req.timeout_seconds)
-    
+    response = _http_post(
+        api_url, headers=headers, json=payload, timeout=req.timeout_seconds
+    )
+
     if not response.ok:
         try:
             error_data = response.json()
@@ -197,7 +220,7 @@ def _glm_video_understanding_sync(req: VideoUnderstandingRequest) -> str:
         except Exception:
             error_msg = response.text[:200]
         raise ValueError(f"API error {response.status_code}: {error_msg}")
-    
+
     answer = _extract_answer(response.json())
     return answer if answer else "[ERROR]: GLM returned empty answer."
 
@@ -222,8 +245,8 @@ async def video_understanding(inputs: dict[str, Any], **kwargs) -> str:
         req = _normalize_request(inputs or {})
         logger.info(
             "[video_understanding] using model: %s (api_base: %s)",
-            req.model, 
-            os.environ.get("VIDEO_API_BASE", "")
+            req.model,
+            os.environ.get("VIDEO_API_BASE", ""),
         )
         return await asyncio.to_thread(_glm_video_understanding_sync, req)
     except Exception as exc:

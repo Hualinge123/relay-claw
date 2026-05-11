@@ -54,12 +54,12 @@ class SafeRotatingFileHandler(RotatingFileHandler):
     """
 
     def __init__(
-            self,
-            filename: str,
-            *args: Any,
-            log_file_pattern: Optional[str] = None,
-            backup_file_pattern: Optional[str] = None,
-            **kwargs: Any,
+        self,
+        filename: str,
+        *args: Any,
+        log_file_pattern: Optional[str] = None,
+        backup_file_pattern: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
         """
         Initialize secure log file rotation handler
@@ -92,7 +92,7 @@ class SafeRotatingFileHandler(RotatingFileHandler):
         except OSError as e:
             raise build_error(
                 StatusCode.COMMON_LOG_EXECUTION_RUNTIME_ERROR,
-                error_msg=f"failed to set file permissions: {e}"
+                error_msg=f"failed to set file permissions: {e}",
             ) from e
 
     def _format_filename(self, base_filename: str, pattern: str) -> str:
@@ -161,14 +161,16 @@ class SafeRotatingFileHandler(RotatingFileHandler):
 
         # Set backup file permissions
         for i in range(self.backupCount, 0, -1):
-            sfn = self.backup_file_pattern.format(baseFilename=self.baseFilename, index=i)
+            sfn = self.backup_file_pattern.format(
+                baseFilename=self.baseFilename, index=i
+            )
             if os.path.exists(sfn):
                 try:
                     os.chmod(sfn, 0o440)  # Read-only permission
                 except OSError as e:
                     raise build_error(
                         StatusCode.COMMON_LOG_EXECUTION_RUNTIME_ERROR,
-                        error_msg=f"failed to set backup file permissions: {e}"
+                        error_msg=f"failed to set backup file permissions: {e}",
                     ) from e
 
         # Set new log file permissions
@@ -177,7 +179,7 @@ class SafeRotatingFileHandler(RotatingFileHandler):
         except OSError as e:
             raise build_error(
                 StatusCode.COMMON_LOG_EXECUTION_RUNTIME_ERROR,
-                error_msg=f"failed to set log file permissions: {e}"
+                error_msg=f"failed to set log file permissions: {e}",
             ) from e
 
 
@@ -305,12 +307,14 @@ class DefaultLogger(LoggerProtocol):
                 except OSError as e:
                     raise build_error(
                         StatusCode.COMMON_LOG_PATH_INIT_FAILED,
-                        error_msg=f"the log_dir is `{log_dir}`, error detail: {e}"
+                        error_msg=f"the log_dir is `{log_dir}`, error detail: {e}",
                     ) from e
 
             # Get configuration parameters
             backup_count = self.config.get("backup_count", 20)
-            max_bytes = get_log_max_bytes(self.config.get("max_bytes", 20 * 1024 * 1024))
+            max_bytes = get_log_max_bytes(
+                self.config.get("max_bytes", 20 * 1024 * 1024)
+            )
             log_file_pattern = self.config.get("log_file_pattern", None)
             backup_file_pattern = self.config.get("backup_file_pattern", None)
 
@@ -335,8 +339,8 @@ class DefaultLogger(LoggerProtocol):
             Configured formatter instance
         """
         log_format = (
-                self.config.get("format")
-                or "%(asctime)s.%(msecs)03d | %(log_type)s | %(trace_id)s | %(levelname)s | %(message)s"
+            self.config.get("format")
+            or "%(asctime)s.%(msecs)03d | %(log_type)s | %(trace_id)s | %(levelname)s | %(message)s"
         )
         return logging.Formatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
 
@@ -364,12 +368,12 @@ class DefaultLogger(LoggerProtocol):
         return "".join(result)
 
     def _process_log_message(
-            self,
-            log_level: LogLevel,
-            msg: str,
-            event_type: Optional[LogEventType | str] = None,
-            event: Optional[BaseLogEvent] = None,
-            **kwargs: Any,
+        self,
+        log_level: LogLevel,
+        msg: str,
+        event_type: Optional[LogEventType | str] = None,
+        event: Optional[BaseLogEvent] = None,
+        **kwargs: Any,
     ) -> str:
         """
         Process log message, supporting both string and structured event objects
@@ -381,7 +385,7 @@ class DefaultLogger(LoggerProtocol):
         Args:
             log_level: Log level for the message
             msg: Log message (string)
-            event_type: Event type for creating structured event 
+            event_type: Event type for creating structured event
                 (LogEventType enum or string identifier, only used when event is None)
             event: Optional structured log event object
             **kwargs: Additional keyword arguments for event creation
@@ -456,7 +460,9 @@ class DefaultLogger(LoggerProtocol):
         event = kwargs.pop("event", None)
         stacklevel = kwargs.pop("stacklevel", 2)
         # Remaining kwargs are used for event creation
-        processed_msg = self._process_log_message(LogLevel.DEBUG, msg, event_type, event, **kwargs)
+        processed_msg = self._process_log_message(
+            LogLevel.DEBUG, msg, event_type, event, **kwargs
+        )
         self._logger.debug(processed_msg, *args, stacklevel=stacklevel)
 
     def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
@@ -473,7 +479,9 @@ class DefaultLogger(LoggerProtocol):
         event = kwargs.pop("event", None)
         stacklevel = kwargs.pop("stacklevel", 2)
         # Remaining kwargs are used for event creation
-        processed_msg = self._process_log_message(LogLevel.INFO, msg, event_type, event, **kwargs)
+        processed_msg = self._process_log_message(
+            LogLevel.INFO, msg, event_type, event, **kwargs
+        )
         self._logger.info(processed_msg, *args, stacklevel=stacklevel)
 
     def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
@@ -490,7 +498,9 @@ class DefaultLogger(LoggerProtocol):
         event = kwargs.pop("event", None)
         stacklevel = kwargs.pop("stacklevel", 2)
         # Remaining kwargs are used for event creation
-        processed_msg = self._process_log_message(LogLevel.WARNING, msg, event_type, event, **kwargs)
+        processed_msg = self._process_log_message(
+            LogLevel.WARNING, msg, event_type, event, **kwargs
+        )
         self._logger.warning(processed_msg, *args, stacklevel=stacklevel)
 
     def error(self, msg: str, *args: Any, **kwargs: Any) -> None:
@@ -507,7 +517,9 @@ class DefaultLogger(LoggerProtocol):
         event = kwargs.pop("event", None)
         stacklevel = kwargs.pop("stacklevel", 2)
         # Remaining kwargs are used for event creation
-        processed_msg = self._process_log_message(LogLevel.ERROR, msg, event_type, event, **kwargs)
+        processed_msg = self._process_log_message(
+            LogLevel.ERROR, msg, event_type, event, **kwargs
+        )
         self._logger.error(processed_msg, *args, stacklevel=stacklevel)
 
     def critical(self, msg: str, *args: Any, **kwargs: Any) -> None:
@@ -524,7 +536,9 @@ class DefaultLogger(LoggerProtocol):
         event = kwargs.pop("event", None)
         stacklevel = kwargs.pop("stacklevel", 2)
         # Remaining kwargs are used for event creation
-        processed_msg = self._process_log_message(LogLevel.CRITICAL, msg, event_type, event, **kwargs)
+        processed_msg = self._process_log_message(
+            LogLevel.CRITICAL, msg, event_type, event, **kwargs
+        )
         self._logger.critical(processed_msg, *args, stacklevel=stacklevel)
 
     def exception(self, msg: str, *args: Any, **kwargs: Any) -> None:
@@ -553,7 +567,9 @@ class DefaultLogger(LoggerProtocol):
                 pass  # If traceback capture fails, continue without it
 
         # Remaining kwargs are used for event creation
-        processed_msg = self._process_log_message(LogLevel.ERROR, msg, event_type, event, **kwargs)
+        processed_msg = self._process_log_message(
+            LogLevel.ERROR, msg, event_type, event, **kwargs
+        )
         self._logger.exception(processed_msg, *args, stacklevel=stacklevel)
 
     def log(self, level: int, msg: str, *args: Any, **kwargs: Any) -> None:
@@ -580,7 +596,9 @@ class DefaultLogger(LoggerProtocol):
         event = kwargs.pop("event", None)
         stacklevel = kwargs.pop("stacklevel", 2)
         # Remaining kwargs are used for event creation
-        processed_msg = self._process_log_message(log_level, msg, event_type, event, **kwargs)
+        processed_msg = self._process_log_message(
+            log_level, msg, event_type, event, **kwargs
+        )
         self._logger.log(level, processed_msg, *args, stacklevel=stacklevel)
 
     def set_level(self, level: int) -> None:

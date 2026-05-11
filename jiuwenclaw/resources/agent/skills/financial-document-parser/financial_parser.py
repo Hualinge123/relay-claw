@@ -17,6 +17,7 @@ from dataclasses import dataclass, field, asdict
 # PDF 解析依赖
 try:
     import pdfplumber
+
     HAS_PDFPLUMBER = True
 except ImportError:
     HAS_PDFPLUMBER = False
@@ -24,6 +25,7 @@ except ImportError:
 try:
     from pdf2image import convert_from_path
     import pytesseract
+
     HAS_OCR = True
 except ImportError:
     HAS_OCR = False
@@ -32,6 +34,7 @@ except ImportError:
 @dataclass
 class LineItem:
     """单行项目"""
+
     description: str
     quantity: float = 1.0
     unit_price: float = 0.0
@@ -42,6 +45,7 @@ class LineItem:
 @dataclass
 class FinancialDocument:
     """财务文档数据结构"""
+
     doc_type: str = "Unknown"  # Invoice, Receipt, Statement
     doc_number: str = ""
     date: str = ""
@@ -65,7 +69,16 @@ class FinancialParser:
 
     # 费用分类关键词
     CATEGORY_KEYWORDS = {
-        "Software": ["软件", "订阅", "云服务", "saas", "adobe", "microsoft", "github", "slack"],
+        "Software": [
+            "软件",
+            "订阅",
+            "云服务",
+            "saas",
+            "adobe",
+            "microsoft",
+            "github",
+            "slack",
+        ],
         "Office": ["办公", "文具", "打印", "复印", "办公用品"],
         "Travel": ["差旅", "机票", "火车", "酒店", "住宿", "交通", "出租车", "滴滴"],
         "Meals": ["餐饮", "餐费", "午餐", "晚餐", "外卖", "美团", "饿了么"],
@@ -141,7 +154,7 @@ class FinancialParser:
         text_parts = []
 
         for img in images:
-            text = pytesseract.image_to_string(img, lang='chi_sim+eng')
+            text = pytesseract.image_to_string(img, lang="chi_sim+eng")
             text_parts.append(text)
 
         self.doc.raw_text = "\n".join(text_parts)
@@ -153,18 +166,21 @@ class FinancialParser:
             raise ImportError("需要安装 OCR 依赖: pip install pdf2image pytesseract")
 
         from PIL import Image
+
         img = Image.open(self.file_path)
-        self.doc.raw_text = pytesseract.image_to_string(img, lang='chi_sim+eng')
+        self.doc.raw_text = pytesseract.image_to_string(img, lang="chi_sim+eng")
         self._extract_fields_from_text()
 
     def _parse_csv(self):
         """解析 CSV 银行对账单"""
-        with open(self.file_path, 'r', encoding='utf-8-sig') as f:
+        with open(self.file_path, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 item = LineItem(
-                    description=row.get('描述', row.get('description', row.get('摘要', ''))),
-                    total=self._parse_amount(row.get('金额', row.get('amount', '0')))
+                    description=row.get(
+                        "描述", row.get("description", row.get("摘要", ""))
+                    ),
+                    total=self._parse_amount(row.get("金额", row.get("amount", "0"))),
                 )
                 self.doc.line_items.append(item)
 
@@ -174,15 +190,16 @@ class FinancialParser:
     def _extract_fields_from_text(self):
         """从文本中提取字段"""
         import re
+
         text = self.doc.raw_text
-        lines = text.split('\n')
+        lines = text.split("\n")
 
         # 提取发票号 - 支持多种格式
         invoice_patterns = [
-            r'Invoice\s+number\s+([A-Z0-9][\w\-\x00]+)',
-            r'Invoice\s*(?:no\.?|#)[:\s]*([A-Z0-9][\w\-]+)',
-            r'发票号[码]?[：:]\s*(\S+)',
-            r'票号[：:]\s*(\S+)',
+            r"Invoice\s+number\s+([A-Z0-9][\w\-\x00]+)",
+            r"Invoice\s*(?:no\.?|#)[:\s]*([A-Z0-9][\w\-]+)",
+            r"发票号[码]?[：:]\s*(\S+)",
+            r"票号[：:]\s*(\S+)",
         ]
         for pattern in invoice_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
@@ -192,29 +209,29 @@ class FinancialParser:
 
         # 提取供应商名称
         vendor_patterns = [
-            r'([A-Z][A-Za-z0-9\s&]+(?:GmbH|LLC|Inc|Ltd|Co\.|Corp|Corporation))',
-            r'From[:\s]+([^\n]+)',
-            r'供应商[：:]\s*([^\n]+)',
-            r'销售方[：:]\s*([^\n]+)',
+            r"([A-Z][A-Za-z0-9\s&]+(?:GmbH|LLC|Inc|Ltd|Co\.|Corp|Corporation))",
+            r"From[:\s]+([^\n]+)",
+            r"供应商[：:]\s*([^\n]+)",
+            r"销售方[：:]\s*([^\n]+)",
         ]
         for pattern in vendor_patterns:
             match = re.search(pattern, text, re.MULTILINE)
             if match:
                 vendor = match.group(1).strip()
                 # 清理前缀
-                for prefix in ['Invoice ', 'Receipt ']:
+                for prefix in ["Invoice ", "Receipt "]:
                     if vendor.startswith(prefix):
-                        vendor = vendor[len(prefix):]
+                        vendor = vendor[len(prefix) :]
                 self.doc.vendor_name = vendor.strip()
                 break
 
         # 提取日期 - 支持多种格式
         date_patterns = [
-            r'(?:Date\s*(?:of\s*issue)?|Issue\s*date)[:\s]+([A-Za-z]+\s+\d{1,2},?\s+\d{4})',
-            r'(?:Date\s*(?:of\s*issue)?|Issue\s*date)[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-            r'(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}日?)',
-            r'(\d{1,2}[-/]\d{1,2}[-/]\d{4})',
-            r'([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})',
+            r"(?:Date\s*(?:of\s*issue)?|Issue\s*date)[:\s]+([A-Za-z]+\s+\d{1,2},?\s+\d{4})",
+            r"(?:Date\s*(?:of\s*issue)?|Issue\s*date)[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{4})",
+            r"(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}日?)",
+            r"(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
+            r"([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})",
         ]
         for pattern in date_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
@@ -223,20 +240,20 @@ class FinancialParser:
                 break
 
         # 提取货币类型
-        if 'USD' in text or '$' in text:
-            self.doc.currency = 'USD'
-        elif 'EUR' in text or '€' in text:
-            self.doc.currency = 'EUR'
-        elif '¥' in text or '￥' in text or 'CNY' in text or 'RMB' in text:
-            self.doc.currency = 'CNY'
+        if "USD" in text or "$" in text:
+            self.doc.currency = "USD"
+        elif "EUR" in text or "€" in text:
+            self.doc.currency = "EUR"
+        elif "¥" in text or "￥" in text or "CNY" in text or "RMB" in text:
+            self.doc.currency = "CNY"
 
         # 提取金额 - 支持多种格式
         amount_patterns = [
-            r'(?:Amount\s*due|Total\s*due)[:\s]*[\$€¥￥]?\s*([\d,]+\.?\d*)',
-            r'Total[:\s]+[\$€¥￥]?\s*([\d,]+\.?\d*)',
-            r'合计[：:]\s*[¥￥]?\s*([\d,]+\.?\d*)',
-            r'总[计额][：:]\s*[¥￥]?\s*([\d,]+\.?\d*)',
-            r'[\$€]\s*([\d,]+\.?\d*)\s*(?:USD|EUR)?(?:\s+due)?',
+            r"(?:Amount\s*due|Total\s*due)[:\s]*[\$€¥￥]?\s*([\d,]+\.?\d*)",
+            r"Total[:\s]+[\$€¥￥]?\s*([\d,]+\.?\d*)",
+            r"合计[：:]\s*[¥￥]?\s*([\d,]+\.?\d*)",
+            r"总[计额][：:]\s*[¥￥]?\s*([\d,]+\.?\d*)",
+            r"[\$€]\s*([\d,]+\.?\d*)\s*(?:USD|EUR)?(?:\s+due)?",
         ]
         for pattern in amount_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
@@ -246,8 +263,8 @@ class FinancialParser:
 
         # 提取小计
         subtotal_patterns = [
-            r'Subtotal[:\s]+[\$€¥￥]?\s*([\d,]+\.?\d*)',
-            r'小计[：:]\s*[¥￥]?\s*([\d,]+\.?\d*)',
+            r"Subtotal[:\s]+[\$€¥￥]?\s*([\d,]+\.?\d*)",
+            r"小计[：:]\s*[¥￥]?\s*([\d,]+\.?\d*)",
         ]
         for pattern in subtotal_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
@@ -257,8 +274,8 @@ class FinancialParser:
 
         # 提取税额
         tax_patterns = [
-            r'(?:Tax|VAT)[:\s]+[\$€¥￥]?\s*([\d,]+\.?\d*)',
-            r'税[额款][：:]\s*[¥￥]?\s*([\d,]+\.?\d*)',
+            r"(?:Tax|VAT)[:\s]+[\$€¥￥]?\s*([\d,]+\.?\d*)",
+            r"税[额款][：:]\s*[¥￥]?\s*([\d,]+\.?\d*)",
         ]
         for pattern in tax_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
@@ -278,15 +295,27 @@ class FinancialParser:
     def _extract_items_from_text(self, text: str):
         """从文本中提取行项目"""
         import re
+
         # 匹配类似 "Description Qty Unit price Amount" 后的行
         # 例如: "SEC API (per API Key) 1 $55.00 $55.00"
-        item_pattern = r'([A-Za-z][^\n$€¥]+?)\s+(\d+)\s+[\$€¥]?([\d,]+\.?\d*)\s+[\$€¥]?([\d,]+\.?\d*)'
+        item_pattern = r"([A-Za-z][^\n$€¥]+?)\s+(\d+)\s+[\$€¥]?([\d,]+\.?\d*)\s+[\$€¥]?([\d,]+\.?\d*)"
 
         matches = re.findall(item_pattern, text)
         for match in matches:
             desc, qty, unit_price, total = match
             # 过滤掉表头行
-            if any(kw in desc.lower() for kw in ['description', 'qty', 'quantity', 'unit', 'amount', 'subtotal', 'total']):
+            if any(
+                kw in desc.lower()
+                for kw in [
+                    "description",
+                    "qty",
+                    "quantity",
+                    "unit",
+                    "amount",
+                    "subtotal",
+                    "total",
+                ]
+            ):
                 continue
             item = LineItem(
                 description=desc.strip(),
@@ -318,13 +347,16 @@ class FinancialParser:
                 if not cell:
                     continue
                 cell_lower = str(cell).lower()
-                if any(k in cell_lower for k in ['名称', '描述', '项目', 'description', 'item']):
+                if any(
+                    k in cell_lower
+                    for k in ["名称", "描述", "项目", "description", "item"]
+                ):
                     desc_col = i
-                elif any(k in cell_lower for k in ['数量', 'qty', 'quantity']):
+                elif any(k in cell_lower for k in ["数量", "qty", "quantity"]):
                     qty_col = i
-                elif any(k in cell_lower for k in ['单价', 'price', 'unit']):
+                elif any(k in cell_lower for k in ["单价", "price", "unit"]):
                     price_col = i
-                elif any(k in cell_lower for k in ['金额', '合计', 'amount', 'total']):
+                elif any(k in cell_lower for k in ["金额", "合计", "amount", "total"]):
                     total_col = i
 
             # 提取数据行
@@ -333,10 +365,26 @@ class FinancialParser:
                     continue
 
                 item = LineItem(
-                    description=str(row[desc_col]) if desc_col is not None and desc_col < len(row) else "",
-                    quantity=self._parse_amount(row[qty_col]) if qty_col is not None and qty_col < len(row) else 1.0,
-                    unit_price=self._parse_amount(row[price_col]) if price_col is not None and price_col < len(row) else 0.0,
-                    total=self._parse_amount(row[total_col]) if total_col is not None and total_col < len(row) else 0.0,
+                    description=(
+                        str(row[desc_col])
+                        if desc_col is not None and desc_col < len(row)
+                        else ""
+                    ),
+                    quantity=(
+                        self._parse_amount(row[qty_col])
+                        if qty_col is not None and qty_col < len(row)
+                        else 1.0
+                    ),
+                    unit_price=(
+                        self._parse_amount(row[price_col])
+                        if price_col is not None and price_col < len(row)
+                        else 0.0
+                    ),
+                    total=(
+                        self._parse_amount(row[total_col])
+                        if total_col is not None and total_col < len(row)
+                        else 0.0
+                    ),
                 )
 
                 if item.description or item.total:
@@ -350,7 +398,14 @@ class FinancialParser:
             return float(value)
 
         # 清理字符串
-        s = str(value).replace(',', '').replace('¥', '').replace('￥', '').replace('$', '').strip()
+        s = (
+            str(value)
+            .replace(",", "")
+            .replace("¥", "")
+            .replace("￥", "")
+            .replace("$", "")
+            .strip()
+        )
         try:
             return float(s)
         except ValueError:
@@ -360,13 +415,13 @@ class FinancialParser:
         """检测文档类型"""
         text = self.doc.raw_text.lower()
 
-        if any(k in text for k in ['发票', 'invoice', '增值税']):
+        if any(k in text for k in ["发票", "invoice", "增值税"]):
             self.doc.doc_type = "Invoice"
-        elif any(k in text for k in ['收据', 'receipt', '小票']):
+        elif any(k in text for k in ["收据", "receipt", "小票"]):
             self.doc.doc_type = "Receipt"
-        elif any(k in text for k in ['对账单', 'statement', '账单', '交易明细']):
+        elif any(k in text for k in ["对账单", "statement", "账单", "交易明细"]):
             self.doc.doc_type = "Statement"
-        elif any(k in text for k in ['报销', 'expense']):
+        elif any(k in text for k in ["报销", "expense"]):
             self.doc.doc_type = "Expense Report"
 
     def _categorize_items(self):
@@ -389,12 +444,16 @@ class FinancialParser:
 
         if category_totals:
             top_category = max(category_totals.keys(), key=lambda k: category_totals[k])
-            self.doc.insights.append(f"最大支出类别: {top_category} (¥{category_totals[top_category]:.2f})")
+            self.doc.insights.append(
+                f"最大支出类别: {top_category} (¥{category_totals[top_category]:.2f})"
+            )
 
         # 检测大额交易
         for item in self.doc.line_items:
             if item.total > 10000:
-                self.doc.flags.append(f"大额交易: {item.description} (¥{item.total:.2f})")
+                self.doc.flags.append(
+                    f"大额交易: {item.description} (¥{item.total:.2f})"
+                )
 
         # 税务相关
         if self.doc.tax > 0:
@@ -403,7 +462,7 @@ class FinancialParser:
     def to_dict(self) -> dict:
         """转换为字典"""
         result = asdict(self.doc)
-        result['line_items'] = [asdict(item) for item in self.doc.line_items]
+        result["line_items"] = [asdict(item) for item in self.doc.line_items]
         return result
 
     def to_json(self) -> str:
@@ -412,21 +471,25 @@ class FinancialParser:
 
     def to_csv(self, output_path: Optional[str] = None) -> str:
         """导出为 CSV"""
-        final_path: str = output_path if output_path else str(self.file_path.with_suffix('.csv'))
+        final_path: str = (
+            output_path if output_path else str(self.file_path.with_suffix(".csv"))
+        )
 
-        with open(final_path, 'w', newline='', encoding='utf-8-sig') as f:
+        with open(final_path, "w", newline="", encoding="utf-8-sig") as f:
             writer = csv.writer(f)
-            writer.writerow(['日期', '供应商', '描述', '类别', '金额', '可抵税'])
+            writer.writerow(["日期", "供应商", "描述", "类别", "金额", "可抵税"])
 
             for item in self.doc.line_items:
-                writer.writerow([
-                    self.doc.date,
-                    self.doc.vendor_name,
-                    item.description,
-                    item.category,
-                    item.total,
-                    'Yes' if item.category != 'Other' else 'No'
-                ])
+                writer.writerow(
+                    [
+                        self.doc.date,
+                        self.doc.vendor_name,
+                        item.description,
+                        item.category,
+                        item.total,
+                        "Yes" if item.category != "Other" else "No",
+                    ]
+                )
 
         return final_path
 
@@ -445,24 +508,28 @@ class FinancialParser:
         ]
 
         if self.doc.line_items:
-            lines.extend([
-                "## 明细项目",
-                "| 描述 | 数量 | 单价 | 金额 | 类别 |",
-                "|------|------|------|------|------|",
-            ])
+            lines.extend(
+                [
+                    "## 明细项目",
+                    "| 描述 | 数量 | 单价 | 金额 | 类别 |",
+                    "|------|------|------|------|------|",
+                ]
+            )
             for item in self.doc.line_items:
                 lines.append(
                     f"| {item.description[:30]} | {item.quantity} | ¥{item.unit_price:.2f} | ¥{item.total:.2f} | {item.category} |"
                 )
             lines.append("")
 
-        lines.extend([
-            "## 财务汇总",
-            f"- **小计**: ¥{self.doc.subtotal:,.2f}",
-            f"- **税额**: ¥{self.doc.tax:,.2f}",
-            f"- **总计**: ¥{self.doc.total:,.2f}",
-            "",
-        ])
+        lines.extend(
+            [
+                "## 财务汇总",
+                f"- **小计**: ¥{self.doc.subtotal:,.2f}",
+                f"- **税额**: ¥{self.doc.tax:,.2f}",
+                f"- **总计**: ¥{self.doc.total:,.2f}",
+                "",
+            ]
+        )
 
         # 按类别汇总
         category_totals = {}
@@ -471,11 +538,13 @@ class FinancialParser:
             category_totals[cat] = category_totals.get(cat, 0) + item.total
 
         if category_totals:
-            lines.extend([
-                "## 费用分类",
-                "| 类别 | 金额 |",
-                "|------|------|",
-            ])
+            lines.extend(
+                [
+                    "## 费用分类",
+                    "| 类别 | 金额 |",
+                    "|------|------|",
+                ]
+            )
             for cat, total in sorted(category_totals.items(), key=lambda x: -x[1]):
                 lines.append(f"| {cat} | ¥{total:,.2f} |")
             lines.append("")
@@ -497,7 +566,7 @@ class FinancialParser:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='财务文档解析工具 - 解析发票、收据、银行对账单',
+        description="财务文档解析工具 - 解析发票、收据、银行对账单",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -506,14 +575,21 @@ def main():
   %(prog)s invoice.pdf --format csv       # 导出为 CSV
   %(prog)s receipt.jpg                    # 解析图片收据
   %(prog)s statement.csv                  # 解析 CSV 对账单
-        """
+        """,
     )
 
-    parser.add_argument('file', help='要解析的文件路径 (PDF/图片/CSV)')
-    parser.add_argument('--format', '-f', choices=['markdown', 'json', 'csv', 'all'],
-                        default='markdown', help='输出格式 (默认: markdown)')
-    parser.add_argument('--output', '-o', help='输出文件路径 (仅用于 csv 格式)')
-    parser.add_argument('--quiet', '-q', action='store_true', help='静默模式，只输出结果')
+    parser.add_argument("file", help="要解析的文件路径 (PDF/图片/CSV)")
+    parser.add_argument(
+        "--format",
+        "-f",
+        choices=["markdown", "json", "csv", "all"],
+        default="markdown",
+        help="输出格式 (默认: markdown)",
+    )
+    parser.add_argument("--output", "-o", help="输出文件路径 (仅用于 csv 格式)")
+    parser.add_argument(
+        "--quiet", "-q", action="store_true", help="静默模式，只输出结果"
+    )
 
     args = parser.parse_args()
 
@@ -524,13 +600,13 @@ def main():
         parser_obj = FinancialParser(args.file)
         doc = parser_obj.parse()
 
-        if args.format == 'json':
+        if args.format == "json":
             print(parser_obj.to_json())
-        elif args.format == 'csv':
+        elif args.format == "csv":
             csv_path = parser_obj.to_csv(args.output)
             if not args.quiet:
                 print(f"已导出到: {csv_path}", file=sys.stderr)
-        elif args.format == 'all':
+        elif args.format == "all":
             print(parser_obj.to_markdown())
             print("\n---\n")
             print("## JSON 数据")
@@ -545,5 +621,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

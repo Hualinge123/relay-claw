@@ -87,9 +87,13 @@ class FeishuChannel(BaseChannel):
         self._api_client: Any = None  # 飞书API客户端（用于发送消息）
         self._websocket_client: Any = None  # WebSocket客户端（用于接收消息）
         self._websocket_thread: threading.Thread | None = None  # WebSocket运行线程
-        self._message_dedup_cache: OrderedDict[str, None] = OrderedDict()  # 消息去重缓存
+        self._message_dedup_cache: OrderedDict[str, None] = (
+            OrderedDict()
+        )  # 消息去重缓存
         self._main_loop: asyncio.AbstractEventLoop | None = None  # 主线程事件循环
-        self._ws_thread_loop: asyncio.AbstractEventLoop | None = None  # WebSocket线程事件循环
+        self._ws_thread_loop: asyncio.AbstractEventLoop | None = (
+            None  # WebSocket线程事件循环
+        )
         self._message_callback: Callable[[Message], None] | None = None  # 网关模式回调
         self._stopping = False
         # 按 request_id 聚合 chat.delta，避免同一任务被拆分成多条消息发送到飞书。
@@ -127,9 +131,18 @@ class FeishuChannel(BaseChannel):
             content: 消息内容
             metadata: 额外的元数据
         """
-        msg = Message(id=chat_id, type="req", channel_id=self.name, session_id=str(chat_id),
-            params={"content": content, "query": content}, timestamp=time.time(), ok=True,
-            req_method=ReqMethod.CHAT_SEND, is_stream=True, metadata=metadata)
+        msg = Message(
+            id=chat_id,
+            type="req",
+            channel_id=self.name,
+            session_id=str(chat_id),
+            params={"content": content, "query": content},
+            timestamp=time.time(),
+            ok=True,
+            req_method=ReqMethod.CHAT_SEND,
+            is_stream=True,
+            metadata=metadata,
+        )
         if self._message_callback:
             self._message_callback(msg)
         else:
@@ -258,7 +271,9 @@ class FeishuChannel(BaseChannel):
             for task in pending:
                 task.cancel()
             if pending:
-                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
             loop.run_until_complete(asyncio.sleep(0))
         except Exception:
             pass
@@ -283,7 +298,11 @@ class FeishuChannel(BaseChannel):
         self._stopping = True
         self._stream_text_buffers.clear()
 
-        if self._websocket_client and self._ws_thread_loop and self._ws_thread_loop.is_running():
+        if (
+            self._websocket_client
+            and self._ws_thread_loop
+            and self._ws_thread_loop.is_running()
+        ):
             try:
                 await self._shutdown_ws_client()
             except Exception as e:
@@ -382,7 +401,9 @@ class FeishuChannel(BaseChannel):
         except Exception as e:
             logger.warning(f"添加消息反应时发生异常: {e}")
 
-    async def _add_reaction(self, message_id: str, emoji_type: str = "THUMBSUP") -> None:
+    async def _add_reaction(
+        self, message_id: str, emoji_type: str = "THUMBSUP"
+    ) -> None:
         """
         为消息添加反应表情符号（非阻塞）。
 
@@ -402,7 +423,9 @@ class FeishuChannel(BaseChannel):
             return
 
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._add_reaction_sync, message_id, emoji_type)
+        await loop.run_in_executor(
+            None, self._add_reaction_sync, message_id, emoji_type
+        )
 
     # Markdown表格正则表达式（标题行+分隔符行+数据行）
     _TABLE_RE = re.compile(
@@ -485,67 +508,68 @@ class FeishuChannel(BaseChannel):
             list[dict]: 飞书卡片元素列表
         """
         elements = []
-        lines = md_content.split('\n')
+        lines = md_content.split("\n")
         current_text = []
 
         for line in lines:
             stripped = line.strip()
 
             # 处理标题
-            if stripped.startswith('## '):
+            if stripped.startswith("## "):
                 if current_text:
-                    elements.append(self._create_div_element('\n'.join(current_text)))
+                    elements.append(self._create_div_element("\n".join(current_text)))
                     current_text = []
-                elements.append({
-                    "tag": "div",
-                    "text": {
-                        "tag": "lark_md",
-                        "content": f"**{stripped[3:]}**"
+                elements.append(
+                    {
+                        "tag": "div",
+                        "text": {"tag": "lark_md", "content": f"**{stripped[3:]}**"},
                     }
-                })
-            elif stripped.startswith('### '):
+                )
+            elif stripped.startswith("### "):
                 if current_text:
-                    elements.append(self._create_div_element('\n'.join(current_text)))
+                    elements.append(self._create_div_element("\n".join(current_text)))
                     current_text = []
-                elements.append({
-                    "tag": "div",
-                    "text": {
-                        "tag": "lark_md",
-                        "content": f"**{stripped[4:]}**"
+                elements.append(
+                    {
+                        "tag": "div",
+                        "text": {"tag": "lark_md", "content": f"**{stripped[4:]}**"},
                     }
-                })
-            elif stripped.startswith('# '):
+                )
+            elif stripped.startswith("# "):
                 if current_text:
-                    elements.append(self._create_div_element('\n'.join(current_text)))
+                    elements.append(self._create_div_element("\n".join(current_text)))
                     current_text = []
-                elements.append({
-                    "tag": "div",
-                    "text": {
-                        "tag": "lark_md",
-                        "content": f"**{stripped[2:]}**"
+                elements.append(
+                    {
+                        "tag": "div",
+                        "text": {"tag": "lark_md", "content": f"**{stripped[2:]}**"},
                     }
-                })
+                )
             # 处理分隔线
-            elif stripped == '---':
+            elif stripped == "---":
                 if current_text:
-                    elements.append(self._create_div_element('\n'.join(current_text)))
+                    elements.append(self._create_div_element("\n".join(current_text)))
                     current_text = []
                 elements.append({"tag": "hr"})
             # 处理引用块
-            elif stripped.startswith('> '):
+            elif stripped.startswith("> "):
                 current_text.append(stripped[2:])
             # 处理列表项
-            elif stripped.startswith('- ') or stripped.startswith('* '):
+            elif stripped.startswith("- ") or stripped.startswith("* "):
                 current_text.append(f"• {stripped[2:]}")
-            elif re.match(r'^\d+\. ', stripped):
+            elif re.match(r"^\d+\. ", stripped):
                 current_text.append(stripped)
             else:
                 current_text.append(line)
 
         if current_text:
-            elements.append(self._create_div_element('\n'.join(current_text)))
+            elements.append(self._create_div_element("\n".join(current_text)))
 
-        return elements if elements else [{"tag": "div", "text": {"tag": "lark_md", "content": md_content}}]
+        return (
+            elements
+            if elements
+            else [{"tag": "div", "text": {"tag": "lark_md", "content": md_content}}]
+        )
 
     def _create_div_element(self, content: str) -> dict:
         """
@@ -561,17 +585,11 @@ class FeishuChannel(BaseChannel):
         formatted = content
         # 保留粗体和斜体
         # 处理行内代码
-        formatted = re.sub(r'`([^`]+)`', r'`\1`', formatted)
+        formatted = re.sub(r"`([^`]+)`", r"`\1`", formatted)
         # 处理链接
-        formatted = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'[\1](\2)', formatted)
+        formatted = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"[\1](\2)", formatted)
 
-        return {
-            "tag": "div",
-            "text": {
-                "tag": "lark_md",
-                "content": formatted
-            }
-        }
+        return {"tag": "div", "text": {"tag": "lark_md", "content": formatted}}
 
     async def send(self, msg: Message) -> None:
         """
@@ -586,7 +604,11 @@ class FeishuChannel(BaseChannel):
 
         try:
             payload = msg.payload if isinstance(msg.payload, dict) else {}
-            event_name = getattr(msg.event_type, "value", None) or payload.get("event_type") or ""
+            event_name = (
+                getattr(msg.event_type, "value", None)
+                or payload.get("event_type")
+                or ""
+            )
             stream_key = str(getattr(msg, "id", "") or "")
             streaming_enabled = bool(self.config.enable_streaming)
 
@@ -607,7 +629,11 @@ class FeishuChannel(BaseChannel):
                 return
 
             # 非 streaming 模式下仅下发最终结果，屏蔽执行过程类事件。
-            if (not streaming_enabled) and event_name in {"chat.tool_call", "chat.tool_result", "todo.updated"}:
+            if (not streaming_enabled) and event_name in {
+                "chat.tool_call",
+                "chat.tool_result",
+                "todo.updated",
+            }:
                 return
 
             # 流式结束兜底：有些场景不会携带非空 chat.final，使用 processing_status=false 冲刷缓存。
@@ -704,7 +730,9 @@ class FeishuChannel(BaseChannel):
 
         # 2) 若 metadata 中没有平台身份，则使用配置中的 chat_id 作为固定推送目标
         # print('this is in _extract_receive_info')
-        logger.info('this is in _extract_receive_info, chat_id is %s', self.config.chat_id)
+        logger.info(
+            "this is in _extract_receive_info, chat_id is %s", self.config.chat_id
+        )
         if not receive_id:
             cfg_chat_id = getattr(self.config, "chat_id", "") or ""
             cfg_chat_id = cfg_chat_id.strip()
@@ -733,20 +761,32 @@ class FeishuChannel(BaseChannel):
             str: 消息内容字符串
         """
         payload = msg.payload if isinstance(msg.payload, dict) else {}
-        event_name = getattr(msg.event_type, "value", None) or payload.get("event_type") or ""
+        event_name = (
+            getattr(msg.event_type, "value", None) or payload.get("event_type") or ""
+        )
 
         if event_name == "chat.tool_call":
             tool_info = payload.get("tool_call", payload)
             if isinstance(tool_info, dict):
-                tool_name = tool_info.get("tool_name") or tool_info.get("name") or "unknown_tool"
+                tool_name = (
+                    tool_info.get("tool_name")
+                    or tool_info.get("name")
+                    or "unknown_tool"
+                )
                 args = (
                     tool_info.get("arguments")
                     or tool_info.get("args")
                     or tool_info.get("input")
                     or tool_info.get("params")
                 )
-                args_text = self._truncate_text(self._extract_preferred_text(args), max_len=240)
-                return f"[工具调用] {tool_name}" if not args_text else f"[工具调用] {tool_name}\n参数: {args_text}"
+                args_text = self._truncate_text(
+                    self._extract_preferred_text(args), max_len=240
+                )
+                return (
+                    f"[工具调用] {tool_name}"
+                    if not args_text
+                    else f"[工具调用] {tool_name}\n参数: {args_text}"
+                )
             tool_text = self._extract_preferred_text(tool_info)
             tool_text = self._truncate_text(tool_text, max_len=160)
             return f"[工具调用] {tool_text}" if tool_text else "[工具调用]"
@@ -754,7 +794,11 @@ class FeishuChannel(BaseChannel):
         if event_name == "chat.tool_result":
             tool_name = payload.get("tool_name") or "unknown_tool"
             result_text = self._extract_tool_result_text(payload.get("result"))
-            return f"[工具结果] {tool_name}" if not result_text else f"[工具结果] {tool_name}\n{result_text}"
+            return (
+                f"[工具结果] {tool_name}"
+                if not result_text
+                else f"[工具结果] {tool_name}\n{result_text}"
+            )
 
         if event_name == "todo.updated":
             todos = payload.get("todos")
@@ -798,7 +842,10 @@ class FeishuChannel(BaseChannel):
             return ""
 
         if event_name == "chat.interrupt_result":
-            return self._extract_preferred_text(payload.get("message")) or "[状态] 任务已中断"
+            return (
+                self._extract_preferred_text(payload.get("message"))
+                or "[状态] 任务已中断"
+            )
 
         if event_name == "heartbeat.relay":
             return self._extract_preferred_text(payload.get("heartbeat"))
@@ -807,7 +854,9 @@ class FeishuChannel(BaseChannel):
         content_str = (msg.params or {}).get("content") or payload.get("content") or ""
         if isinstance(content_str, dict):
             content_str = content_str.get("output", content_str)
-        text = self._truncate_text(self._extract_preferred_text(content_str), max_len=4000)
+        text = self._truncate_text(
+            self._extract_preferred_text(content_str), max_len=4000
+        )
         if text:
             return text
 
@@ -817,7 +866,15 @@ class FeishuChannel(BaseChannel):
     def _extract_tool_result_text(self, value: Any) -> str:
         """提取工具结果可读摘要，限制长度，避免飞书消息过载。"""
         if isinstance(value, dict):
-            for key in ("summary", "message", "output", "result", "content", "text", "error"):
+            for key in (
+                "summary",
+                "message",
+                "output",
+                "result",
+                "content",
+                "text",
+                "error",
+            ):
                 if key in value:
                     text = self._extract_preferred_text(value.get(key))
                     if text:
@@ -834,9 +891,8 @@ class FeishuChannel(BaseChannel):
             text = value.strip()
             if not text:
                 return ""
-            if (
-                (text.startswith("{") and text.endswith("}"))
-                or (text.startswith("[") and text.endswith("]"))
+            if (text.startswith("{") and text.endswith("}")) or (
+                text.startswith("[") and text.endswith("]")
             ):
                 try:
                     parsed = json.loads(text)
@@ -853,7 +909,15 @@ class FeishuChannel(BaseChannel):
             return text
 
         if isinstance(value, dict):
-            for key in ("output", "content", "text", "message", "result", "error", "summary"):
+            for key in (
+                "output",
+                "content",
+                "text",
+                "message",
+                "result",
+                "error",
+                "summary",
+            ):
                 if key in value:
                     extracted = FeishuChannel._extract_preferred_text(value.get(key))
                     if extracted:
@@ -983,9 +1047,7 @@ class FeishuChannel(BaseChannel):
                 return
 
             # 提取发送者open_id
-            open_id = (
-                getattr(getattr(sender, "sender_id", None), "open_id", None) or ""
-            )
+            open_id = getattr(getattr(sender, "sender_id", None), "open_id", None) or ""
 
             # 将最近一次可回发的飞书身份写入 config.yaml，供 cron 推送时使用
             try:

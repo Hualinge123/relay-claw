@@ -5,13 +5,13 @@
 from typing import List, Dict, Any, Optional, Literal, TypedDict
 from dataclasses import dataclass, field
 
-
 MemorySource = Literal["memory", "sessions"]
 
 
 @dataclass
 class MemorySearchResult:
     """Result from memory search."""
+
     id: str
     path: str
     source: str
@@ -25,6 +25,7 @@ class MemorySearchResult:
 @dataclass
 class MemoryProviderStatus:
     """Status of embedding provider."""
+
     available: bool
     provider: Optional[str] = None
     model: Optional[str] = None
@@ -34,6 +35,7 @@ class MemoryProviderStatus:
 @dataclass
 class MemorySyncProgressUpdate:
     """Progress update during memory sync."""
+
     phase: str
     current: int
     total: int
@@ -43,6 +45,7 @@ class MemorySyncProgressUpdate:
 @dataclass
 class FileEntry:
     """Entry representing a file (memory or session)."""
+
     path: str
     absPath: str
     hash: str
@@ -57,6 +60,7 @@ SessionFileEntry = FileEntry
 @dataclass
 class MemoryChunk:
     """A chunk of memory content."""
+
     text: str
     startLine: int
     endLine: int
@@ -65,6 +69,7 @@ class MemoryChunk:
 @dataclass
 class FtsStatus:
     """Status of FTS5 full-text search."""
+
     enabled: bool
     available: bool = False
     error: Optional[str] = None
@@ -73,6 +78,7 @@ class FtsStatus:
 @dataclass
 class VectorStatus:
     """Status of vector search."""
+
     enabled: bool
     available: bool = False
     error: Optional[str] = None

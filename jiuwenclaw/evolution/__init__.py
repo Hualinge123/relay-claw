@@ -7,6 +7,7 @@ Provides EvolutionService as the unified facade, backed by:
   - SkillEvolver: LLM-based experience generation with history dedup
   - EvolutionStore: pure IO layer for evolutions_desc.json / evolutions_body.json and SKILL.md
 """
+
 from jiuwenclaw.evolution.schema import (
     EvolutionChange,
     EvolutionEntry,

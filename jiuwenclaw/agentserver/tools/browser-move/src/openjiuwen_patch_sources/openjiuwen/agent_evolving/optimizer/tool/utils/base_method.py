@@ -17,10 +17,10 @@ def parse_json(output, header=None):
             if json_idx == -1:
                 json_idx = output.find(f'{{\n"{header}":')
         if json_idx == -1:
-            json_idx = output.find('{\n')
+            json_idx = output.find("{\n")
         if json_idx == -1:
-            json_idx = output.find('{')
-        json_end_idx = output.rfind('}')
+            json_idx = output.find("{")
+        json_end_idx = output.rfind("}")
         json_end_idx = json_end_idx + 1 if json_end_idx != -1 else -1
         output = output[json_idx:json_end_idx].strip()
         output_json = json.loads(output)
@@ -38,17 +38,18 @@ def print_bold(text):
     reset = "\033[0m"
 
 
-
 class BaseMethod:
     def __init__(
-        self, 
+        self,
         config: Dict[str, Union[str, int, bool]],
     ):
         self.config = config
-        self.verbose = config['verbose'] if 'verbose' in config else False
+        self.verbose = config["verbose"] if "verbose" in config else False
 
-    def produce_answer_from_api_call(self, instruction: str, doc_str: str, api_response: str):
-        user_prompt = f'''
+    def produce_answer_from_api_call(
+        self, instruction: str, doc_str: str, api_response: str
+    ):
+        user_prompt = f"""
 Please respond in natural language text. Do not include code in your responses. You are given an API tool with the following documentation, which includes the functionality description, required parameters, code snippets for API calls, etc.
 
 Documentation:
@@ -64,8 +65,8 @@ Finally, organize your output in the following JSON format:
 {{
     "answer": answer
 }}
-You must strictly follow the output format. You can begin your task now.'''
-        
+You must strictly follow the output format. You can begin your task now."""
+
         def verify_output(output):
             output_json = parse_json(output)
 
@@ -82,16 +83,16 @@ You must strictly follow the output format. You can begin your task now.'''
 
         prompt = format_prompt_llama(system_prompt="", user_prompt=user_prompt)
         output = get_rits_response(
-            self.config['gen_model_id'],
+            self.config["gen_model_id"],
             prompt,
-            self.config['llm_api_key'],
+            self.config["llm_api_key"],
             verify_output,
             max_attempts=15,
             include_stop_sequence=False,
-            stop_sequences=['<|eot_id|>', '<|end_of_text|>', '<|eom_id|>'],
-            verbose=self.config['verbose']
+            stop_sequences=["<|eot_id|>", "<|end_of_text|>", "<|eom_id|>"],
+            verbose=self.config["verbose"],
         )
-        if self.config['verbose']:
-            print_bold('Final LLM output: ')
+        if self.config["verbose"]:
+            print_bold("Final LLM output: ")
             print_bold(output)
         return output

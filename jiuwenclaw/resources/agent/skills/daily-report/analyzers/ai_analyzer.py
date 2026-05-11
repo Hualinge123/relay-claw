@@ -19,7 +19,14 @@ from typing import Any, Optional
 
 # 尝试导入 LLM 相关模块
 try:
-    from openjiuwen.core.foundation.llm import Model, ModelClientConfig, ModelRequestConfig, UserMessage, SystemMessage
+    from openjiuwen.core.foundation.llm import (
+        Model,
+        ModelClientConfig,
+        ModelRequestConfig,
+        UserMessage,
+        SystemMessage,
+    )
+
     LLM_AVAILABLE = True
 except ImportError:
     LLM_AVAILABLE = False
@@ -28,6 +35,7 @@ except ImportError:
 # 尝试导入配置
 try:
     import yaml
+
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
@@ -111,7 +119,11 @@ class AIAnalyzer:
         # 尝试从配置文件读取
         config_path = self.config_path
         if not config_path:
-            config_path = Path(__file__).parent.parent.parent.parent.parent / "config" / "config.yaml"
+            config_path = (
+                Path(__file__).parent.parent.parent.parent.parent
+                / "config"
+                / "config.yaml"
+            )
 
         if config_path and config_path.exists():
             try:
@@ -121,17 +133,29 @@ class AIAnalyzer:
                         # 优先读取 ai_analysis 配置
                         if yaml_config and "ai_analysis" in yaml_config:
                             ai_config = yaml_config["ai_analysis"]
-                            config["model_name"] = ai_config.get("model_name", config["model_name"])
-                            config["api_base"] = ai_config.get("api_base", config["api_base"])
-                            config["api_key"] = ai_config.get("api_key", config["api_key"])
+                            config["model_name"] = ai_config.get(
+                                "model_name", config["model_name"]
+                            )
+                            config["api_base"] = ai_config.get(
+                                "api_base", config["api_base"]
+                            )
+                            config["api_key"] = ai_config.get(
+                                "api_key", config["api_key"]
+                            )
                         # 其次读取 react 配置
                         elif yaml_config and "react" in yaml_config:
                             react_config = yaml_config["react"]
-                            config["model_name"] = react_config.get("model_name", config["model_name"])
+                            config["model_name"] = react_config.get(
+                                "model_name", config["model_name"]
+                            )
                             if "model_client_config" in react_config:
                                 client_config = react_config["model_client_config"]
-                                config["api_base"] = client_config.get("api_base", config["api_base"])
-                                config["api_key"] = client_config.get("api_key", config["api_key"])
+                                config["api_base"] = client_config.get(
+                                    "api_base", config["api_base"]
+                                )
+                                config["api_key"] = client_config.get(
+                                    "api_key", config["api_key"]
+                                )
             except Exception as e:
                 print(f"[AIAnalyzer] 加载配置文件失败: {e}")
 
@@ -211,9 +235,9 @@ class AIAnalyzer:
         commit_count = git_data.get("total_commits", 0)
         insertions = git_data.get("total_insertions", 0)
         deletions = git_data.get("total_deletions", 0)
-        commit_messages = "\n".join([
-            f"- {c.get('message', '')}" for c in git_data.get("commits", [])[:5]
-        ])
+        commit_messages = "\n".join(
+            [f"- {c.get('message', '')}" for c in git_data.get("commits", [])[:5]]
+        )
 
         completed = todo_data.get("completed_count", 0)
         total = todo_data.get("total_count", 0)
@@ -291,8 +315,12 @@ class AIAnalyzer:
 4. 每条建议简洁明了，不超过 20 字
 5. 直接输出建议列表，每行一条，不要编号"""
 
-        pending_str = "\n".join([f"- {t}" for t in pending_tasks[:5]]) if pending_tasks else "无"
-        in_progress_str = "\n".join([f"- {t}" for t in in_progress[:5]]) if in_progress else "无"
+        pending_str = (
+            "\n".join([f"- {t}" for t in pending_tasks[:5]]) if pending_tasks else "无"
+        )
+        in_progress_str = (
+            "\n".join([f"- {t}" for t in in_progress[:5]]) if in_progress else "无"
+        )
 
         user_prompt = f"""请根据以下信息，建议明日的重点工作：
 
@@ -333,10 +361,12 @@ class AIAnalyzer:
         if pending:
             suggestions.append(f"处理待办：{pending[0][:20]}")
 
-        suggestions.extend([
-            "整理今日工作笔记",
-            "检查邮件和消息",
-        ])
+        suggestions.extend(
+            [
+                "整理今日工作笔记",
+                "检查邮件和消息",
+            ]
+        )
 
         return suggestions[:5]
 
@@ -380,7 +410,15 @@ class AIAnalyzer:
             if commit_date:
                 try:
                     dt = datetime.strptime(commit_date, "%Y-%m-%d")
-                    weekday_name = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][dt.weekday()]
+                    weekday_name = [
+                        "周一",
+                        "周二",
+                        "周三",
+                        "周四",
+                        "周五",
+                        "周六",
+                        "周日",
+                    ][dt.weekday()]
                     weekday_counts[weekday_name] += 1
                 except ValueError:
                     pass
@@ -422,9 +460,7 @@ class AIAnalyzer:
         if pattern.weekday_distribution:
             # 找出提交最多的工作日
             top_days = sorted(
-                pattern.weekday_distribution.items(),
-                key=lambda x: x[1],
-                reverse=True
+                pattern.weekday_distribution.items(), key=lambda x: x[1], reverse=True
             )[:2]
             if top_days and top_days[0][1] > 0:
                 days_str = "、".join([d[0] for d in top_days])
@@ -439,7 +475,9 @@ class AIAnalyzer:
         else:
             return "暂无足够数据进行分析，建议持续记录工作数据。"
 
-    async def analyze_full(self, data: dict, pattern_data: Optional[list[dict]] = None) -> AIAnalysisResult:
+    async def analyze_full(
+        self, data: dict, pattern_data: Optional[list[dict]] = None
+    ) -> AIAnalysisResult:
         """
         执行完整的 AI 分析
 

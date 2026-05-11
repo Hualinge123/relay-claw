@@ -93,7 +93,11 @@ class WecomChannel(BaseChannel):
 
         text = body.get("text") or {}
         content = (
-            (text.get("content", "") if isinstance(text, dict) else str(text) if text else "")
+            (
+                text.get("content", "")
+                if isinstance(text, dict)
+                else str(text) if text else ""
+            )
             or body.get("content", "")
             or ""
         )
@@ -225,9 +229,12 @@ class WecomChannel(BaseChannel):
                 return sid_str
         try:
             from jiuwenclaw.config import get_config
+
             ch_cfg = (get_config().get("channels") or {}).get("wecom") or {}
             # last_chat_id：用户聊天时自动写入；default_chat_id：可手动配置，用于心跳/定时推送
-            last = str(ch_cfg.get("last_chat_id") or ch_cfg.get("default_chat_id") or "").strip()
+            last = str(
+                ch_cfg.get("last_chat_id") or ch_cfg.get("default_chat_id") or ""
+            ).strip()
             if last and not self._looks_like_msgid(last):
                 return last
             return None
@@ -238,11 +245,7 @@ class WecomChannel(BaseChannel):
         """从出站消息中提取文本内容。"""
         payload = getattr(msg, "payload", None) or {}
         params = getattr(msg, "params", None) or {}
-        content = (
-            params.get("content")
-            or payload.get("content")
-            or ""
-        )
+        content = params.get("content") or payload.get("content") or ""
         if isinstance(content, dict):
             content = content.get("output", str(content))
         return str(content or "").strip()
@@ -253,7 +256,9 @@ class WecomChannel(BaseChannel):
         if not text or not isinstance(text, str):
             return text or ""
         # 1. 移除完整的 <think>...</think> 块
-        text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE | re.DOTALL)
+        text = re.sub(
+            r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE | re.DOTALL
+        )
         # 2. 移除未闭合的 <think>...（流式场景下可能先收到 <think> 后收到 </think>）
         text = re.sub(r"<think>[\s\S]*$", "", text, flags=re.IGNORECASE | re.DOTALL)
         return text
@@ -295,7 +300,11 @@ class WecomChannel(BaseChannel):
     async def _send_stream_placeholder(self, req_id: str) -> None:
         """发送流式首帧占位。PHP SDK 用 <think></think> 显示加载动画，企业微信 Markdown 可能支持。"""
         entry = self._pending_streams.get(req_id)
-        if not entry or not self._ws_client or not getattr(self._ws_client, "is_connected", False):
+        if (
+            not entry
+            or not self._ws_client
+            or not getattr(self._ws_client, "is_connected", False)
+        ):
             return
         try:
             # 尝试 <think></think>（PHP SDK 用法，可能渲染为加载动画）；若不支持则显示为 ...
@@ -332,7 +341,10 @@ class WecomChannel(BaseChannel):
                 payload = getattr(msg, "payload", None) or {}
                 if isinstance(payload, dict) and payload.get("heartbeat"):
                     try:
-                        body = {"msgtype": "markdown", "markdown": {"content": str(payload.get("heartbeat"))}}
+                        body = {
+                            "msgtype": "markdown",
+                            "markdown": {"content": str(payload.get("heartbeat"))},
+                        }
                         await self._ws_client.send_message(chatid, body)
                         logger.debug("WecomChannel 心跳已发送至 chatid=%s", chatid)
                     except Exception as e:
@@ -387,13 +399,20 @@ class WecomChannel(BaseChannel):
             if req_id:
                 self._pending_streams.pop(req_id, None)
             payload = getattr(msg, "payload", None) or {}
-            err_text = payload.get("error", "处理出错") if isinstance(payload, dict) else "处理出错"
+            err_text = (
+                payload.get("error", "处理出错")
+                if isinstance(payload, dict)
+                else "处理出错"
+            )
             chatid = self._extract_chatid(msg)
             if chatid:
                 try:
                     await self._ws_client.send_message(
                         chatid,
-                        {"msgtype": "markdown", "markdown": {"content": f"⚠️ {err_text}"}},
+                        {
+                            "msgtype": "markdown",
+                            "markdown": {"content": f"⚠️ {err_text}"},
+                        },
                     )
                 except Exception as e:
                     logger.debug("WecomChannel 发送错误消息失败: %s", e)
@@ -475,7 +494,9 @@ class WecomChannel(BaseChannel):
             return
 
         self._running = True
-        self._connect_task = asyncio.create_task(self._run_client(), name="wecom-channel")
+        self._connect_task = asyncio.create_task(
+            self._run_client(), name="wecom-channel"
+        )
         logger.info("WecomChannel 已启动（WebSocket 长连接）")
 
         while self._running:
@@ -508,6 +529,10 @@ class WecomChannel(BaseChannel):
             source="websocket",
             extra={
                 "ws_url": self.config.ws_url,
-                "bot_id": self.config.bot_id[:8] + "..." if len(self.config.bot_id) > 8 else self.config.bot_id,
+                "bot_id": (
+                    self.config.bot_id[:8] + "..."
+                    if len(self.config.bot_id) > 8
+                    else self.config.bot_id
+                ),
             },
         )

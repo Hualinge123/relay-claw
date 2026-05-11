@@ -13,18 +13,20 @@ from typing import Any
 from jiuwenclaw.utils import logger
 from jiuwenclaw.schema.message import EventType, Message
 
-
 # ==================== Data Classes ====================
+
 
 @dataclass
 class FileInfo:
     """文件信息."""
+
     file_name: str
     file_type: str
     file_id: str
 
 
 # ==================== A2A Protocol Builders ====================
+
 
 def _build_agent_response_wrapper(
     agent_id: str,
@@ -151,6 +153,7 @@ def build_tasks_cancel_response(task_id: str) -> dict[str, Any]:
 
 # ==================== Message Part Builders ====================
 
+
 def build_text_part(text: str) -> dict[str, Any]:
     """
     构建文本消息部分。
@@ -228,6 +231,7 @@ def build_command_part(command: dict[str, Any]) -> dict[str, Any]:
 
 # ==================== Main Formatter Functions ====================
 
+
 class MessageFormatter:
     """消息格式化器，用于将 JiuwenClaw 消息转换为 A2A 格式。"""
 
@@ -274,7 +278,7 @@ class MessageFormatter:
         self._accumulated_texts[session_id] = current_text
 
         if current_text.startswith(previous_text):
-            return current_text[len(previous_text):]
+            return current_text[len(previous_text) :]
         else:
             # 如果不是追加模式，返回完整文本
             return current_text
@@ -483,6 +487,7 @@ class MessageFormatter:
 
 # ==================== Event Type Utilities ====================
 
+
 def should_send_as_reasoning_text(event_type: EventType | None) -> bool:
     """
     判断是否应该将消息作为 reasoningText 发送。
@@ -553,10 +558,7 @@ def should_send_as_status_update(event_type: EventType | None) -> bool:
 
     # Status update 用于以下事件：
     # - CHAT_TOOL_CALL: 工具调用
-    status_events = {
-        EventType.CHAT_TOOL_CALL,
-        EventType.CHAT_TOOL_RESULT
-    }
+    status_events = {EventType.CHAT_TOOL_CALL, EventType.CHAT_TOOL_RESULT}
 
     return event_type in status_events
 
@@ -584,7 +586,9 @@ def get_status_state_for_event(event_type: EventType | None) -> str:
     return status_map.get(event_type, "unknown")
 
 
-def get_status_text_for_event(event_type: EventType | None, payload: dict | None = None) -> str:
+def get_status_text_for_event(
+    event_type: EventType | None, payload: dict | None = None
+) -> str:
     """
     根据事件类型获取状态文本。
 

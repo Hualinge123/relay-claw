@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 """SkillEvolver - LLM-based experience generation with deduplication."""
+
 from __future__ import annotations
 
 import json
@@ -162,7 +163,8 @@ class SkillEvolver:
         self._model = model
 
     async def generate_skill_experience(
-        self, ctx: ExperienceContext,
+        self,
+        ctx: ExperienceContext,
     ) -> List[EvolutionEntry]:
         """Generate evolution entries via LLM, with history dedup.
 
@@ -178,7 +180,9 @@ class SkillEvolver:
             [s.to_dict() for s in ctx.signals], ensure_ascii=False, indent=2
         )
 
-        desc_summary = self._build_existing_summary(ctx.existing_desc_entries, "description")
+        desc_summary = self._build_existing_summary(
+            ctx.existing_desc_entries, "description"
+        )
         body_summary = self._build_existing_summary(ctx.existing_body_entries, "body")
 
         prompt = _GENERATE_PROMPT.format(
@@ -295,7 +299,9 @@ class SkillEvolver:
         if action == "skip":
             skip_reason = data.get("skip_reason", "unknown")
             return EvolutionChange(
-                section="", action="skip", content="",
+                section="",
+                action="skip",
+                content="",
                 skip_reason=skip_reason,
             )
 

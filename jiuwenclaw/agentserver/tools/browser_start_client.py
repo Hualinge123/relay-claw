@@ -81,9 +81,23 @@ def _default_chrome_candidates(os_name: str) -> list[str]:
         program_files = os.getenv("PROGRAMFILES", "C:\\Program Files")
         program_files_x86 = os.getenv("PROGRAMFILES(X86)", "C:\\Program Files (x86)")
         return [
-            str(Path(local_app_data) / "Google" / "Chrome" / "Application" / "chrome.exe"),
-            str(Path(program_files) / "Google" / "Chrome" / "Application" / "chrome.exe"),
-            str(Path(program_files_x86) / "Google" / "Chrome" / "Application" / "chrome.exe"),
+            str(
+                Path(local_app_data)
+                / "Google"
+                / "Chrome"
+                / "Application"
+                / "chrome.exe"
+            ),
+            str(
+                Path(program_files) / "Google" / "Chrome" / "Application" / "chrome.exe"
+            ),
+            str(
+                Path(program_files_x86)
+                / "Google"
+                / "Chrome"
+                / "Application"
+                / "chrome.exe"
+            ),
             "chrome.exe",
         ]
     if os_name == "macos":

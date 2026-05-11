@@ -158,7 +158,9 @@ class CronSchedulerService:
         self._reload_event.set()
         return run_id
 
-    def _schedule_event(self, at_dt: datetime, kind: str, job_id: str, run_id: str) -> None:
+    def _schedule_event(
+        self, at_dt: datetime, kind: str, job_id: str, run_id: str
+    ) -> None:
         at_ts = float(at_dt.timestamp())
         self._seq += 1
         ev = _Event(at_ts=at_ts, seq=self._seq, kind=kind, job_id=job_id, run_id=run_id)
@@ -167,7 +169,9 @@ class CronSchedulerService:
         if at_ts <= self._now_fn() + 1.0:
             self._reload_event.set()
 
-    def _compute_next_run(self, job: CronJob, *, now_ts: float) -> tuple[datetime, datetime, str]:
+    def _compute_next_run(
+        self, job: CronJob, *, now_ts: float
+    ) -> tuple[datetime, datetime, str]:
         tz = ZoneInfo(job.timezone)
         base = datetime.fromtimestamp(now_ts, tz=tz)
         push_dt = _cron_next_push_dt(job.cron_expr, base)
@@ -217,11 +221,15 @@ class CronSchedulerService:
             await self._on_push(job, ev.run_id)
             # Schedule next occurrence after push is triggered
             try:
-                push_dt, wake_dt, next_run_id = self._compute_next_run(job, now_ts=self._now_fn())
+                push_dt, wake_dt, next_run_id = self._compute_next_run(
+                    job, now_ts=self._now_fn()
+                )
                 self._schedule_event(wake_dt, "wake", job.id, next_run_id)
                 self._schedule_event(push_dt, "push", job.id, next_run_id)
             except Exception as exc:  # noqa: BLE001
-                logger.warning("[Cron] compute next run failed after push job=%s: %s", job.id, exc)
+                logger.warning(
+                    "[Cron] compute next run failed after push job=%s: %s", job.id, exc
+                )
         elif ev.kind == "push_update":
             await self._on_push_update(job, ev.run_id)
 
@@ -235,7 +243,9 @@ class CronSchedulerService:
             except Exception:
                 push_ts = int(self._now_fn())
             push_dt = datetime.fromtimestamp(push_ts, tz=tz)
-            wake_dt = push_dt - timedelta(seconds=max(0, int(job.wake_offset_seconds or 0)))
+            wake_dt = push_dt - timedelta(
+                seconds=max(0, int(job.wake_offset_seconds or 0))
+            )
             state = CronRunState(
                 run_id=run_id,
                 job_id=job.id,
@@ -288,7 +298,11 @@ class CronSchedulerService:
             finally:
                 state.finished_at = self._now_fn()
                 # if placeholder already sent, push update immediately
-                if state.placeholder_sent and not state.pushed_final and state.result_text:
+                if (
+                    state.placeholder_sent
+                    and not state.pushed_final
+                    and state.result_text
+                ):
                     logger.info(
                         "[Cron] scheduling immediate push_update after agent finished "
                         "job=%s run_id=%s text_len=%d",
@@ -296,11 +310,22 @@ class CronSchedulerService:
                         run_id,
                         len(state.result_text or ""),
                     )
-                    self._schedule_event(datetime.fromtimestamp(self._now_fn(), tz=ZoneInfo(job.timezone)), "push_update", job.id, run_id)
+                    self._schedule_event(
+                        datetime.fromtimestamp(
+                            self._now_fn(), tz=ZoneInfo(job.timezone)
+                        ),
+                        "push_update",
+                        job.id,
+                        run_id,
+                    )
                 # if push time already passed, also try to push update
                 try:
                     push_dt = datetime.fromisoformat(state.push_at_iso)
-                    if push_dt.timestamp() <= self._now_fn() and not state.pushed_final and state.result_text:
+                    if (
+                        push_dt.timestamp() <= self._now_fn()
+                        and not state.pushed_final
+                        and state.result_text
+                    ):
                         logger.info(
                             "[Cron] scheduling late push_update because push_at<=now "
                             "job=%s run_id=%s text_len=%d",
@@ -308,7 +333,14 @@ class CronSchedulerService:
                             run_id,
                             len(state.result_text or ""),
                         )
-                        self._schedule_event(datetime.fromtimestamp(self._now_fn(), tz=ZoneInfo(job.timezone)), "push_update", job.id, run_id)
+                        self._schedule_event(
+                            datetime.fromtimestamp(
+                                self._now_fn(), tz=ZoneInfo(job.timezone)
+                            ),
+                            "push_update",
+                            job.id,
+                            run_id,
+                        )
                 except Exception:
                     pass
 
@@ -324,7 +356,9 @@ class CronSchedulerService:
             except Exception:
                 push_ts = int(self._now_fn())
             push_dt = datetime.fromtimestamp(push_ts, tz=tz)
-            wake_dt = push_dt - timedelta(seconds=max(0, int(job.wake_offset_seconds or 0)))
+            wake_dt = push_dt - timedelta(
+                seconds=max(0, int(job.wake_offset_seconds or 0))
+            )
             state = CronRunState(
                 run_id=run_id,
                 job_id=job.id,
@@ -337,25 +371,39 @@ class CronSchedulerService:
             return
 
         if state.result_text:
-            await self._push_to_targets(job, state, text=state.result_text, is_placeholder=False)
+            await self._push_to_targets(
+                job, state, text=state.result_text, is_placeholder=False
+            )
             state.pushed_final = True
             return
 
         # Not ready: send placeholder
-        placeholder = f"[cron] {job.name} 正在执行中，结果稍后补发（push_at={state.push_at_iso}）"
+        placeholder = (
+            f"[cron] {job.name} 正在执行中，结果稍后补发（push_at={state.push_at_iso}）"
+        )
         await self._push_to_targets(job, state, text=placeholder, is_placeholder=True)
         state.placeholder_sent = True
 
     async def _on_push_update(self, job: CronJob, run_id: str) -> None:
         state = self._runs.get(run_id)
         if state is None:
-            logger.info("[Cron] push_update skipped: no state job=%s run_id=%s", job.id, run_id)
+            logger.info(
+                "[Cron] push_update skipped: no state job=%s run_id=%s", job.id, run_id
+            )
             return
         if state.pushed_final:
-            logger.info("[Cron] push_update skipped: already pushed_final job=%s run_id=%s", job.id, run_id)
+            logger.info(
+                "[Cron] push_update skipped: already pushed_final job=%s run_id=%s",
+                job.id,
+                run_id,
+            )
             return
         if not state.result_text:
-            logger.info("[Cron] push_update skipped: empty result_text job=%s run_id=%s", job.id, run_id)
+            logger.info(
+                "[Cron] push_update skipped: empty result_text job=%s run_id=%s",
+                job.id,
+                run_id,
+            )
             return
         logger.info(
             "[Cron] push_update start job=%s run_id=%s text_len=%d",
@@ -363,11 +411,15 @@ class CronSchedulerService:
             run_id,
             len(state.result_text or ""),
         )
-        await self._push_to_targets(job, state, text=state.result_text, is_placeholder=False)
+        await self._push_to_targets(
+            job, state, text=state.result_text, is_placeholder=False
+        )
         state.pushed_final = True
         logger.info("[Cron] push_update done job=%s run_id=%s", job.id, run_id)
 
-    async def _push_to_targets(self, job: CronJob, state: CronRunState, *, text: str, is_placeholder: bool) -> None:
+    async def _push_to_targets(
+        self, job: CronJob, state: CronRunState, *, text: str, is_placeholder: bool
+    ) -> None:
         logger.info(
             "[Cron] push_to_targets job=%s run_id=%s channel=%s is_placeholder=%s text_len=%d status=%s",
             job.id,

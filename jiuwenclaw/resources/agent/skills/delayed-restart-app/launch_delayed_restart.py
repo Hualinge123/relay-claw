@@ -25,6 +25,7 @@ def main() -> int:
 
     try:
         from jiuwenclaw.paths import get_root_dir
+
         root = get_root_dir()
     except Exception:
         root = Path.cwd()
@@ -33,12 +34,16 @@ def main() -> int:
         sys.executable,
         "-m",
         "jiuwenclaw.scripts.delayed_restart_app",
-        "--pid", str(args.pid),
-        "--delay", str(max(1, min(args.delay, 300))),
+        "--pid",
+        str(args.pid),
+        "--delay",
+        str(max(1, min(args.delay, 300))),
     ]
     creationflags = 0
     if sys.platform == "win32":
-        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | 0x00000008  # DETACHED_PROCESS
+        creationflags = (
+            subprocess.CREATE_NEW_PROCESS_GROUP | 0x00000008
+        )  # DETACHED_PROCESS
     subprocess.Popen(
         cmd,
         cwd=str(root),
