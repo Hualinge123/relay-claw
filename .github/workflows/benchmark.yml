@@ -1,0 +1,104 @@
+name: Performance Benchmark
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'jiuwenclaw/**/*.py'
+      - 'tests/benchmark/**'
+      - '.github/workflows/benchmark.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'jiuwenclaw/**/*.py'
+      - 'tests/benchmark/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  deployments: write
+
+jobs:
+  benchmark:
+    name: Run Performance Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: 'latest'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: benchmark-uv-${{ runner.os }}-3.12-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            benchmark-uv-${{ runner.os }}-3.12-
+
+      - name: Install dependencies
+        run: |
+          uv sync --group test
+
+      - name: Run benchmarks
+        run: |
+          uv run pytest tests/benchmark/ -v \
+            --benchmark-only \
+            --benchmark-autosave \
+            --benchmark-sort=name \
+            --benchmark-columns=mean,stddev,rounds,iterations \
+            --benchmark-histogram=benchmark-results/histograms \
+            --benchmark-json=benchmark-results/benchmark-results.json
+        env:
+          PYTHONPATH: .
+
+      - name: Download previous benchmark data
+        uses: actions/cache@v4
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark-previous
+          restore-keys: |
+            ${{ runner.os }}-benchmark-
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'pytest'
+          output-file-path: benchmark-results/benchmark-results.json
+          external-data-json-path: ./cache/benchmark-data.json
+          alert-threshold: '10%'
+          comment-on-alert: true
+          fail-on-alert: false
+          alert-comment-cc-users: '@Hualinge123'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false  # Don't auto-push to avoid workflow loops
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results/
+          retention-days: 30
+
+      - name: Create benchmark summary
+        if: always()
+        run: |
+          echo "## 📊 Benchmark Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Performance tests completed successfully." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Download benchmark results from the workflow artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- JSON data: `benchmark-results/benchmark-results.json`" >> $GITHUB_STEP_SUMMARY
+          echo "- Histograms: `benchmark-results/histograms/`" >> $GITHUB_STEP_SUMMARY
