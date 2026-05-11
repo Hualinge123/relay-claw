@@ -115,6 +115,11 @@ We warmly welcome community contributions — whether it's filing bug reports, s
 3. **Dependency Review** (`dependency-review.yml`)
    - PR 中依赖变更的安全和许可证审查
 
+4. **Performance Benchmark** (`benchmark.yml`)
+   - pytest-benchmark 性能基准测试
+   - 自动检测性能退化（超过 10% 变化）
+   - 生成性能趋势图和详细报告
+
 ### 本地检查
 
 在提交代码前，建议运行本地 CI 检查：
