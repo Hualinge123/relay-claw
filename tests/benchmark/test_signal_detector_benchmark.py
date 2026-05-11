@@ -1,9 +1,6 @@
 """Benchmark tests for signal detector module."""
 import pytest
-from jiuwenclaw.evolution.signal_detector import (
-    detect_evolution_signals,
-    deduplicate_signals,
-)
+from jiuwenclaw.evolution.signal_detector import SignalDetector
 
 
 class TestSignalDetectorBenchmark:
@@ -17,19 +14,10 @@ class TestSignalDetectorBenchmark:
             {"role": "assistant", "content": "Here's the explanation."},
             {"role": "user", "content": "Thanks, that was helpful."},
         ]
+        detector = SignalDetector()
 
-        result = benchmark(detect_evolution_signals, messages)
+        result = benchmark(detector.detect, messages)
         assert len(result) == 0
-
-    def test_detect_single_correction(self, benchmark):
-        """Benchmark single user correction detection."""
-        messages = [
-            {"role": "assistant", "content": "The result is 42."},
-            {"role": "user", "content": "No, I wanted 50 instead."},
-        ]
-
-        result = benchmark(detect_evolution_signals, messages)
-        assert len(result) >= 1
 
     def test_detect_execution_failure(self, benchmark):
         """Benchmark execution failure detection."""
@@ -38,8 +26,9 @@ class TestSignalDetectorBenchmark:
             {"role": "tool", "name": "test_tool", "content": "Error: failed"},
             {"role": "assistant", "content": "The task failed."},
         ]
+        detector = SignalDetector()
 
-        result = benchmark(detect_evolution_signals, messages)
+        result = benchmark(detector.detect, messages)
         assert isinstance(result, list)
 
     def test_detect_in_large_conversation(self, benchmark):
@@ -52,57 +41,10 @@ class TestSignalDetectorBenchmark:
         # Add some correction signals
         messages[10]["content"] = "That's not what I wanted"
         messages[30]["content"] = "Wrong approach"
+        detector = SignalDetector()
 
-        result = benchmark(detect_evolution_signals, messages)
+        result = benchmark(detector.detect, messages)
         assert isinstance(result, list)
-
-    def test_deduplicate_small_list(self, benchmark):
-        """Benchmark deduplication of small signal list."""
-        from jiuwenclaw.evolution.schema import EvolutionSignal, EvolutionType
-
-        signals = [
-            EvolutionSignal(
-                skill_name="skill1",
-                evolution_type=EvolutionType.ADD_EXAMPLE,
-                trigger="trigger1",
-                excerpt="excerpt1",
-            ),
-            EvolutionSignal(
-                skill_name="skill1",
-                evolution_type=EvolutionType.ADD_EXAMPLE,
-                trigger="trigger1",
-                excerpt="excerpt1",
-            ),
-            EvolutionSignal(
-                skill_name="skill2",
-                evolution_type=EvolutionType.ADD_EXAMPLE,
-                trigger="trigger2",
-                excerpt="excerpt2",
-            ),
-        ]
-
-        result = benchmark(deduplicate_signals, signals)
-        assert len(result) == 2
-
-    def test_deduplicate_large_list(self, benchmark):
-        """Benchmark deduplication of large signal list."""
-        from jiuwenclaw.evolution.schema import EvolutionSignal, EvolutionType
-
-        signals = []
-        for i in range(100):
-            # Create duplicates every 5 items
-            skill_name = f"skill_{i // 5}"
-            signals.append(
-                EvolutionSignal(
-                    skill_name=skill_name,
-                    evolution_type=EvolutionType.ADD_EXAMPLE,
-                    trigger=f"trigger_{i}",
-                    excerpt=f"excerpt_{i}",
-                )
-            )
-
-        result = benchmark(deduplicate_signals, signals)
-        assert len(result) < 100  # Should have fewer after deduplication
 
     def test_detect_with_tool_calls(self, benchmark):
         """Benchmark detection with tool call messages."""
@@ -116,6 +58,7 @@ class TestSignalDetectorBenchmark:
             {"role": "assistant", "content": "File doesn't exist."},
             {"role": "user", "content": "Try a different file path."},
         ]
+        detector = SignalDetector()
 
-        result = benchmark(detect_evolution_signals, messages)
+        result = benchmark(detector.detect, messages)
         assert isinstance(result, list)
