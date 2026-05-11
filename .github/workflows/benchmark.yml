@@ -62,20 +62,12 @@ jobs:
         env:
           PYTHONPATH: .
 
-      - name: Download previous benchmark data
-        uses: actions/cache@v4
-        with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmark-previous
-          restore-keys: |
-            ${{ runner.os }}-benchmark-
-
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: 'pytest'
           output-file-path: benchmark-results/benchmark-results.json
-          external-data-json-path: ./cache/benchmark-data.json
+          # 使用 gh-pages 分支存储历史数据（无需 external-data-json-path）
           alert-threshold: '10%'
           comment-on-alert: true
           fail-on-alert: true  # 启用门禁：性能退化超过 10% 将阻止合并
