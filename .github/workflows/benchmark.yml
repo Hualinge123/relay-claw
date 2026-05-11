@@ -58,7 +58,6 @@ jobs:
             --benchmark-autosave \
             --benchmark-sort=name \
             --benchmark-columns=mean,stddev,rounds,iterations \
-            --benchmark-histogram=benchmark-results/histograms \
             --benchmark-json=benchmark-results/benchmark-results.json
         env:
           PYTHONPATH: .
@@ -101,4 +100,3 @@ jobs:
           echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- Download benchmark results from the workflow artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- JSON data: `benchmark-results/benchmark-results.json`" >> $GITHUB_STEP_SUMMARY
-          echo "- Histograms: `benchmark-results/histograms/`" >> $GITHUB_STEP_SUMMARY

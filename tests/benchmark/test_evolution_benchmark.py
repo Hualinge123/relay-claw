@@ -16,10 +16,11 @@ class TestEvolutionBenchmark:
         """Benchmark EvolutionSignal creation."""
         signal = benchmark(
             EvolutionSignal,
-            skill_name="test_skill",
+            type="user_correction",
             evolution_type=EvolutionType.SKILL_EXPERIENCE,
-            trigger="Test trigger message",
-            excerpt="Test excerpt",
+            section="Examples",
+            excerpt="Test excerpt content",
+            skill_name="test_skill",
         )
         assert signal.skill_name == "test_skill"
 
@@ -53,10 +54,11 @@ class TestEvolutionBenchmark:
         """Benchmark batch signal serialization."""
         signals = [
             EvolutionSignal(
-                skill_name=f"skill_{i}",
+                type="user_correction",
                 evolution_type=EvolutionType.SKILL_EXPERIENCE,
-                trigger=f"Trigger {i}",
+                section="Examples",
                 excerpt=f"Excerpt {i}",
+                skill_name=f"skill_{i}",
             )
             for i in range(20)
         ]
