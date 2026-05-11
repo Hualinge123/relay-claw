@@ -95,6 +95,46 @@ We warmly welcome community contributions — whether it's filing bug reports, s
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+## CI/CD
+
+本项目使用 GitHub Actions 进行持续集成。
+
+### 工作流
+
+1. **Tests** (`test.yml`)
+   - 触发条件：push/PR 到 main/develop 分支
+   - 测试矩阵：Python 3.11, 3.12, 3.13
+   - 覆盖率报告上传至 Codecov
+
+2. **Code Quality** (`lint.yml`)
+   - ruff: 快速 linting
+   - black: 代码格式检查
+   - mypy: 类型检查
+   - bandit: 安全扫描
+
+3. **Dependency Review** (`dependency-review.yml`)
+   - PR 中依赖变更的安全和许可证审查
+
+### 本地检查
+
+在提交代码前，建议运行本地 CI 检查：
+
+```bash
+./scripts/ci_local.sh
+```
+
+### Dependabot
+
+项目配置了 Dependabot 自动更新依赖：
+- Python 依赖：每周一更新
+- GitHub Actions：每周一更新
+- 自动生成 PR，需要审核后合并
+
+### 查看 CI 状态
+
+- GitHub Actions: https://github.com/Hualinge123/relay-claw/actions
+- Coverage Report: https://codecov.io/gh/Hualinge123/relay-claw
+
 ## 📄 License
 
 This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
