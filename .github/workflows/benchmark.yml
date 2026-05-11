@@ -26,6 +26,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          lfs: false  # 禁用 LFS 下载，避免大文件下载失败
+
+      - name: Disable Git LFS for benchmark action
+        run: |
+          git config --global lfs.fetchexclude '*'
+          git config --global filter.lfs.smudge "git-lfs smudge --skip -- %f"
+          git config --global filter.lfs.process "git-lfs filter-process --skip"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
