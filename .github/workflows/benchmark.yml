@@ -76,9 +76,9 @@ jobs:
           tool: 'pytest'
           output-file-path: benchmark-results/benchmark-results.json
           # 使用 gh-pages 分支存储历史数据（无需 external-data-json-path）
-          alert-threshold: '10%'
+          alert-threshold: '20%'  # 初期放宽阈值，建立稳定基准后再收紧
           comment-on-alert: true
-          fail-on-alert: true  # 启用门禁：性能退化超过 10% 将阻止合并
+          fail-on-alert: false  # 初期仅警报不阻止，积累稳定数据后启用门禁
           alert-comment-cc-users: '@Hualinge123'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true  # 自动推送到 gh-pages 分支，启用趋势图表
