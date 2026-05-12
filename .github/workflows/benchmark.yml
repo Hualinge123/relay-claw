@@ -43,7 +43,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -51,9 +51,9 @@ jobs:
           path: |
             ~/.cache/uv
             .venv
-          key: benchmark-uv-${{ runner.os }}-3.12-${{ hashFiles('uv.lock') }}
+          key: benchmark-uv-${{ runner.os }}-3.11-${{ hashFiles('uv.lock') }}
           restore-keys: |
-            benchmark-uv-${{ runner.os }}-3.12-
+            benchmark-uv-${{ runner.os }}-3.11-
 
       - name: Install dependencies
         run: |
@@ -102,15 +102,18 @@ jobs:
           echo "| Test | Mean (μs) | Stddev | Rounds |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
           python3 -c "
-          import json
-          with open('benchmark-results/benchmark-results.json') as f:
-              data = json.load(f)
-          for b in data['benchmarks']:
-              name = b['name']
-              mean = b['stats']['mean'] * 1000000  # convert to μs
-              stddev = b['stats']['stddev'] * 1000000
-              rounds = b['stats']['rounds']
-              print(f'| {name} | {mean:.2f} | {stddev:.2f} | {rounds} |')
+          import json, os
+          if not os.path.exists('benchmark-results/benchmark-results.json'):
+              print('| N/A | Benchmarks did not run | - | - |')
+          else:
+              with open('benchmark-results/benchmark-results.json') as f:
+                  data = json.load(f)
+              for b in data['benchmarks']:
+                  name = b['name']
+                  mean = b['stats']['mean'] * 1000000
+                  stddev = b['stats']['stddev'] * 1000000
+                  rounds = b['stats']['rounds']
+                  print(f'| {name} | {mean:.2f} | {stddev:.2f} | {rounds} |')
           " >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
